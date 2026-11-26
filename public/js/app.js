@@ -23,6 +23,7 @@
   }
   // Styly se nastavují přes JS (CSSOM), takže CSP může zakázat inline styly.
   function obarvi(root) {
+    requestAnimationFrame(() => nakresliEkg(root));
     root.querySelectorAll("img.cover-img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
     root.querySelectorAll("[data-a]").forEach((el) => {
       el.style.background = `linear-gradient(135deg,${barva(el.dataset.a, "#444")},${barva(el.dataset.b, "#111")})`;
@@ -860,13 +861,42 @@
     return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
   }
 
+  // ---------- Tep (EKG křivka) – hlavní motiv webu Herní puls ----------
+  // Čím víc diváků, tím rychleji křivka tepe. Logaritmicky, ať malí streameři nestojí a velcí nebliká:
+  // 10 diváků ≈ 85 tepů/min, 100 ≈ 115, 1 000 ≈ 145, 10 000 ≈ 175 (strop 190).
+  const tepZDivaku = (d) => Math.min(190, Math.round(55 + 30 * Math.log10((Number(d) || 0) + 1)));
+  const ekg = (divaci, velka = false) => `<div class="ekg${velka ? " ekg-velka" : ""}" data-divaci="${Number(divaci) || 0}" aria-hidden="true"></div>`;
+  // Nakreslí křivky do všech .ekg v kořeni (volá se z obarvi). Rychlost = 60 / tep sekund na jeden úder.
+  function nakresliEkg(root) {
+    root.querySelectorAll(".ekg[data-divaci]:not([data-hotovo])").forEach((el) => {
+      const w = el.clientWidth, h = el.clientHeight;
+      if (!w || !h) return;
+      const velka = el.classList.contains("ekg-velka"), P = velka ? 150 : 46, a = h * (velka ? 0.44 : 0.4), m = h / 2;
+      const uder = (x) => `L${x + P * 0.3},${m} l${P * 0.06},${-a * 0.35} l${P * 0.05},${a * 0.35} l${P * 0.05},${a * 0.25} l${P * 0.06},${-a * 1.25} l${P * 0.07},${a * 1.9} l${P * 0.06},${-a * 0.9} l${P * 0.05},0 l${P * 0.06},${-a * 0.25} l${P * 0.06},${a * 0.25} L${x + P},${m}`;
+      const n = Math.ceil(w / P) + 2;
+      let d = `M0,${m}`;
+      for (let i = 0; i < n; i++) d += " " + uder(i * P);
+      const tep = tepZDivaku(el.dataset.divaci);
+      el.innerHTML = `<svg width="${n * P}" height="${h}" viewBox="0 0 ${n * P} ${h}"><g><path d="${d}"/></g></svg>`;
+      const g = el.querySelector("g");
+      g.style.setProperty("--p", P + "px");
+      g.style.animationDuration = (60 / tep).toFixed(3) + "s";
+      el.dataset.hotovo = "1";
+    });
+  }
+  // Řádek „tep“ streamera: avatar, jméno, hra, křivka, diváci a tepy za minutu.
+  const radekTepu = (s) => `<a class="tep${s.platforma === "kick" ? " kick" : ""}" href="${esc(profilUrl(s))}">${av(s)}
+      <div class="tep-t"><b>${esc(s.jmeno)}</b><span>${esc(s.hra || "")}</span></div>${ekg(s.divaci)}
+      <div class="tep-n"><b>${num(s.divaci || 0)}</b><span class="tep-min">${tepZDivaku(s.divaci)}/min</span></div></a>`;
+
   function kartaZive(s) {
     return `<a class="live-card" href="${esc(profilUrl(s))}">
       <div class="live-thumb">${https(s.nahled) ? `<img src="${esc(s.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
         <span class="live-badge">ŽIVĚ</span>${platBadge(s)}<span class="live-viewers">${num(s.divaci || 0)} diváků</span>
         ${s.zacatek ? `<span class="live-time">${esc(delka(s.zacatek))}</span>` : ""}</div>
       <div class="live-info">${av(s)}<div class="info"><h3>${esc(s.jmeno)}${partner(s)}</h3>
-        <div class="sub">${esc(s.hra || "")}</div><div class="sub dim">${esc(s.titulek || "")}</div></div></div></a>`;
+        <div class="sub">${esc(s.hra || "")}</div><div class="sub dim">${esc(s.titulek || "")}</div></div></div>
+      <div class="live-tep">${ekg(s.divaci)}<span class="tep-min">${tepZDivaku(s.divaci)}/min</span></div></a>`;
   }
 
   const RAZENI = { sledujici: "Sledující", divaci: "Rekord diváků", hodiny: "Odvysíláno (naše měření)", rust: "Růst (naše měření)" };
@@ -1196,7 +1226,7 @@
       </div>
       <p class="pa-zprava" id="pa-zprava" role="status" aria-live="polite"></p>
       ${odkazySit(s.odkazy)}
-      ${s.zive ? `<div class="section-title">Právě vysílá</div>${kartaZive(s)}` : ""}
+      ${s.zive ? `<div class="section-title">Právě vysílá · tep ${tepZDivaku(s.divaci)}/min</div>${ekg(s.divaci, true)}${kartaZive(s)}` : ""}
       <div class="stats">
         ${s.platforma === "kick"
           ? `<div class="stat"><b>–</b><span>sledujících<small>Kick je ve svém oficiálním API nezveřejňuje</small></span></div>`
@@ -1623,16 +1653,22 @@
   const prepinac = (id, volby, akt) => `<div class="mini-seg" role="group">${volby.map(([k, v]) => `<button type="button" class="ms-b${k === akt ? " on" : ""}" data-${id}="${k}">${v}</button>`).join("")}</div>`;
 
   // ---------- Domů: rozcestník – co je nového dnes, kdo je živě, nástroje. Obchody jsou na /obchody. ----------
+  const IKONY = {
+    hrat: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="12" rx="4"/><path d="M7 13h4M9 11v4M15.5 12.5h.01M17.5 14.5h.01"/></svg>',
+    pc: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+    vn: '<svg viewBox="0 0 24 24"><path d="M12 4v16M6 10l6-6 6 6M6 14l6 6 6-6"/></svg>',
+    cz: '<svg viewBox="0 0 24 24"><path d="M4 21V9l8-5 8 5v12M9 21v-6h6v6"/></svg>',
+  };
   const NASTROJE_DOMU = [
-    ["/co-hrat", "Co dnes hrát?", "Pár ťuknutí a máš tip na hru.", "#ffc04d"],
-    ["/rozjede-se", "Rozjede se mi to?", "Porovnej svůj počítač s hrou.", "#5cc8ff"],
-    ["/vyssi-nizsi", "Vyšší, nebo nižší?", "Denní minihra se skutečnými čísly.", "#b47cff"],
-    ["/ceska-scena", "Česká herní scéna", "Co je nového u českých studií.", "#ff7a9c"],
+    ["/co-hrat", "Co dnes hrát?", "Pár ťuknutí a máš tip na hru.", "#ffc04d", "hrat"],
+    ["/rozjede-se", "Rozjede se mi to?", "Porovnej svůj počítač s hrou.", "#39d5ff", "pc"],
+    ["/vyssi-nizsi", "Vyšší, nebo nižší?", "Denní minihra se skutečnými čísly.", "#8b5cff", "vn"],
+    ["/ceska-scena", "Česká herní scéna", "Co je nového u českých studií.", "#ff3d7f", "cz"],
   ];
   async function strankaDomu() {
     nastavTitulek("");
     if (!state.domu) {
-      app.innerHTML = `<div class="home-head"><h1>Všechno o hrách na jednom místě</h1></div><div class="kostra kostra-banner"></div>${kostra(3)}`;
+      app.innerHTML = `<section class="uvod"><h1>Hry mají tep.<br>My ho <em>měříme.</em></h1></section>${kostra(3)}`;
       const [ra, rep, vy, ak] = await Promise.allSettled([nacti("ranni"), nacti("report?tyden=aktualni"), nacti("vyroci"), state.akce ? state.akce : nacti("akce"), nactiKatalog()]);
       state.domu = { ranni: ra.status === "fulfilled" ? ra.value : null, report: rep.status === "fulfilled" ? rep.value : null, vyroci: vy.status === "fulfilled" ? vy.value : null };
       if (ak.status === "fulfilled") state.akce = ak.value;
@@ -1645,63 +1681,74 @@
     const maxSleva = Math.max(0, ...(k.steam_slevy || []).map((h) => h.sleva || 0), ...(k.gog_slevy || []).map((h) => h.sleva || 0));
     const prednost = (c) => (vJazyku(c) && Date.now() - datum(c) < 2 * 864e5 ? 1 : 0); // čerstvé zprávy v jazyce návštěvníka první
     const zpravy = [...state.clanky].sort((a, b) => (prednost(b) - prednost(a)) || (datum(b) - datum(a))).slice(0, 4);
-    const streamy = state.zive.streamy;
+    const streamy = [...state.zive.streamy].sort((a, b) => (b.divaci || 0) - (a.divaci || 0));
+    const divaku = streamy.reduce((a, x) => a + (x.divaci || 0), 0);
     const dnesRanni = ranni?.body?.length && ranni.den === new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
     const akce = (state.akce?.akce || [])[0];
+    const zpravDnes = state.clanky.filter((c) => Date.now() - datum(c) < 864e5).length;
+    const s = report?.souhrn;
     app.innerHTML = `
-      <div class="home-head"><h1>Všechno o hrách na jednom místě</h1>
-        <p class="home-perex">AI za tebe nonstop sleduje herní weby, obchody a streamy a skládá to sem – přehledně a česky.</p>
+      <section class="uvod">
+        <h1>Hry mají tep.<br>My ho <em>měříme.</em></h1>
+        ${ekg(divaku || 1, true)}
+        <p class="uvod-veta"><span class="zivy-bod" aria-hidden="true"></span>${streamy.length
+          ? `Tep scény <b>${tepZDivaku(divaku)}/min</b> · vysílá <b>${pl(streamy.length, "Čech", "Češi", "Čechů")}</b> pro <b>${num(divaku)}</b> diváků`
+          : "Teď nikdo z českých streamerů nevysílá – scéna odpočívá"}${zdarmaVse.length ? ` · <b>${pl(zdarmaVse.length, "hra", "hry", "her")}</b> zdarma` : ""}${zpravDnes ? ` · <b>${zpravDnes}</b> zpráv za 24 h` : ""}</p>
         ${akce ? `<a class="pristi-akce" href="/akce"><span class="akce-typ">${esc(TYP_AKCE[akce.typ] || "")}</span>
-          <b>${esc(akce.nazev)}</b><span>${akce.bezi ? "probíhá · končí za" : "za"} <b data-odpocet="${esc(akce.bezi ? akce.do : akce.od)}"></b></span></a>` : ""}</div>
+          <b>${esc(akce.nazev)}</b><span>${akce.bezi ? "probíhá · končí za" : "za"} <b data-odpocet="${esc(akce.bezi ? akce.do : akce.od)}"></b></span></a>` : ""}
+      </section>
 
-      ${ranni?.body?.length ? `<section class="ranni-karta">
-          <header><span class="ai-stitek">Sestavila AI</span><h2><a href="/ranni">${dnesRanni ? "Ranní přehled" : "Poslední ranní přehled"}</a></h2><span class="dim">${esc(denCz(ranni.den))}</span></header>
-          ${bodyRanni(ranni, 5)}
-          <a class="dalsi-odkaz" href="/novinky">Všechny novinky</a>
+      <div class="mozaika">
+        ${ranni?.body?.length ? `<section class="ranni-karta m7">
+            <header><span class="ai-stitek">Sestavila AI</span><h2><a href="/ranni">${dnesRanni ? "Ranní přehled" : "Poslední ranní přehled"}</a></h2><span class="dim">${esc(denCz(ranni.den))}</span></header>
+            ${bodyRanni(ranni, 5)}
+            <a class="dalsi-odkaz" href="/novinky">Všechny novinky</a>
+          </section>` : ""}
+
+        <section class="blok ${ranni?.body?.length ? "m5" : "m12"}">
+          <div class="section-title">Tep scény · <a href="/zive">všichni živě</a></div>
+          ${streamy.length ? `<p class="tep-pozn">Čím víc diváků, tím rychleji tepe.</p>
+            <div class="tepy">${streamy.slice(0, 6).map(radekTepu).join("")}</div>`
+            : `<p class="dim">Teď nikdo nevysílá. Křivky naskočí, jakmile se někdo z českých streamerů pustí do vysílání.</p>`}
+        </section>
+
+        ${tydne ? `<a class="hra-velka m5" ${odkazHry(tydne)}>${https(tydne.obrazek) ? `<img src="${esc(tydne.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}
+          <div class="hv-t"><span class="hv-pill">${tydne.cena === 0 || tydne.do ? `Zdarma na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}${tydne.do ? ` · ${esc(zbyva(tydne.do))}` : ""}` : `Sleva −${Number(tydne.sleva) || 0} % na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}`}</span>
+            <h2>${esc(tydne.nazev)}</h2>
+            <p>Hra týdne${zdarmaVse.length > 1 ? ` · další ${pl(zdarmaVse.length - 1, "hra", "hry", "her")} zdarma` : ""}${maxSleva ? ` · slevy až −${maxSleva} %` : ""}</p></div></a>` : ""}
+
+        <section class="blok ${tydne ? "m7" : "m12"}">
+          <div class="section-title">Nejnovější zprávy · <a href="/novinky">všechny</a></div>
+          ${zpravy.length ? `<div class="rec-list">${zpravy.map((c) => `<a class="rec" href="/clanek/${esc(enc(c.id))}">
+              ${https(c.obrazek) ? `<img src="${esc(c.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="rec-bez"></div>`}
+              <div><b>${esc(c.nadpis)}</b><span class="dim">${esc(c.zdroje?.[0]?.nazev || "Herní puls")} · ${esc(kdy(datum(c)))}</span></div></a>`).join("")}</div>`
+            : `<p class="dim">Zprávy se načítají.</p>`}
+        </section>
+
+        <section class="blok m12">
+          <div class="section-title">Vyzkoušej · <a href="/pruvodce">všechno o hrách</a></div>
+          <div class="nastroje">${NASTROJE_DOMU.map(([h, t, p, b, ik]) => `<a class="nastroj" href="${h}" data-barva="${b}"><span class="n-ikona" aria-hidden="true">${IKONY[ik]}</span><div><b>${t}</b><span>${p}</span></div></a>`).join("")}</div>
+        </section>
+
+        ${report?.vety?.length ? `<section class="blok ${vyroci?.hry?.length ? "m6" : "m12"}">
+          <div class="section-title">Tento týden na scéně · <a href="/report/aktualni">celý přehled</a></div>
+          ${s?.hodin ? `<div class="tyden-cisla"><div><b>${esc(num(s.hodin))}</b><span>hodin sledování</span></div>
+            <div><b>${s.zmena != null && s.hodin_pred ? `${s.zmena >= 0 ? "+" : ""}${Number(s.zmena) || 0} %` : esc(num(s.spicka?.divaci || 0))}</b><span>${s.zmena != null && s.hodin_pred ? "proti minulému týdnu" : "diváků ve špičce"}</span></div></div>` : ""}
+          ${(report.hry || []).length ? `<div class="slist">${report.hry.slice(0, 3).map((h) => radekHryCesko(h, report.hry[0].hodin)).join("")}</div>` : `<p class="rep-vety">${report.vety.slice(0, 2).map(esc).join(" ")}</p>`}
+          <p class="source-note">Týden ještě běží, čísla se průběžně mění.</p>
         </section>` : ""}
 
-      ${streamy.length ? `<section class="sekce">
-        <div class="section-title">Právě živě <span class="dim titul-pocet">${pl(streamy.length, "stream", "streamy", "streamů")}</span> · <a href="/zive">všichni</a></div>
-        <div class="stories" aria-label="Právě živě">${streamy.slice(0, 12).map((s) =>
-          `<a class="story${s.platforma === "kick" ? " kick" : ""}" href="${esc(profilUrl(s))}"><div class="ring">${av(s)}</div><b>${esc(s.jmeno)}</b><span>${esc(s.hra || "")}</span></a>`).join("")}</div>
-      </section>` : ""}
-
-      <section class="sekce">
-        <div class="section-title">Nejnovější zprávy · <a href="/novinky">všechny</a></div>
-        ${zpravy.length ? `<div class="grid">${zpravy.map((c) => kartaClanku(c, 1)).join("")}</div>` : `<p class="dim">Zprávy se načítají.</p>`}
-      </section>
-
-      <section class="sekce">
-        <div class="section-title">Vyzkoušej</div>
-        <div class="nastroje">${NASTROJE_DOMU.map(([h, t, p, b]) => `<a class="nastroj" href="${h}" data-barva="${b}"><b>${t}</b><span>${p}</span></a>`).join("")}</div>
-        <p class="vice-nastroju"><a href="/pruvodce">Všechno o hrách</a> – kalendář vydání, aktualizace her, česká scéna, čeština, hlídač cen</p>
-      </section>
-
-      ${tydne || zdarmaVse.length ? `<section class="sekce domu-obchody">
-        <div class="section-title">Zdarma a ve slevě · <a href="/obchody">všechny nabídky</a></div>
-        ${hraTydne(k, tydne, "")}
-        <p class="domu-shrnuti">${zdarmaVse.length > 1 ? `<a href="/obchody#zdarma"><b>${pl(zdarmaVse.length, "hra", "hry", "her")} zdarma</b></a>` : ""}
-          ${maxSleva ? `<a href="/obchody#slevy">slevy až <b>−${maxSleva} %</b></a>` : ""} <a href="/hlidac">🔔 Hlídač cen</a></p>
-      </section>` : ""}
-
-      ${report?.vety?.length ? `<section class="sekce tyden-domu">
-        <div class="section-title">Tento týden na české scéně · <a href="/report/aktualni">celý přehled</a></div>
-        <p class="rep-vety">${report.vety.slice(0, 3).map(esc).join(" ")}</p>
-        ${(report.hry || []).length ? `<div class="slist">${report.hry.slice(0, 3).map((h) => radekHryCesko(h, report.hry[0].hodin)).join("")}</div>` : ""}
-        <p class="source-note">Týden ještě běží, čísla se průběžně mění. Z našeho měření českých streamů na Twitchi a Kicku.</p>
-      </section>` : ""}
-
-      ${vyroci?.hry?.length ? `<section class="sekce">
-        <div class="section-title">Dnes před lety vyšlo</div>
-        <div class="vyroci">${vyroci.hry.slice(0, 4).map((h) => `<a class="vyr" ${h.steam ? `href="/hra/steam/${esc(h.steam)}"` : `href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer"`}>
-            ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyr-bez">${esc(h.nazev[0])}</div>`}
-            <span class="vyr-pred">před ${pl(Number(h.pred) || 0, "rokem", "lety", "lety")}</span><b>${esc(h.nazev)}</b><span class="dim">${Number(h.rok) || ""}</span></a>`).join("")}</div>
-        <p class="source-note">Podle databáze IGDB.com – hry, které vyšly v dnešní den, seřazené podle počtu hodnocení.</p>
-      </section>` : ""}
+        ${vyroci?.hry?.length ? `<section class="blok ${report?.vety?.length ? "m6" : "m12"}">
+          <div class="section-title">Dnes před lety vyšlo</div>
+          <div class="vyroci">${vyroci.hry.slice(0, 4).map((h) => `<a class="vyr" ${h.steam ? `href="/hra/steam/${esc(h.steam)}"` : `href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer"`}>
+              ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyr-bez">${esc(h.nazev[0])}</div>`}
+              <span class="vyr-pred">před ${pl(Number(h.pred) || 0, "rokem", "lety", "lety")}</span><b>${esc(h.nazev)}</b><span class="dim">${Number(h.rok) || ""}</span></a>`).join("")}</div>
+        </section>` : ""}
+      </div>
 
       <a class="ai-stav" href="/stav" role="status"><span class="ai-jadro" aria-hidden="true"></span>
         <div><b>AI správce webu</b>
-        <span>${state.zive.cas ? `sleduji ${pl(streamy.length, "živý stream", "živé streamy", "živých streamů")} (${esc(hhmm(state.zive.cas))})` : "právě kontroluji streamy"}
+        <span>${state.zive.cas ? `měřím tep ${pl(streamy.length, "živého streamu", "živých streamů", "živých streamů")} (${esc(hhmm(state.zive.cas))})` : "právě měřím streamy"}
         ${(() => { const n = new Set(state.clanky.map((c) => c.zdroje?.[0]?.nazev).filter(Boolean)).size; return n ? ` · čtu zprávy z ${pl(n, "webu", "webů", "webů")}` : ""; })()}
         ${k.cas ? ` · obchody zkontrolovány v ${esc(hhmm(k.cas))}` : ""} · <u>deník AI</u></span></div></a>`;
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));

@@ -1,11 +1,20 @@
 /*
 VOICE: přátelský herní kamarád, ne zpravodajská agentura – kulaté tvary, teplé barvy, česky a lidsky.
-IDEA: večerní herna – indigová noc, ve které svítí jen to, co je právě živě.
+IDEA (od 26. 11. večer): HERNÍ PULS – web jako monitor tepu herní scény. Pulzující EKG křivka je hlavní motiv:
+  logo, hlavní křivka pod sloganem (tep celé scény) a křivka u každého živého streamera, která tepe tím rychleji,
+  čím víc má diváků (ekg() v app.js). Nadpisy Bricolage Grotesque, text Rubik. Na mobilu spodní lišta jako v aplikaci.
 PICTURE: řada „živých bublin“ (avatary vysílajících streamerů s barevným prstencem) jako hlavní motiv sekce Streameři.
 COLOUR: indigová noc #16132e, karty #211d42, mango #ffc04d jako akcent, živě #ff5a6e, Twitch #9b5cff, Kick #53fc18.
 TYPE: Rubik (vlastní hosting, čeština) – zaoblený, hravý, jedna rodina ve čtyřech velikostech.
 LAYOUT: dvě hlavní sekce v horní liště; uvnitř Streamerů podsekce Živě / Žebříček / Hry; jeden sloupec na mobilu.
 */
+/* Bricolage Grotesque (OFL) – nadpisy. Vlastní hosting kvůli CSP. */
+@font-face{font-family:"Bricolage Grotesque";font-style:normal;font-display:swap;font-weight:200 800;
+  src:url(/fonts/bricolage-latin-ext.woff2) format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Bricolage Grotesque";font-style:normal;font-display:swap;font-weight:200 800;
+  src:url(/fonts/bricolage-latin.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:"Rubik";font-style:normal;font-display:swap;font-weight:300 900;
   src:url(/fonts/rubik-latin-ext-wght-normal.woff2) format("woff2");
   unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
@@ -14,11 +23,12 @@ LAYOUT: dvě hlavní sekce v horní liště; uvnitř Streamerů podsekce Živě 
   unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 
 :root{
-  --bg:#16132e;--bg2:#1b1738;--card:#211d42;--card2:#2a2552;--line:#332d63;
+  --bg:#0e0b24;--bg2:#140f33;--card:#18133b;--card2:#221b4e;--line:#2e2768;
   --text:#f4f2ff;--muted:#a9a3d1;--accent:#ffc04d;--accent-ink:#2a1d00;--accent2:#9b5cff;
-  --live:#ff5a6e;--twitch:#9b5cff;--kick:#53fc18;
-  --r-s:10px;--r:16px;--r-l:24px;--radius:16px;
+  --live:#ff3d7f;--tep:#ff3d7f;--twitch:#9b5cff;--kick:#53fc18;
+  --r-s:12px;--r:20px;--r-l:26px;--radius:20px;
   --font:"Rubik",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:"Bricolage Grotesque","Rubik",system-ui,sans-serif;
 }
 *{box-sizing:border-box;min-width:0}
 html{scroll-padding-top:120px}
@@ -819,3 +829,129 @@ i.hw-ok{background:#4fd88f;color:#0b2a17}i.hw-stredne{background:#ffc04d;color:#
 .vn-konec .vyd-akce{justify-content:center}
 @media (max-width:520px){.vn{padding:14px 10px}.vn-dvojice{gap:6px}.vn-hra b{font-size:13px}.vn-cislo{font-size:19px}}
 @media (prefers-reduced-motion:reduce){.vn-dobre,.vn-spatne{animation:none}.pr-dl,.nastroj{transition:none}.pr-dl:hover,.nastroj:hover{transform:none}}
+
+
+/* ===================== VZHLED „TEP“ (2026-11-26 večer) ===================== */
+body::before{content:"";position:absolute;left:0;right:0;top:0;height:640px;pointer-events:none;z-index:-1;
+  background:radial-gradient(42% 60% at 12% 18%,rgba(139,92,255,.30),transparent 70%),radial-gradient(36% 50% at 88% 8%,rgba(255,61,127,.20),transparent 70%)}
+body{position:relative;isolation:isolate}
+h1,h2,.section-title,.logo,.cesko-head h1,.live-head h1,.news-head h1,.home-head h1,.ranni-karta h2,.pr-dl b,.nastroj b,.hk-t b,.vn-otazka{font-family:var(--display)}
+h1{letter-spacing:-.03em}
+.section-title{letter-spacing:-.02em}
+.top{background:rgba(14,11,36,.82)}
+.logo{font-weight:800;font-size:20px;letter-spacing:-.02em}
+/* Logo: tep v jantarovém čtverečku, každé 2,4 s jeden úder */
+.logo-tep{width:32px;height:32px;flex:none}
+.logo-tep rect{fill:var(--accent)}
+.logo-tep path{fill:none;stroke:#2a1d00;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.logo-tep .lt-stopa{opacity:.28}
+.logo-tep .lt-krivka{stroke-dasharray:44;stroke-dashoffset:44;animation:lt-uder 2.4s ease-in-out infinite}
+@keyframes lt-uder{0%{stroke-dashoffset:44}45%,70%{stroke-dashoffset:0}100%{stroke-dashoffset:-44}}
+.logo:hover .lt-krivka{animation-duration:.9s}
+/* Menu: ikony; na mobilu spodní lišta jako v aplikaci */
+.tabs .ikona{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;display:none}
+@media (max-width:760px){
+  body:has(.tabs .ikona){padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .top{flex-wrap:nowrap}
+  .tabs:has(.ikona){position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:30;width:auto;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:6px;border-radius:24px;
+    background:rgba(24,19,59,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 10px 30px -10px rgba(0,0,0,.6)}
+  .tabs:has(.ikona) a{flex-direction:column;gap:3px;padding:7px 2px;font-size:11.5px;border-radius:18px;min-height:52px;position:relative}
+  .tabs:has(.ikona) .ikona{display:block}
+  .tabs:has(.ikona) a .dot{position:absolute;top:2px;left:calc(50% + 6px);margin:0}
+  .jazyky{margin-left:auto}
+}
+/* Karty – větší zaoblení, jemný okraj */
+.k-tep,.ranni-karta,.patch,.pr-dl,.nastroj,.rozjede section,.vn{border-radius:var(--r-l)}
+.ranni-karta{background:linear-gradient(160deg,#211a52,var(--card) 60%)}
+
+/* ---------- EKG křivka (tep) ---------- */
+.ekg{position:relative;overflow:hidden;height:34px}
+.ekg svg{display:block;height:100%}
+.ekg path{fill:none;stroke:var(--tep);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(255,61,127,.7))}
+.ekg g{animation:ekg-jed linear infinite;will-change:transform}
+@keyframes ekg-jed{to{transform:translateX(calc(-1 * var(--p, 46px)))}}
+.ekg::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,var(--ekg-bg,var(--card)) 0,transparent 14%,transparent 86%,var(--ekg-bg,var(--card)))}
+.ekg-velka{height:80px;--ekg-bg:var(--bg);margin:14px 0 6px}
+.ekg-velka path{stroke-width:2.8}
+.tep-min{white-space:nowrap;font-size:12px;color:var(--muted)}
+.tep-min::before{content:"♥ ";color:var(--tep)}
+@media (prefers-reduced-motion:reduce){.ekg g,.logo-tep .lt-krivka{animation:none}.logo-tep .lt-krivka{stroke-dashoffset:0}}
+
+/* ---------- Domů: hero se sloganem ---------- */
+.uvod{padding:18px 0 4px;display:block}
+.uvod h1{font-family:var(--display);font-weight:800;font-size:clamp(40px,10.5vw,80px);line-height:.95;letter-spacing:-.04em;margin:0}
+.uvod h1 em{font-style:normal;color:var(--accent)}
+.uvod-veta{margin:0;font-size:17px;color:var(--muted)}
+.uvod-veta b{color:var(--text)}
+.uvod-veta .zivy-bod{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--tep);margin-right:6px;box-shadow:0 0 0 4px rgba(255,61,127,.2);animation:pulse 1.6s infinite}
+/* mozaika (bento) */
+.mozaika{display:grid;gap:14px;margin-top:22px;grid-template-columns:minmax(0,1fr)}
+.mozaika > .sekce,.mozaika > section{margin:0}
+.mozaika .section-title{margin-top:0}
+.blok{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:18px;min-width:0}
+@media (min-width:900px){
+  .mozaika{grid-template-columns:repeat(12,minmax(0,1fr))}
+  .m7{grid-column:span 7}.m5{grid-column:span 5}.m6{grid-column:span 6}.m12{grid-column:span 12}.m8{grid-column:span 8}.m4{grid-column:span 4}
+}
+/* Tep scény: streameři s vlastní křivkou */
+.tepy{display:grid;gap:8px}
+.tep{display:grid;grid-template-columns:42px minmax(0,1fr) minmax(60px,96px) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:16px;background:var(--card2);
+  transition:transform .18s ease,background-color .18s ease}
+.tep:hover{transform:translateX(3px);background:#2a2260}
+.tep .av{width:42px;height:42px;box-shadow:0 0 0 2px var(--tep)}
+.tep.kick .av{box-shadow:0 0 0 2px var(--kick)}
+.tep-t{min-width:0}.tep-t b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tep-t span{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tep .ekg{--ekg-bg:var(--card2)}
+.tep-n{text-align:right}.tep-n b{display:block;font-family:var(--display);font-size:16px}
+.tep-pozn{margin:-4px 0 10px;color:var(--muted);font-size:14px}
+/* hra týdne přes celou kartu */
+.hra-velka{position:relative;overflow:hidden;border-radius:var(--r-l);min-height:300px;display:flex;align-items:flex-end;background:var(--card2)}
+.hra-velka img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hra-velka::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 20%,rgba(14,11,36,.96) 88%)}
+.hra-velka .hv-t{position:relative;z-index:1;padding:18px}
+.hra-velka h2{font-family:var(--display);font-size:clamp(26px,6vw,34px);line-height:1.05;margin:6px 0;letter-spacing:-.02em}
+.hra-velka .hv-pill{display:inline-flex;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;background:#3ee08f;color:#062614}
+.hra-velka p{margin:0;color:var(--muted)}.hra-velka p a{color:var(--accent);font-weight:700}
+/* nástroje s ikonou */
+.nastroje{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:900px){.nastroje{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.nastroj{min-height:118px;justify-content:space-between;background:var(--card2);border:1px solid transparent}
+.nastroj::before{display:none}
+.nastroj .n-ikona{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:var(--sk);color:var(--bg)}
+.nastroj .n-ikona svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.nastroj b{font-size:16px;line-height:1.2}
+.nastroj span{font-size:13px}
+/* týden na scéně v číslech */
+.tyden-cisla{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+.tyden-cisla div{background:var(--card2);border-radius:16px;padding:12px}
+.tyden-cisla b{display:block;font-family:var(--display);font-size:28px;line-height:1;letter-spacing:-.02em}
+.tyden-cisla span{font-size:13px;color:var(--muted)}
+/* Nadpisy stránek ve stylu tepu */
+.cesko-head h1,.live-head h1,.news-head h1{font-weight:800;font-size:clamp(32px,8vw,52px);line-height:1;letter-spacing:-.035em}
+/* načítání: běžící křivka místo šedých obdélníků */
+.kostry{position:relative}
+.kostry::before{content:"";display:block;height:40px;margin-bottom:10px;opacity:.9;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40'%3E%3Cpath d='M0 20h40l5-12 7 26 6-18 4 4h58' fill='none' stroke='%23ff3d7f' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E") repeat-x 0 0/120px 40px;
+  animation:kostra-tep 1s linear infinite}
+@keyframes kostra-tep{to{background-position:-120px 0}}
+@media (prefers-reduced-motion:reduce){.kostry::before{animation:none}}
+.live-tep{display:flex;align-items:center;gap:10px;padding:0 12px 12px}
+.live-tep .ekg{flex:1}
+.hra-velka:hover img{transform:scale(1.03)}
+.hra-velka img{transition:transform .5s ease}
+.mozaika .rec{background:var(--card2);border-color:transparent}
+.ai-stav{margin-top:22px}
+@media (prefers-reduced-motion:reduce){.hra-velka img{transition:none}.tep:hover{transform:none}}
+.uvod .ekg-velka{width:100%}
+.nastroj > div{display:flex;flex-direction:column;gap:3px}
+.nastroj{gap:12px}
+@media (max-width:760px){
+  /* rozmazané pozadí hlavičky by „uvěznilo“ spodní lištu (position:fixed) nahoře */
+  .top:has(.tabs .ikona){backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(14,11,36,.97)}
+}
+/* Okraje křivky: průhledný přechod (maska) místo překryvu barvou – funguje na jakémkoli pozadí */
+.ekg::after{display:none}
+.ekg{-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}

@@ -6,6 +6,19 @@
 
 ---
 
+## 2026-11-26 (večer, 23) – Nový vzhled „Herní puls“: všechno tepe
+- **Slogan** na Domů: „Hry mají tep. My ho měříme.“ (nadpisy písmem Bricolage Grotesque, OFL, vlastní hosting v `public/fonts`).
+- **EKG křivka jako hlavní motiv** (`ekg()`, `nakresliEkg()`, `tepZDivaku()` v `app.js`): velká křivka pod sloganem tepe podle
+  všech diváků české scény, **každý živý streamer má vlastní křivku**, která tepe tím rychleji, čím víc má diváků
+  (logaritmicky: 10 diváků ≈ 85/min, 100 ≈ 115, 1 000 ≈ 145, 10 000 ≈ 175, strop 190). Na Domů (blok „Tep scény“),
+  na kartách Živě a na profilu streamera. Respektuje „omezit pohyb“.
+- **Logo** = tep v jantarovém čtverečku (úder každé 2,4 s) na všech stránkách. Načítání = běžící křivka.
+- **Mobil: spodní lišta jako v aplikaci** (ikony Domů / Novinky / Hry / Streameři, počet živých). Pozor: hlavička nesmí mít
+  na mobilu `backdrop-filter`, jinak by lištu „uvěznila“ nahoře.
+- **Domů jako mozaika**: ranní přehled + tep scény, hra týdne přes celou kartu s obrázkem + zprávy, nástroje s ikonami,
+  týden na scéně v číslech + výročí. Tmavší indigové pozadí se světelným nádechem, větší zaoblení.
+- Třída `.hero` je obsazená hlavním článkem v Novinkách – úvod Domů má třídu `.uvod`.
+
 ## 2026-11-26 (večer, 22) – Vráceno: Rádce pro streamery odstraněn
 - Na přání majitele úplně pryč: stránka `/radce`, `/api/radce`, záložka u Streamerů, dlaždice na Domů (nahrazena odkazem
   na Českou herní scénu), SEO, sitemap, `run_worker_first`, překlady. Data `hry_den` zůstávají (používá je Týden na scéně a minihra).
