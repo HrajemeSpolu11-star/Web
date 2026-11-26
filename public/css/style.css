@@ -74,3 +74,6 @@ main{max-width:960px;margin:0 auto;padding:16px}
 .article-cover{margin-top:12px;border-radius:14px;overflow:hidden}
 .m0{margin:0}
 .foot a{color:var(--text);text-decoration:underline}
+.cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cover .type{z-index:1}
+.btn-source{display:block;text-align:center;margin-top:20px;padding:14px;border-radius:12px;background:var(--accent);color:#fff;font-weight:700}

@@ -16,6 +16,9 @@
   }
   // Barvy se nastavují přes JS (CSSOM), takže CSP může zakázat inline styly.
   function obarvi(root) {
+    root.querySelectorAll("img.cover-img").forEach((img) => {
+      img.addEventListener("error", () => img.remove(), { once: true });
+    });
     root.querySelectorAll("[data-a]").forEach((el) => {
       el.style.background = `linear-gradient(135deg,${barva(el.dataset.a, "#444")},${barva(el.dataset.b, "#111")})`;
     });
@@ -48,13 +51,15 @@
 
   function cover(c, glyph) {
     const [a, b] = c.barva || ["#444", "#111"];
+    const img = c.obrazek && /^https:\/\//.test(c.obrazek)
+      ? `<img class="cover-img" src="${esc(c.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : "";
     return `<div class="cover" data-a="${esc(a)}" data-b="${esc(b)}">
-      <span class="glyph">${esc(glyph)}</span><span class="type">${esc(c.typ || "")}</span></div>`;
+      <span class="glyph">${esc(glyph)}</span>${img}<span class="type">${esc(c.typ || "")}</span></div>`;
   }
   const pfs = (list) => (list || []).map((p) => `<span class="pf pf-${esc(p)}">${esc(p)}</span>`).join("");
 
-  function kartaClanku(c) {
-    return `<a class="card${c.hlavni ? " hero" : ""}" href="#/clanek/${esc(c.id)}">
+  function kartaClanku(c, i) {
+    return `<a class="card${c.hlavni || i === 0 ? " hero" : ""}" href="#/clanek/${esc(c.id)}">
       ${cover(c, c.nadpis[0])}
       <div class="body"><h3>${esc(c.nadpis)}</h3><p>${esc(c.perex)}</p>
       <div class="meta">${pfs(c.platformy)}<span>· ${kdy(datum(c))}</span></div></div></a>`;
@@ -82,7 +87,8 @@
     app.innerHTML = `
       <input class="search" id="q" type="search" placeholder="Hledat ve zprávách" value="${esc(state.hledat)}">
       <div class="chips">${platformy.map((p) => `<button class="chip${p === state.filtr ? " on" : ""}" data-f="${p}">${p}</button>`).join("")}</div>
-      ${list.length ? `<div class="grid">${list.map(kartaClanku).join("")}</div>` : `<p class="empty">Nic jsme nenašli.</p>`}
+      ${list.length ? `<div class="grid">${list.map(kartaClanku).join("")}</div>`
+        : `<p class="empty">${state.clanky.length ? "Nic jsme nenašli." : "Sběr novinek právě běží. První zprávy se objeví do 15 minut."}</p>`}
       ${zive.length ? `<div class="section-title">Právě živě</div><div class="grid">${zive.map(radekStreamera).join("")}</div>` : ""}`;
     app.querySelectorAll(".chip").forEach((b) => b.onclick = () => { state.filtr = b.dataset.f; strankaNovinky(); });
     const inp = document.getElementById("q");
@@ -90,8 +96,9 @@
     inp.oninput = () => { state.hledat = inp.value; const pos = inp.selectionStart; strankaNovinky(); const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos); };
   }
 
-  function strankaClanek(id) {
-    const c = state.clanky.find((x) => x.id === id);
+  async function strankaClanek(id) {
+    let c = state.clanky.find((x) => x.id === id);
+    if (!c && C.api) { try { c = await nacti("clanek/" + encodeURIComponent(id)); } catch {} }
     if (!c) return (app.innerHTML = `<p class="empty">Článek nenalezen. <a href="#/">Zpět</a></p>`);
     const streameri = state.streameri.filter((s) => (s.hry || []).some((h) => c.nadpis.includes(h)));
     app.innerHTML = `<article class="article">
@@ -101,8 +108,9 @@
       <div class="meta">${pfs(c.platformy)}<span>· ${kdy(datum(c))}</span></div>
       <p class="perex">${esc(c.perex)}</p>
       <div class="text">${(c.text || []).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
-      <div class="sources"><b>Zdroje:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer nofollow">${esc(z.nazev)}</a>`).join(", ")}
-        <div class="ai-note">Článek napsala automaticky AI ze zpráv uvedených zdrojů.</div></div>
+      ${c.url ? `<a class="btn-source" href="${esc(bezpecnaUrl(c.url))}" target="_blank" rel="noopener noreferrer">Číst celý článek na ${esc(c.zdroje?.[0]?.nazev || "zdroji")} →</a>` : ""}
+      <div class="sources"><b>Zdroj:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer nofollow">${esc(z.nazev)}</a>`).join(", ")}
+        <div class="ai-note">${c.ai ? "Článek napsala automaticky AI ze zpráv uvedených zdrojů." : "Zpráva byla automaticky převzata z RSS kanálu zdroje. Celý článek najdeš u autora."}</div></div>
       ${streameri.length ? `<div class="section-title">Kdo tuhle hru streamuje</div><div class="grid">${streameri.map(radekStreamera).join("")}</div>` : ""}
     </article>`;
     scrollTo(0, 0);
@@ -133,7 +141,7 @@
         <div class="stat"><b>${s.zive ? num(s.divaci) : "–"}</b><span>${s.zive ? "diváků teď" : "offline"}</span></div>
         <div class="stat"><b>${(s.hry || []).length}</b><span>her</span></div></div>
       <p>${esc(s.bio)}</p>
-      ${clanky.length ? `<div class="section-title">Novinky k jeho hrám</div><div class="grid">${clanky.map(kartaClanku).join("")}</div>` : ""}
+      ${clanky.length ? `<div class="section-title">Novinky k jeho hrám</div><div class="grid">${clanky.map((c) => kartaClanku(c, 1)).join("")}</div>` : ""}
     </div>`;
     scrollTo(0, 0);
   }
@@ -142,7 +150,7 @@
     const [, sekce, id] = (location.hash || "#/").split("/");
     const tab = sekce === "zive" ? "zive" : sekce === "streameri" || sekce === "streamer" ? "streameri" : "novinky";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
-    if (sekce === "clanek") strankaClanek(decodeURIComponent(id));
+    if (sekce === "clanek") return strankaClanek(decodeURIComponent(id)).then(() => obarvi(app));
     else if (sekce === "zive") strankaZive();
     else if (sekce === "streameri") strankaStreameri();
     else if (sekce === "streamer") strankaStreamer(decodeURIComponent(id));

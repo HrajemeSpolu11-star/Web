@@ -1,0 +1,28 @@
+{
+  // Název musí odpovídat názvu Workeru v Cloudflare dashboardu.
+  "name": "web",
+  "main": "src/index.js",
+  "compatibility_date": "2025-11-01",
+
+  // Statický web (HTML, CSS, JS) ze složky public/.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+
+  // Databáze s novinkami.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "herni-puls-db",
+      "database_id": "c2962ce9-e393-4606-8734-b517dff06679"
+    }
+  ],
+
+  // Sběrač novinek běží každých 15 minut.
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+
+  "observability": { "enabled": true }
+}
