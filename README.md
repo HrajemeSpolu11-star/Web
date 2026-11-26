@@ -36,7 +36,7 @@ Worker nemá žádné npm závislosti. Stav sběru: `/api/stav`.
 
 ## Nastavení v Cloudflare (jednorázově)
 
-- **Secret `KICK_CLIENT_SECRET`** + `KICK_CLIENT_ID` ve `wrangler.jsonc`
+- **Secrets `KICK_CLIENT_ID` a `KICK_CLIENT_SECRET`** – Kick aplikace
 - **Secret `DISCORD_WEBHOOK_URL`** (nepovinné) – oznámení nových článků
 - **Secret `TWITCH_CLIENT_SECRET`** – Twitch aplikace (Client ID je ve `wrangler.jsonc`)
 - **Secret `GROQ_API_KEY`** – Worker → Settings → Variables and Secrets (nikdy ne do repozitáře)
