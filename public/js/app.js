@@ -26,7 +26,53 @@
     root.querySelectorAll("[data-a]").forEach((el) => {
       el.style.background = `linear-gradient(135deg,${barva(el.dataset.a, "#444")},${barva(el.dataset.b, "#111")})`;
     });
-    root.querySelectorAll(".bar i[data-w]").forEach((i) => (i.style.width = Math.max(2, Math.min(100, +i.dataset.w || 0)) + "%"));
+    root.querySelectorAll(".bar i[data-w]").forEach((i) => {
+      const w = Math.max(2, Math.min(100, +i.dataset.w || 0)) + "%";
+      if (malyPohyb()) i.style.width = w; else requestAnimationFrame(() => requestAnimationFrame(() => (i.style.width = w)));
+    });
+    // Čísla „naběhnou“ jako skóre ve hře.
+    if (!malyPohyb()) root.querySelectorAll("[data-count]").forEach((el) => {
+      const cil = +el.dataset.count, pripona = el.dataset.suffix || "";
+      if (!Number.isFinite(cil) || cil <= 0) return;
+      // Souhrn v hlavičce se animuje jen jednou (ne při každém přepnutí filtru).
+      if (el.dataset.once) { if (animovano.has(el.dataset.once)) return; animovano.add(el.dataset.once); }
+      const start = performance.now(), delka = 900;
+      const krok = (t) => {
+        const p = Math.min(1, (t - start) / delka), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = num(Math.round(cil * e)) + pripona;
+        if (p < 1) requestAnimationFrame(krok);
+      };
+      requestAnimationFrame(krok);
+    });
+  }
+  const animovano = new Set();
+  const malyPohyb = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const kostra = (n = 4, typ = "radek") => `<div class="kostry">${Array.from({ length: n }, () => `<div class="kostra kostra-${typ}"></div>`).join("")}</div>`;
+
+  // Herní „achievement“ oznámení.
+  function achievement(nazev, text) {
+    document.querySelectorAll(".ach").forEach((e) => e.remove());
+    const el = document.createElement("div");
+    el.className = "ach";
+    el.setAttribute("role", "status");
+    el.innerHTML = `<div class="ach-ikona" aria-hidden="true">★</div><div><b>${esc(nazev)}</b><span>${esc(text)}</span></div>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add("ach-pryc"), 3200);
+    setTimeout(() => el.remove(), 3800);
+  }
+
+  // Jemné 3D naklonění karet za kurzorem (jen počítač s myší).
+  if (matchMedia("(pointer: fine)").matches) {
+    document.addEventListener("pointermove", (e) => {
+      if (malyPohyb()) return;
+      const k = e.target.closest?.(".live-card, .card, .srow");
+      document.querySelectorAll(".tilt").forEach((x) => { if (x !== k) { x.classList.remove("tilt"); x.style.transform = ""; } });
+      if (!k) return;
+      const r = k.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+      k.classList.add("tilt");
+      k.style.transform = `perspective(800px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateY(-2px)`;
+      k.style.setProperty("--mx", `${(x + 0.5) * 100}%`); k.style.setProperty("--my", `${(y + 0.5) * 100}%`);
+    });
   }
 
   const datum = (c) => new Date(c.datum || Date.now());
@@ -220,7 +266,7 @@
     const obl = new Set(oblibeni());
     const mojiZive = streamy.filter((s) => obl.has(klicS(s)));
     return `<div class="live-head"><h1>Čeští streameři</h1>
-        <p>${streamy.length ? `Právě ${streamy.length >= 2 && streamy.length <= 4 ? "vysílají" : "vysílá"} ${pl(streamy.length, "streamer", "streameři", "streamerů")} pro ${num(divaku)} diváků.` : "Teď nikdo nevysílá – mrkni na žebříček nebo hry."}</p></div>
+        <p>${streamy.length ? `Právě ${streamy.length >= 2 && streamy.length <= 4 ? "vysílají" : "vysílá"} ${pl(streamy.length, "streamer", "streameři", "streamerů")} pro <b class="hub-cislo" data-count="${divaku}" data-once="hub">${num(divaku)}</b> diváků.` : "Teď nikdo nevysílá – mrkni na žebříček nebo hry."}</p></div>
       ${obl.size ? `<div class="oblibeni-pruh"><b>Tvoji oblíbení</b> ${mojiZive.length ? `– právě živě: ${mojiZive.map((s) => `<a href="${esc(profilUrl(s))}">${esc(s.jmeno)}</a>`).join(", ")}` : `– teď nikdo z ${obl.size} nevysílá`}${pushZapnuto() ? ` <span class="dim">· upozornění zapnutá</span>` : ""}</div>` : ""}
       ${streamy.length ? `<div class="stories" aria-label="Právě živě">${[...mojiZive, ...streamy.filter((s) => !obl.has(klicS(s)))].slice(0, 24).map((s) =>
         `<a class="story${s.platforma === "kick" ? " kick" : ""}${obl.has(klicS(s)) ? " fav" : ""}" href="${esc(profilUrl(s))}"><div class="ring">${av(s)}</div><b>${esc(s.jmeno)}</b><span>${num(s.divaci || 0)} diváků</span></a>`).join("")}</div>` : ""}
@@ -365,7 +411,7 @@
     nastavTitulek("Čeští streameři");
     const klic = `${state.razeni}|${state.platforma}|${state.hledatS}`;
     if (!state.adresar[klic]) {
-      app.innerHTML = `<p class="loading">Načítám streamery…</p>`;
+      app.innerHTML = `${hubHlava("zebricek")}${kostra(6)}`;
       try { state.adresar[klic] = await nacti(`streameri?razeni=${enc(state.razeni)}&platforma=${enc(state.platforma)}&q=${enc(state.hledatS)}`); }
       catch { app.innerHTML = `<p class="empty">Seznam se nepodařilo načíst.</p>`; return; }
     }
@@ -382,7 +428,7 @@
   }
 
   async function strankaStreamer(platforma, login) {
-    app.innerHTML = `<p class="loading">Načítám profil…</p>`;
+    app.innerHTML = `<div class="profile"><div class="kostra kostra-banner"></div>${kostra(3)}</div>`;
     let s;
     try { s = await nacti(`streamer/${enc(platforma)}/${enc(login)}`); }
     catch { nastavTitulek("Streamer nenalezen"); app.innerHTML = `<p class="empty">Streamer nenalezen. <a href="/streameri">Zpět na seznam</a></p>`; return; }
@@ -406,9 +452,9 @@
       ${odkazySit(s.odkazy)}
       ${s.zive ? `<div class="section-title">Právě vysílá</div>${kartaZive(s)}` : ""}
       <div class="stats">
-        <div class="stat"><b>${s.sledujici == null ? "–" : num(s.sledujici)}</b><span>sledujících</span></div>
-        <div class="stat"><b>${num(s.max_divaku || 0)}</b><span>rekord diváků</span></div>
-        <div class="stat"><b>${s.hodin30 || 0} h</b><span>odvysíláno za 30 dní</span></div>
+        <div class="stat"><b data-count="${s.sledujici ?? ""}">${s.sledujici == null ? "–" : num(s.sledujici)}</b><span>sledujících</span></div>
+        <div class="stat"><b data-count="${s.max_divaku || 0}">${num(s.max_divaku || 0)}</b><span>rekord diváků</span></div>
+        <div class="stat"><b data-count="${s.hodin30 || 0}" data-suffix=" h">${s.hodin30 || 0} h</b><span>odvysíláno za 30 dní</span></div>
       </div>
       ${s.popis ? `<p class="popis">${esc(s.popis)}</p>` : ""}
       <div id="extra"></div>
@@ -430,6 +476,7 @@
       bObl.classList.toggle("on", pridan);
       bObl.textContent = pridan ? "★ Oblíbený" : "☆ Přidat do oblíbených";
       zpr(pridan ? `${s.jmeno} je v oblíbených. Najdeš ho nahoře v sekci Streameři.` : "Odebráno z oblíbených.");
+      if (pridan) achievement(oblibeni().length === 1 ? "Achievement: První oblíbený!" : "Nový oblíbený streamer", s.jmeno);
     };
     bUp.onclick = async () => {
       bUp.disabled = true;
@@ -437,6 +484,7 @@
         if (!jeOblibeny(s)) { prepniOblibeny(s); bObl.classList.add("on"); bObl.textContent = "★ Oblíbený"; }
         await zapniUpozorneni();
         bUp.textContent = "Upozornění zapnutá";
+        achievement("Achievement: Vždy ve hře", `Dáme vědět, až ${s.jmeno} začne vysílat`);
         zpr(`Hotovo. Dáme ti vědět, až ${s.jmeno} začne vysílat (do 15 minut od začátku streamu).`);
       } catch (e) { zpr(e.message || "Upozornění se nepodařilo zapnout."); }
       bUp.disabled = false;
@@ -465,7 +513,7 @@
   async function strankaHry() {
     nastavTitulek("Hry českých streamerů");
     if (!state.hry) {
-      app.innerHTML = `<p class="loading">Načítám hry…</p>`;
+      app.innerHTML = `${hubHlava("hry")}${kostra(6)}`;
       try { state.hry = await nacti("hry"); } catch { app.innerHTML = `<p class="empty">Hry se nepodařilo načíst.</p>`; return; }
     }
     app.innerHTML = `${hubHlava("hry")}
@@ -477,7 +525,7 @@
   }
 
   async function strankaHra(sl) {
-    app.innerHTML = `<p class="loading">Načítám hru…</p>`;
+    app.innerHTML = `<div class="profile"><div class="kostra kostra-banner"></div>${kostra(4)}</div>`;
     let h;
     try { h = await nacti("hra/" + enc(sl)); }
     catch { nastavTitulek("Hra nenalezena"); app.innerHTML = `<p class="empty">Hru jsme nenašli. <a href="/hry">Všechny hry</a></p>`; return; }
@@ -519,7 +567,7 @@
   async function strankaPrehled() {
     nastavTitulek("Přehled české scény");
     if (!state.prehled) {
-      app.innerHTML = `${hubHlava("prehled")}<p class="loading">Počítám přehled…</p>`;
+      app.innerHTML = `${hubHlava("prehled")}<div class="kostra kostra-graf"></div>${kostra(4)}`;
       try { state.prehled = await nacti("prehled"); } catch { app.innerHTML = `${hubHlava("prehled")}<p class="empty">Přehled se nepodařilo načíst.</p>`; return; }
     }
     if (location.pathname.replace(/\/+$/, "") !== "/prehled") return;

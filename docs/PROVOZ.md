@@ -17,7 +17,7 @@ Logy: Cloudflare → Workers & Pages → web → **Logs** (observability je zapn
 | Twitch `chyba: Twitch token HTTP 400/403` | Špatný `TWITCH_CLIENT_SECRET` – vygeneruj nový na dev.twitch.tv. |
 | Kick nic nevrací | `kick.nastaveno` false nebo chyba tokenu – zkontroluj `KICK_CLIENT_SECRET`. |
 | Počty sledujících „–“ | Kick je přes API nedává; u Twitche se doplňují postupně (15 kanálů na běh). |
-| České novinky chybí | RSS adresy českých webů nejsou ověřené – v `/api/stav` mají chyby. Oprav adresy v `src/zdroje.js`. |
+| České novinky chybí | Zkontroluj v `/api/stav` zdroje s `jazyk: cs`. Pokud web změnil adresu RSS, oprav ji v `src/zdroje.js` a dej zdroji nové `id` (staré chyby by ho blokovaly). |
 | D1 „daily limit exceeded“ | Moc zápisů – zvyš `MIN_STATISTIKY` v `src/twitch.js`/`src/kick.js` nebo zřeď cron. |
 | Admin „Přístup odepřen“ | Očekávané, dokud není Cloudflare Access (viz `NASTAVENI.md`). |
 | Upozornění nechodí na iPhonu | iOS podporuje web push jen u webu přidaného na plochu. |

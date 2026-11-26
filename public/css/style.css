@@ -278,3 +278,69 @@ a.termin{color:inherit}
 .por-tab td:first-child{border-radius:var(--r) 0 0 var(--r)}.por-tab td:last-child{border-radius:0 var(--r) var(--r) 0}
 .por-tab td.vyhra{color:var(--accent)}
 @media(max-width:520px){.por{grid-template-columns:1fr 1fr}.por-vs{display:none}.por-slot{padding:12px 8px}.por-slot .av-l{width:60px;height:60px}}
+/* ---------- Herní prvky a animace ---------- */
+/* Logo: EKG „puls“, který se kreslí dokola */
+.logo-puls{width:34px;height:20px;flex:none;overflow:visible}
+.logo-puls path{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.lp-stopa{stroke:rgba(255,192,77,.22)}
+.lp-cara{stroke:var(--accent);stroke-dasharray:22 80;stroke-dashoffset:0;animation:ekg 2.4s linear infinite;filter:drop-shadow(0 0 3px rgba(255,192,77,.7))}
+@keyframes ekg{from{stroke-dashoffset:102}to{stroke-dashoffset:0}}
+
+/* Živé bubliny: prstenec se pomalu otáčí jako načítání ve hře */
+@property --uhel{syntax:"<angle>";inherits:false;initial-value:0deg}
+.story .ring{background:conic-gradient(from var(--uhel),var(--live),var(--accent),var(--live));animation:otocka 5s linear infinite}
+.story.kick .ring{background:conic-gradient(from var(--uhel),var(--kick),#c8ff9e,var(--kick))}
+.story.fav .ring{background:conic-gradient(from var(--uhel),var(--accent),#fff3c4,var(--accent))}
+@keyframes otocka{to{--uhel:360deg}}
+.story:active .ring{transform:scale(.94)}
+.story .ring{transition:transform .15s}
+
+/* Štítek ŽIVĚ: tečka, která „bije“ */
+.live-badge{display:inline-flex;align-items:center;gap:5px}
+.live-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:tep 1.4s ease-in-out infinite}
+@keyframes tep{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+
+/* Karty: záře, která sleduje kurzor (počítač) */
+.card,.live-card,.srow{position:relative;transition:transform .18s ease,box-shadow .18s ease}
+.tilt{box-shadow:0 14px 30px rgba(0,0,0,.35),0 0 0 1px rgba(255,192,77,.25)}
+.tilt::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(255,192,77,.12),transparent 60%)}
+
+/* Statistiky jako ukazatele ve hře */
+.stat{position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--accent2),var(--accent))}
+.bar i{width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.hub-cislo{color:var(--accent);font-weight:700}
+
+/* Hlavička sekce: jemná „synthwave“ mřížka v pozadí nadpisu */
+.live-head,.news-head{position:relative;isolation:isolate}
+.live-head::before,.news-head::before{content:"";position:absolute;z-index:-1;inset:-18px -16px -8px;pointer-events:none;
+  background:linear-gradient(rgba(155,92,255,.10) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,rgba(155,92,255,.10) 1px,transparent 1px) 0 0/28px 28px;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 35%,transparent);mask-image:linear-gradient(180deg,transparent,#000 35%,transparent);
+  animation:mrizka 14s linear infinite}
+@keyframes mrizka{to{background-position:0 28px,28px 0}}
+
+/* Achievement oznámení */
+.ach{position:fixed;left:50%;bottom:22px;z-index:50;transform:translate(-50%,0);display:flex;gap:12px;align-items:center;
+  min-width:260px;max-width:calc(100vw - 32px);padding:12px 16px 12px 12px;border-radius:18px;background:#221c4a;border:1px solid #5b47c9;
+  box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 0 3px rgba(255,192,77,.18);animation:achIn .45s cubic-bezier(.2,1.4,.4,1)}
+.ach b{display:block;font-size:14.5px;color:var(--accent)}
+.ach span{font-size:13.5px;color:var(--text)}
+.ach-ikona{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:22px;color:var(--accent-ink);background:var(--accent);flex:none;animation:achIkona .8s ease .2s}
+.ach-pryc{animation:achOut .5s ease forwards}
+@keyframes achIn{from{opacity:0;transform:translate(-50%,24px) scale(.9)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@keyframes achOut{to{opacity:0;transform:translate(-50%,24px)}}
+@keyframes achIkona{0%{transform:rotate(0) scale(1)}40%{transform:rotate(-12deg) scale(1.2)}100%{transform:rotate(0) scale(1)}}
+
+/* Kostry při načítání (shimmer) */
+.kostry{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.kostra{border-radius:var(--r);background:linear-gradient(100deg,var(--card) 30%,var(--card2) 50%,var(--card) 70%) 0 0/300% 100%;animation:shimmer 1.3s linear infinite}
+.kostra-radek{height:68px}
+.kostra-banner{height:160px;border-radius:var(--r-l);margin-bottom:10px}
+.kostra-graf{height:190px;margin:12px 0}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+
+@media(prefers-reduced-motion:reduce){
+  .lp-cara,.story .ring,.live-badge::before,.live-head::before,.news-head::before,.kostra,.ach,.ach-ikona{animation:none}
+  .bar i{transition:none}
+}

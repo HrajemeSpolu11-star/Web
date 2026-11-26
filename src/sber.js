@@ -3,7 +3,7 @@ import { ZDROJE } from "./zdroje.js";
 import { parsujFeed } from "./rss.js";
 
 const MAX_STARI_H = 12;          // starší zprávy se nezveřejní
-const ZDROJU_NA_BEH = 4;         // kvůli limitům bezplatného plánu
+const ZDROJU_NA_BEH = 6;         // kvůli limitům bezplatného plánu (22 zdrojů → každý zhruba jednou za hodinu)
 const MAX_CHYB = 5;              // po tolika chybách v řadě se zdroj vypne
 const UCHOVAT_DNI = 30;          // starší články se mažou
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";

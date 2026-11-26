@@ -17,8 +17,14 @@ export const ZDROJE = [
   { id: "psblog", nazev: "PlayStation Blog", url: "https://blog.playstation.com/feed/", jazyk: "en", overeno: false, platforma: "PS5" },
   { id: "xboxwire", nazev: "Xbox Wire", url: "https://news.xbox.com/en-us/feed/", jazyk: "en", overeno: false, platforma: "Xbox" },
 
-  // České (zkušební)
-  { id: "gamescz", nazev: "Games.cz", url: "https://games.tiscali.cz/rss2/", jazyk: "cs", overeno: false },
-  { id: "zing", nazev: "Zing.cz", url: "https://www.zing.cz/rss/", jazyk: "cs", overeno: false },
-  { id: "doupe", nazev: "Doupě", url: "https://doupe.zive.cz/rss", jazyk: "cs", overeno: false },
+  // České (ověřené 2026-11-26 – kanály vracely aktuální zprávy)
+  { id: "games-cz", nazev: "Games.cz", url: "https://games.tiscali.cz/rss2.xml", jazyk: "cs", overeno: true },
+  { id: "zing-cz", nazev: "Zing.cz", url: "https://zing.cz/rss/all", jazyk: "cs", overeno: true },
+  { id: "hrej", nazev: "Hrej.cz", url: "https://www.hrej.cz/rss/all", jazyk: "cs", overeno: true },
+  { id: "doupe-cz", nazev: "Doupě.cz", url: "https://doupe.zive.cz/rss", jazyk: "cs", overeno: true },
+  { id: "spite", nazev: "Spite.cz", url: "https://www.spite.cz/rss/all", jazyk: "cs", overeno: true },
+  { id: "gamingprofessors", nazev: "Gaming Professors", url: "https://gamingprofessors.cz/feed/", jazyk: "cs", overeno: true },
+  { id: "pctuning", nazev: "PCTuning.cz", url: "https://pctuning.cz/rss/all", jazyk: "cs", overeno: true },
+  // České (neověřené – sběrač je po 5 chybách sám vypne)
+  { id: "bonusweb", nazev: "BonusWeb", url: "https://servis.idnes.cz/rss.aspx?c=bonusweb", jazyk: "cs", overeno: false },
 ];

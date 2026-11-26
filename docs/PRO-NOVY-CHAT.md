@@ -14,7 +14,7 @@ navázat bez čtení celé historie. **Aktualizuj ho, když se změní stav nebo
 ## Co web umí (stav k 2026-11-26)
 1. **Novinky** – sběr z RSS (14 zdrojů, `src/zdroje.js`) každých 15 min, jen zprávy mladší 12 h.
    Přepínač České weby / Ze zahraničí, kategorie, platformy, hledání. RSS zprávy odkazují na původní článek
-   a mají `noindex`. **České RSS adresy nejsou ověřené** – zkontroluj `/api/stav` (část `zdroje`).
+   a mají `noindex`. České zdroje (Games.cz, Zing, Hrej, Doupě, Spite, Gaming Professors, PCTuning) ověřené 26. 11. 2026.
 2. **Streameři** (Twitch + Kick, jen čeština) – sběr každých 15 min z oficiálních API:
    - Živě (karty, „živé bubliny“, kategorie, malí streameři, „Teď se děje“, hledání, přepínač platformy)
    - Žebříček (sledující, rekord diváků, hodiny za 30 dní, růst za 30 dní)
@@ -41,6 +41,7 @@ navázat bez čtení celé historie. **Aktualizuj ho, když se změní stav nebo
 - Data o streamerech musí být **naprosto přesná** – jen z oficiálních API, nic nedomýšlet.
 - Horní menu jen **Novinky** a **Streameři**; vše o streamerech a hrách pod Streamery.
 - Vzhled **přívětivý**: indigová noc, mango akcent, písmo Rubik, kulaté tvary (viz komentář v `css/style.css`).
+- **Herní prvky** (EKG logo, achievementy, animace) – vždy střídmě a s vypnutím pro „omezit pohyb“.
 - Web má jasně říkat, že je **AI web**, a prosit o chvilku pozornosti a důvěry.
 - **Šetřit limity** (Actions, testy, chat). Vlastní doména až později.
 - AI články: nekopírovat cizí texty, vždy uvádět zdroje, cizí fotky nepoužívat.
@@ -62,7 +63,7 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 
 ## Rozpracované / další možné kroky
 - Vlastní doména → Cloudflare Access pro admin (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ve `wrangler.jsonc`).
-- Ověřit české RSS zdroje a doplnit funkční (Games.cz, Zing, Doupě…).
+- Konzolista.cz a BonusWeb – RSS se nepodařilo ověřit (Konzolista vrací chybu, BonusWeb blokuje).
 - Vybrat AI pro psaní článků (OpenRouter / Claude Haiku) a doplnit podporu v `src/ai.js`.
 - Nápady na odlišení webu – viz `docs/NAPADY.md`.
 
