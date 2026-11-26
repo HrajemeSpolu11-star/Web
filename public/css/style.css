@@ -231,3 +231,12 @@ a.hra{display:block}
 @media(prefers-reduced-motion:reduce){.welcome-bot span{animation:none}}
 .about h1{margin-top:8px}
 .about .text h2{margin-top:28px}
+/* Hledání + přepínač platformy v sekci Streameři */
+.filtry{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.filtry .search{flex:1 1 220px;margin:0}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;flex:none}
+.seg-b{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:14px;padding:8px 16px;border-radius:999px;cursor:pointer;min-height:40px}
+.seg-b.on{background:var(--text);color:var(--bg)}
+.seg-b.seg-twitch.on{background:var(--twitch);color:#fff}
+.seg-b.seg-kick.on{background:var(--kick);color:#0d2000}
+@media(max-width:520px){.seg{width:100%}.seg-b{flex:1}}

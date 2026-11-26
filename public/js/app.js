@@ -141,6 +141,31 @@
       <nav class="hub-tabs">${pod.map(([k, h, t]) => `<a href="${h}" class="${k === aktivni ? "on" : ""}">${t}</a>`).join("")}</nav>`;
   }
 
+  // Společné ovládání sekce Streameři: hledání podle jména + přepínač platformy.
+  function ovladani() {
+    const plat = [["", "Vše"], ["twitch", "Twitch"], ["kick", "Kick"]];
+    return `<div class="filtry">
+      <input class="search" id="qs" type="search" placeholder="Hledat streamera podle jména" autocomplete="off" value="${esc(state.hledatS)}">
+      <div class="seg" role="group" aria-label="Platforma">${plat.map(([k, v]) =>
+        `<button type="button" class="seg-b${k === state.platforma ? " on" : ""}${k ? " seg-" + k : ""}" data-p="${k}" aria-pressed="${k === state.platforma}">${v}</button>`).join("")}</div></div>`;
+  }
+  function napojOvladani(prekresli, zpozdeni) {
+    app.querySelectorAll("[data-p]").forEach((b) => b.onclick = () => { state.platforma = b.dataset.p; prekresli(); });
+    const inp = document.getElementById("qs");
+    if (!inp) return;
+    let t;
+    inp.oninput = () => {
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        state.hledatS = inp.value.trim().slice(0, 40);
+        await prekresli();
+        const n = document.getElementById("qs");
+        if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
+      }, zpozdeni);
+    };
+  }
+  const normal = (t) => String(t || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+
   // ---------- Stránky ----------
   function strankaNovinky() {
     nastavTitulek("");
@@ -190,18 +215,22 @@
   function strankaZive() {
     nastavTitulek("Právě živě");
     const { streamy, hry, cas } = state.zive;
-    const list = state.hraZive ? streamy.filter((s) => s.hra === state.hraZive) : streamy;
+    const q = normal(state.hledatS);
+    const list = streamy.filter((s) => (!state.hraZive || s.hra === state.hraZive)
+      && (!state.platforma || s.platforma === state.platforma)
+      && (!q || normal(s.jmeno).includes(q) || normal(s.login).includes(q)));
     app.innerHTML = `${hubHlava("zive")}
-      ${hry.length ? `<div class="chips"><button class="chip${state.hraZive ? "" : " on"}" data-h="">Vše</button>${hry.map((h) =>
+      ${ovladani()}
+      ${hry.length ? `<div class="chips"><button class="chip${state.hraZive ? "" : " on"}" data-h="">Všechny hry</button>${hry.map((h) =>
         `<button class="chip${state.hraZive === h.hra ? " on" : ""}" data-h="${esc(h.hra)}">${esc(h.hra)}<span class="cnt">${h.streamu}</span></button>`).join("")}</div>` : ""}
       ${state.hraZive ? `<p><a class="link" href="/hra/${esc(slug(state.hraZive))}">Vše o hře ${esc(state.hraZive)} →</a></p>` : ""}
       ${list.length ? `<div class="live-grid">${list.map(kartaZive).join("")}</div>`
-        : `<p class="empty">Teď nikdo z českých streamerů nevysílá (nebo se seznam teprve načítá).</p>`}
+        : `<p class="empty">${streamy.length ? `Nikdo takový teď nevysílá. Zkus <a href="/streameri">Žebříček</a>, kde jsou i streameři offline.` : "Teď nikdo z českých streamerů nevysílá (nebo se seznam teprve načítá)."}</p>`}
       <p class="source-note">Data z oficiálních API Twitche a Kicku${cas ? `, naposledy ${esc(kdy(new Date(cas)))}` : ""}. Obnovují se každých 15 minut a zahrnují streamy s jazykem nastaveným na češtinu.</p>`;
     app.querySelectorAll("[data-h]").forEach((b) => b.onclick = () => { state.hraZive = b.dataset.h; strankaZive(); obarvi(app); });
+    napojOvladani(() => { strankaZive(); obarvi(app); }, 120);
   }
 
-  let hledaniTimer;
   async function strankaStreameri() {
     nastavTitulek("Čeští streameři");
     const klic = `${state.razeni}|${state.platforma}|${state.hledatS}`;
@@ -212,26 +241,14 @@
     }
     if (location.pathname.replace(/\/+$/, "") !== "/streameri") return;
     const list = state.adresar[klic];
-    const plat = { "": "Všechny platformy", twitch: "Twitch", kick: "Kick" };
     app.innerHTML = `${hubHlava("zebricek")}
-      <input class="search" id="qs" type="search" placeholder="Hledat streamera" value="${esc(state.hledatS)}">
-      <div class="chips">${Object.entries(plat).map(([k, v]) => `<button class="chip${k === state.platforma ? " on" : ""}" data-p="${k}">${v}</button>`).join("")}</div>
+      ${ovladani()}
       <div class="chips">${Object.entries(RAZENI).map(([k, v]) => `<button class="chip${k === state.razeni ? " on" : ""}" data-r="${k}">${v}</button>`).join("")}</div>
       ${list.length ? `<div class="slist">${list.map((s, i) => radekStreamera(s, i, state.razeni)).join("")}</div>`
         : `<p class="empty">${state.hledatS ? "Nikoho takového jsme nenašli." : "Seznam se právě plní. Streameři se objeví, jakmile je zachytíme živě (do 15 minut)."}</p>`}
       <p class="source-note">Údaje z oficiálních API Twitche a Kicku. Počty sledujících (jen Twitch) se obnovují denně. Růst a odvysílané hodiny počítáme z vlastních denních záznamů.</p>`;
     app.querySelectorAll("[data-r]").forEach((b) => b.onclick = () => { state.razeni = b.dataset.r; strankaStreameri().then(() => obarvi(app)); });
-    app.querySelectorAll("[data-p]").forEach((b) => b.onclick = () => { state.platforma = b.dataset.p; strankaStreameri().then(() => obarvi(app)); });
-    const inp = document.getElementById("qs");
-    inp.oninput = () => {
-      clearTimeout(hledaniTimer);
-      hledaniTimer = setTimeout(async () => {
-        state.hledatS = inp.value.trim().slice(0, 40);
-        await strankaStreameri();
-        const n = document.getElementById("qs");
-        if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
-      }, 350);
-    };
+    napojOvladani(() => strankaStreameri().then(() => obarvi(app)), 350);
   }
 
   async function strankaStreamer(platforma, login) {
