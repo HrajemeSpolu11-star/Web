@@ -867,7 +867,9 @@
   // proměnlivý rozestup (±12 %), výška a síla hrotu (±18 %), vlnění linky a drobný šum – srdce není metronom.
   // Tempo podle diváků: 0–1 ≈ 60/min, 10 ≈ 75, 100 ≈ 90, 1 000 ≈ 105, 10 000 ≈ 120 (strop 130).
   const tepZDivaku = (d) => Math.min(130, Math.round(60 + 15 * Math.log10((Number(d) || 0) + 1)));
-  const ekg = (divaci, velka = false) => `<div class="ekg${velka ? " ekg-velka" : ""}" data-divaci="${Number(divaci) || 0}" aria-hidden="true"><canvas></canvas><canvas class="ekg-hlava"></canvas></div>`;
+  // Barva podle platformy: Kick zelená, Twitch fialová, „tep herního světa“ růžová (barva webu).
+  const BARVY_EKG = { kick: ["#53fc18", "83,252,24"], twitch: ["#a970ff", "169,112,255"], web: ["#ff3d7f", "255,61,127"] };
+  const ekg = (divaci, velka = false, platforma = "web") => `<div class="ekg ekg-${BARVY_EKG[platforma] ? platforma : "web"}${velka ? " ekg-velka" : ""}" data-divaci="${Number(divaci) || 0}" aria-hidden="true"><canvas></canvas><canvas class="ekg-hlava"></canvas></div>`;
   const VLNY_EKG = [[0.12, 0.17, 0.028], [-0.14, 0.335, 0.009], [1, 0.36, 0.011], [-0.26, 0.385, 0.011], [0.32, 0.62, 0.05]];
   const monitory = new Set();
   let smycka = 0, viditelne = null;
@@ -890,10 +892,19 @@
       if (!m.el.isConnected) { monitory.delete(m); viditelne?.unobserve(m.el); continue; }
       if (!m.vidim) continue;
       const t = ts / 1000;
-      if (m.cas == null) { m.cas = t; m.od = t; m.lastX = (t * m.rych) % m.W; m.lastY = m.Y(0); }
+      if (m.cas == null) { m.cas = t; m.od = t; m.lastX = (t * m.rych) % m.W; m.lastY = m.Y(0); m.vyhas = 0; }
       const g = m.g, krok = 1 / m.rych;
-      g.lineWidth = m.velka ? 2.4 : 1.8; g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = "#ff3d7f";
-      g.shadowColor = "rgba(255,61,127,.8)"; g.shadowBlur = m.velka ? 8 : 4;
+      // Dohasínání: starší stopa postupně slábne (jako fosfor na monitoru), nový úder svítí naplno.
+      m.vyhas += t - m.cas;
+      if (m.vyhas >= 0.1) {
+        g.globalCompositeOperation = "destination-out";
+        g.fillStyle = `rgba(0,0,0,${(1 - Math.exp(-m.vyhas / 1.5)).toFixed(3)})`;
+        g.fillRect(0, 0, m.W, m.H);
+        g.globalCompositeOperation = "source-over";
+        m.vyhas = 0;
+      }
+      g.lineWidth = m.velka ? 2.4 : 1.8; g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = m.barva[0];
+      g.shadowColor = `rgba(${m.barva[1]},.85)`; g.shadowBlur = m.velka ? 9 : 5;
       g.beginPath(); g.moveTo(m.lastX, m.lastY);
       let tt = m.cas;
       if (t - tt > 1) tt = t - 1; // po návratu na kartu nedokreslovat dlouhou pauzu
@@ -909,7 +920,7 @@
       g.clearRect(m.lastX + 1.5, 0, mez, m.H);
       if (m.lastX + mez > m.W) g.clearRect(0, 0, m.lastX + mez - m.W, m.H);
       const h = m.h;
-      h.clearRect(0, 0, m.W, m.H); h.fillStyle = "#ffe3ec"; h.shadowColor = "#ff3d7f"; h.shadowBlur = 14;
+      h.clearRect(0, 0, m.W, m.H); h.fillStyle = "#fff"; h.shadowColor = m.barva[0]; h.shadowBlur = 16;
       h.beginPath(); h.arc(m.lastX, m.lastY, m.velka ? 3.2 : 2.3, 0, 7); h.fill();
     }
     if (monitory.size) smycka = requestAnimationFrame(snimekEkg);
@@ -926,10 +937,11 @@
       const g = c.getContext("2d"), h = ch.getContext("2d");
       g.scale(dpr, dpr); h.scale(dpr, dpr);
       const velka = el.classList.contains("ekg-velka"), tep = tepZDivaku(el.dataset.divaci);
-      const m = { el, g, h, W, H, velka, tep, rr: 60 / tep, sila: 1, tvar: [1, 1], faze: Math.random() * 6,
+      const barva = BARVY_EKG[(/ekg-(kick|twitch|web)/.exec(el.className) || [])[1] || "web"];
+      const m = { el, g, h, W, H, velka, tep, barva, rr: 60 / tep, sila: 1, tvar: [1, 1], faze: Math.random() * 6,
         rych: W / (velka ? 4.2 : 3), Y: (v) => H * 0.64 - v * H * (velka ? 0.42 : 0.46), vidim: false };
       if (malyPohyb()) { // klidný statický záznam bez pohybu
-        g.strokeStyle = "#ff3d7f"; g.lineWidth = 1.8; g.beginPath();
+        g.strokeStyle = barva[0]; g.lineWidth = 1.8; g.beginPath();
         m.od = 0;
         for (let x = 0; x <= W; x++) { const y = m.Y(hodnotaEkg(m, x / m.rych)); x ? g.lineTo(x, y) : g.moveTo(x, y); }
         g.stroke();
@@ -942,7 +954,7 @@
   }
   // Řádek „tep“ streamera: avatar, jméno, hra, křivka, diváci a tepy za minutu.
   const radekTepu = (s) => `<a class="tep${s.platforma === "kick" ? " kick" : ""}" href="${esc(profilUrl(s))}">${av(s)}
-      <div class="tep-t"><b>${esc(s.jmeno)}</b><span>${esc(s.hra || "")}</span></div>${ekg(s.divaci)}
+      <div class="tep-t"><b>${esc(s.jmeno)}</b><span>${esc(s.hra || "")}</span></div>${ekg(s.divaci, false, s.platforma === "kick" ? "kick" : "twitch")}
       <div class="tep-n"><b>${num(s.divaci || 0)}</b><span class="tep-min">${tepZDivaku(s.divaci)}/min</span></div></a>`;
 
   function kartaZive(s) {
@@ -952,7 +964,7 @@
         ${s.zacatek ? `<span class="live-time">${esc(delka(s.zacatek))}</span>` : ""}</div>
       <div class="live-info">${av(s)}<div class="info"><h3>${esc(s.jmeno)}${partner(s)}</h3>
         <div class="sub">${esc(s.hra || "")}</div><div class="sub dim">${esc(s.titulek || "")}</div></div></div>
-      <div class="live-tep">${ekg(s.divaci)}<span class="tep-min">${tepZDivaku(s.divaci)}/min</span></div></a>`;
+      <div class="live-tep live-${s.platforma === "kick" ? "kick" : "twitch"}">${ekg(s.divaci, false, s.platforma === "kick" ? "kick" : "twitch")}<span class="tep-min">${tepZDivaku(s.divaci)}/min</span></div></a>`;
   }
 
   const RAZENI = { sledujici: "Sledující", divaci: "Rekord diváků", hodiny: "Odvysíláno (naše měření)", rust: "Růst (naše měření)" };
@@ -1131,6 +1143,25 @@
   }
 
   // ---------- Stránky ----------
+  // Novinky: nahoře velké karty, pod nimi plynule archiv – přehledný seznam po dnech (malý obrázek, nadpis, zdroj, čas).
+  const VELKYCH_ZPRAV = 12;
+  function denZpravy(ms) {
+    const d = new Date(ms), dnes = new Date(), vcera = new Date(Date.now() - 864e5);
+    const stejny = (a, b) => a.toDateString() === b.toDateString();
+    if (stejny(d, dnes)) return "Dnes";
+    if (stejny(d, vcera)) return "Včera";
+    const t = d.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" });
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  function archivZprav(list) {
+    if (!list.length) return "";
+    const dny = new Map();
+    for (const c of list) { const k = denZpravy(datum(c)); (dny.get(k) || dny.set(k, []).get(k)).push(c); }
+    return `<div class="archiv">${[...dny].map(([den, zpr]) => `<section class="archiv-den"><h2 class="archiv-nadpis">${esc(den)}</h2>
+      <ul class="archiv-list">${zpr.map((c) => `<li><a href="/clanek/${esc(enc(c.id))}">
+        ${https(c.obrazek) ? `<img src="${esc(c.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="archiv-bez" data-a="${esc((c.barva || [])[0] || "#444")}" data-b="${esc((c.barva || [])[1] || "#111")}">${esc((c.nadpis || "?")[0])}</span>`}
+        <span class="archiv-t"><b>${esc(c.nadpis)}</b><small>${c.vlastni ? "Herní puls" : esc(c.zdroje?.[0]?.nazev || "")}${ceskyClanek(c) && !c.vlastni ? " · česky" : ""} · ${esc(new Date(datum(c)).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }))}</small></span></a></li>`).join("")}</ul></section>`).join("")}</div>`;
+  }
   function strankaNovinky() {
     nastavTitulek("");
     const platformy = ["Vše", "PC", "PlayStation", "Xbox", "Switch"];
@@ -1159,12 +1190,26 @@
       <div class="chips chips-barvy" role="group" aria-label="Kategorie"><button type="button" class="chip chip-vse${state.katNov ? "" : " on"}" data-kn="" aria-pressed="${!state.katNov}">Všechny kategorie</button>${kat.map(([k, n]) =>
         `<button type="button" class="chip chip-${k}${k === state.katNov ? " on" : ""}" data-kn="${k}" aria-pressed="${k === state.katNov}">${n}</button>`).join("")}</div>
       <div class="chips chips-barvy" role="group" aria-label="Platforma">${platformy.map((p) => `<button type="button" class="chip chip-${p === "Vše" ? "vse" : p.toLowerCase()}${p === state.filtr ? " on" : ""}" data-f="${p}" aria-pressed="${p === state.filtr}">${p === "Vše" ? "Všechny platformy" : p}</button>`).join("")}</div>
-      ${list.length ? `<div class="grid">${list.map(kartaClanku).join("")}</div>`
+      ${list.length ? `<div class="grid">${list.slice(0, VELKYCH_ZPRAV).map(kartaClanku).join("")}</div>${archivZprav(list.slice(VELKYCH_ZPRAV))}`
         : `<p class="empty">${state.clanky.length ? "Nic jsme nenašli." : "Sběr novinek právě běží. První zprávy se objeví do 15 minut."}</p>`}
+      ${state.clanky.length && !state.archivKonec ? `<div class="archiv-dalsi"><button type="button" class="btn-maly" id="starsi">Načíst starší zprávy</button></div>` : ""}
       ${zive.length ? `<div class="section-title">Právě živě · <a href="/zive">všichni</a></div><div class="live-grid">${zive.map(kartaZive).join("")}</div>` : ""}`;
     app.querySelectorAll("[data-f]").forEach((b) => b.onclick = () => { state.filtr = b.dataset.f; strankaNovinky(); obarvi(app); });
     app.querySelectorAll("[data-kn]").forEach((b) => b.onclick = () => { state.katNov = b.dataset.kn; strankaNovinky(); obarvi(app); });
     app.querySelectorAll("[data-z]").forEach((b) => b.onclick = () => { state.zdrojNov = b.dataset.z; strankaNovinky(); obarvi(app); });
+    const bs = document.getElementById("starsi");
+    if (bs) bs.onclick = async () => {
+      bs.disabled = true; bs.textContent = "Načítám…";
+      const nejstarsi = Math.min(...state.clanky.map((c) => datum(c)));
+      try {
+        const starsi = await nacti(`clanky?limit=100&pred=${Math.floor(nejstarsi)}`);
+        const ma = new Set(state.clanky.map((c) => c.id));
+        const nove = (Array.isArray(starsi) ? starsi : []).filter((c) => !ma.has(c.id));
+        if (!nove.length) state.archivKonec = true;
+        state.clanky = [...state.clanky, ...nove];
+      } catch { achievement("Nejde to", "Starší zprávy se nepodařilo načíst, zkus to znovu."); }
+      const y = scrollY; strankaNovinky(); obarvi(app); scrollTo(0, y);
+    };
     const inp = document.getElementById("q");
     inp.oninput = () => { state.hledat = inp.value; const pos = inp.selectionStart; strankaNovinky(); obarvi(app); const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos); };
   }
@@ -1282,7 +1327,7 @@
       </div>
       <p class="pa-zprava" id="pa-zprava" role="status" aria-live="polite"></p>
       ${odkazySit(s.odkazy)}
-      ${s.zive ? `<div class="section-title">Právě vysílá · tep ${tepZDivaku(s.divaci)}/min</div>${ekg(s.divaci, true)}${kartaZive(s)}` : ""}
+      ${s.zive ? `<div class="section-title">Právě vysílá · tep ${tepZDivaku(s.divaci)}/min</div>${ekg(s.divaci, true, s.platforma === "kick" ? "kick" : "twitch")}${kartaZive(s)}` : ""}
       <div class="stats">
         ${s.platforma === "kick"
           ? `<div class="stat"><b>–</b><span>sledujících<small>Kick je ve svém oficiálním API nezveřejňuje</small></span></div>`
@@ -2003,7 +2048,11 @@
     // Novinky se obnovují každých 5 minut (překreslí se jen, když uživatel zrovna nehledá).
     setInterval(async () => {
       if (document.hidden) return;
-      try { const c = await nacti("clanky?limit=100"); if (Array.isArray(c)) state.clanky = c; } catch { return; }
+      try {
+        const c = await nacti("clanky?limit=100");
+        // Nové zprávy přidat, načtený archiv (starší zprávy) ponechat.
+        if (Array.isArray(c)) { const ids = new Set(c.map((x) => x.id)); state.clanky = [...c, ...state.clanky.filter((x) => !ids.has(x.id) && datum(x) < Math.min(...c.map(datum)))]; }
+      } catch { return; }
       if (location.pathname.replace(/\/+$/, "") === "/novinky" && document.activeElement?.id !== "q") { strankaNovinky(); obarvi(app); }
     }, 300000);
   }

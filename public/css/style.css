@@ -979,3 +979,24 @@ h1{letter-spacing:-.03em}
 .ekg canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .ekg-velka{height:150px;border-radius:var(--r-l);border:1px solid var(--line);margin:16px 0 8px;background-size:40px 40px,40px 40px,8px 8px,8px 8px}
 @media (min-width:900px){.ekg-velka{height:170px}}
+/* EKG: barvy podle platformy (mřížka i srdíčko), okraje stopy dohasínají */
+.ekg canvas{-webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.ekg-twitch{--g:169,112,255}.ekg-kick{--g:83,252,24}.ekg-web{--g:255,61,127}
+.ekg{background-image:linear-gradient(rgba(var(--g,255,61,127),.09) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--g,255,61,127),.09) 1px,transparent 1px),
+  linear-gradient(rgba(var(--g,255,61,127),.035) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--g,255,61,127),.035) 1px,transparent 1px)}
+.live-kick .tep-min::before,.tep.kick .tep-min::before{color:var(--kick)}
+.live-twitch .tep-min::before,.tep:not(.kick) .tep-min::before{color:#a970ff}
+
+/* Novinky: archiv – plynulý přechod z velkých karet do přehledného seznamu po dnech */
+.archiv{margin-top:26px;display:grid;gap:22px}
+.archiv-nadpis{position:sticky;top:64px;z-index:2;margin:0 0 8px;padding:8px 0;font-family:var(--display);font-size:20px;letter-spacing:-.02em;
+  background:linear-gradient(var(--bg) 70%,transparent)}
+.archiv-list{list-style:none;margin:0;padding:0;display:grid;gap:2px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.archiv-list{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px}}
+.archiv-list a{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:center;padding:8px;border-radius:14px;transition:background-color .15s}
+.archiv-list a:hover{background:var(--card)}
+.archiv-list img,.archiv-bez{width:64px;height:44px;object-fit:cover;border-radius:10px;background:var(--card2);display:grid;place-items:center;font-family:var(--display);font-weight:800;color:rgba(255,255,255,.5)}
+.archiv-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.archiv-t b{font-size:15px;line-height:1.3;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.archiv-t small{font-size:12.5px;color:var(--muted)}
+.archiv-dalsi{display:flex;justify-content:center;margin:20px 0 6px}

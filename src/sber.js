@@ -5,7 +5,7 @@ import { parsujFeed } from "./rss.js";
 const MAX_STARI_H = 12;          // starší zprávy se nezveřejní
 const ZDROJU_NA_BEH = 10;        // 19 zdrojů → každý zhruba jednou za 30 min (limit 50 požadavků: RSS 10 + studia ≤ 12)
 const MAX_CHYB = 5;              // po tolika chybách v řadě se zdroj vypne
-const UCHOVAT_DNI = 30;          // starší články se mažou
+const UCHOVAT_DNI = 90;          // starší články se mažou (archiv novinek na webu)
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 
 export const SCHEMA = [

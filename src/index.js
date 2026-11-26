@@ -85,6 +85,8 @@ async function apiClanky(url, env) {
   const platforma = p.get("platforma");
   const q = (p.get("q") || "").slice(0, 80).trim();
   const jazyk = p.get("jazyk");
+  // Archiv: ?pred=<čas v ms> → zprávy starší než tenhle okamžik (stránkování „Načíst starší zprávy“).
+  const pred = Math.min(parseInt(p.get("pred") || "", 10) || 0, Date.now() + 3600e3);
 
   // Všechny vstupy jdou do SQL pouze přes bind() – žádné skládání dotazu z textu.
   const kdeR = [], hodR = [], kdeV = ["stav = 'publikovano'"], hodV = [];
@@ -93,6 +95,7 @@ async function apiClanky(url, env) {
     kdeV.push("platformy LIKE ?"); hodV.push(`%"${platforma}"%`);
   }
   if (jazyk === "cs" || jazyk === "en") { kdeR.push("jazyk = ?"); hodR.push(jazyk); }
+  if (pred > 0) { kdeR.push("datum < ?"); hodR.push(pred); kdeV.push("COALESCE(publikovano, vytvoreno) < ?"); hodV.push(pred); }
   if (q) {
     kdeR.push("(nadpis LIKE ? OR perex LIKE ?)"); hodR.push(`%${q}%`, `%${q}%`);
     kdeV.push("(nadpis LIKE ? OR perex LIKE ? OR text LIKE ?)"); hodV.push(`%${q}%`, `%${q}%`, `%${q}%`);
@@ -345,7 +348,7 @@ async function verejneApi(request, env, ctx, url) {
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
   // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
-  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr"];
+  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred"];
   const ciste = new URL(url.origin + url.pathname);
   for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, 200)); }
   const klic = new Request(ciste.toString(), { method: "GET" });

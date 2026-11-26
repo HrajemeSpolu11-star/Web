@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-11-26 (večer, 26) – Dohasínající EKG v barvách platforem, archiv novinek
+- **EKG dohasíná jako fosfor na monitoru**: nová stopa svítí naplno, starší postupně slábne (destination-out každých 0,1 s,
+  τ ≈ 1,5 s), okraje monitoru jsou měkce ztracené (maska).
+- **Barva podle platformy**: Twitch fialová (#a970ff), Kick zelená (#53fc18) – křivka, záře, mřížka i srdíčko u tepu.
+  „Tep herního světa“ na Domů zůstává v barvě webu.
+- **Archiv novinek**: nahoře 12 velkých karet, pod nimi plynule přehledný seznam po dnech (Dnes, Včera, Úterý 24. listopadu…)
+  s malým obrázkem, nadpisem, zdrojem a časem; „Načíst starší zprávy“ (`/api/clanky?pred=<ms>`). Zprávy se v databázi
+  drží 90 dní (dřív 30). Automatická obnova každých 5 min nové zprávy přidá a načtený archiv nechá.
+
 ## 2026-11-26 (večer, 25) – EKG monitor kreslený živě, všichni živí streameři
 - **EKG jako skutečný monitor** (canvas): svítící bod kreslí křivku zleva doprava, před sebou maže starou stopu, mřížka
   v pozadí. Tvar úderu = vlny P, Q, R, S, T (model ECGSYN). **Každý úder je jiný**: rozestup ±12 %, výška/síla hrotu ±18 %,
