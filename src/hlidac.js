@@ -159,6 +159,16 @@ const naHru = (r) => ({
 const SLOUPCE = `g.*, (SELECT MIN(c.cena) FROM ceny_historie c WHERE c.id = g.id AND c.den >= ?) AS min90`;
 const od90 = (ted) => new Date(ted - 90 * 86400e3).toISOString().slice(0, 10);
 
+// Ochrana před zahlcením: nejvýš 20 nových hledání na Steamu za minutu pro celý web (atomický čítač v D1).
+async function smimSeZeptatSteamu(db) {
+  const minuta = Math.floor(Date.now() / 60e3);
+  await db.prepare("CREATE TABLE IF NOT EXISTS nastaveni (klic TEXT PRIMARY KEY, hodnota TEXT, plati_do INTEGER)").run();
+  const r = await db.prepare(`INSERT INTO nastaveni (klic, hodnota, plati_do) VALUES ('steam_hledani', '1', ?)
+    ON CONFLICT(klic) DO UPDATE SET hodnota = CASE WHEN nastaveni.plati_do = excluded.plati_do THEN CAST(nastaveni.hodnota AS INTEGER) + 1 ELSE 1 END,
+      plati_do = excluded.plati_do RETURNING hodnota`).bind(minuta).first();
+  return Number(r?.hodnota || 0) <= 20;
+}
+
 // /api/cestina?q=…&filtr=sleva|zdarma|dabing|vse
 export async function apiCestina(env, q, filtr) {
   const db = env.DB;
@@ -171,7 +181,7 @@ export async function apiCestina(env, q, filtr) {
       .bind(od90(ted), `%${n}%`, n).all();
     const overeno = results.filter((r) => r.cestina != null);
     // Málo výsledků → zeptáme se Steamu (1 požadavek) a u prvních 3 her rovnou zjistíme češtinu (3 požadavky).
-    if (overeno.length < 3 && n.length >= 3) {
+    if (overeno.length < 3 && n.length >= 3 && await smimSeZeptatSteamu(db)) {
       try {
         const s = await json(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(q)}&l=czech&cc=CZ`);
         const nove = (s?.items || []).filter((i) => i.type === "app").slice(0, 8).map((i) => ({

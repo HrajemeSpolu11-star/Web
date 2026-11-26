@@ -3,7 +3,7 @@ import { ZDROJE } from "./zdroje.js";
 import { parsujFeed } from "./rss.js";
 
 const MAX_STARI_H = 12;          // starší zprávy se nezveřejní
-const ZDROJU_NA_BEH = 6;         // kvůli limitům bezplatného plánu (22 zdrojů → každý zhruba jednou za hodinu)
+const ZDROJU_NA_BEH = 10;        // 19 zdrojů → každý zhruba jednou za 30 min (limit 50 požadavků: RSS 10 + studia ≤ 12)
 const MAX_CHYB = 5;              // po tolika chybách v řadě se zdroj vypne
 const UCHOVAT_DNI = 30;          // starší články se mažou
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
@@ -50,7 +50,11 @@ async function otisk(s) {
 
 function platformy(text, zdroj) {
   const p = new Set(zdroj.platforma ? [zdroj.platforma] : []);
-  if (/\b(ps5|ps4|playstation)\b/i.test(text)) p.add("PS5");
+  // PlayStation: konkrétní generace, když je uvedená; obecná zmínka = „PlayStation“.
+  const ps5 = /\bps5\b|playstation 5/i.test(text), ps4 = /\bps4\b|playstation 4/i.test(text);
+  if (ps5) p.add("PS5");
+  if (ps4) p.add("PS4");
+  if (!ps5 && !ps4 && /\bplaystation\b/i.test(text)) p.add("PlayStation");
   if (/\bxbox\b/i.test(text)) p.add("Xbox");
   if (/\b(nintendo|switch 2)\b/i.test(text)) p.add("Switch");
   if (/\b(pc|steam|epic games store|gog)\b/i.test(text)) p.add("PC");
@@ -90,7 +94,8 @@ export async function sber(env) {
 
   // Vyber zdroje, které se nejdéle nestahovaly a nejsou vypnuté.
   const fronta = ZDROJE
-    .filter((z) => (stavy[z.id]?.chyby || 0) < MAX_CHYB)
+    // Vypnutý zdroj (MAX_CHYB chyb v řadě) se zkusí znovu po 24 h – když funguje, chyby se vynulují.
+    .filter((z) => (stavy[z.id]?.chyby || 0) < MAX_CHYB || (stavy[z.id]?.posledni || 0) < ted - 24 * 3600e3)
     .sort((a, b) => (stavy[a.id]?.posledni || 0) - (stavy[b.id]?.posledni || 0))
     .slice(0, ZDROJU_NA_BEH);
 

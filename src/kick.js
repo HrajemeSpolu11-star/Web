@@ -7,7 +7,7 @@ import { zaradUpozorneni } from "./push.js";
 
 const API = "https://api.kick.com/public/v1";
 const JAZYK = "cs";
-const MIN_STATISTIKY = 3;
+// Dřív MIN_STATISTIKY = 3; teď se počítají všechny streamy.
 const PROFILU_NA_BEH = 25;
 
 export const kickNastaven = (env) => !!(env.KICK_CLIENT_ID && env.KICK_CLIENT_SECRET);
@@ -91,7 +91,7 @@ export async function sberKick(env) {
         ted, nazevHry, String(s.stream_title || "").slice(0, 300), s.viewer_count || 0, s.started_at || null, https(s.thumbnail)));
       const slug = slugHry(nazevHry);
       if (slug && !videneHry.has(slug)) { videneHry.add(slug); prikazy.push(hraSeznam.bind(slug, nazevHry, ted)); }
-      if ((s.viewer_count || 0) >= MIN_STATISTIKY) {
+      { // od 2026-11-26 všechny streamy (i 0–2 diváci), ať jsou hodiny malých kanálů přesné
         prikazy.push(snimek.bind(id, den, s.viewer_count || 0, minut));
         if (nazevHry && minut) prikazy.push(hra.bind(id, nazevHry, minut, ted));
       }

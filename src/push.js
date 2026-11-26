@@ -3,6 +3,8 @@
 // VAPID klíče si Worker vygeneruje sám při prvním použití a uloží do D1 (tabulka nastaveni).
 import { zajistiSchemaHlidac, hlidat, nehlidat } from "./hlidac.js";
 
+const ZPRAV_NA_PUSH = 4; // service worker zobrazí každou zvlášť
+
 const POVOLENE_SLUZBY = [/^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/,
   /^web\.push\.apple\.com$/, /\.push\.apple\.com$/, /^android\.googleapis\.com$/];
 const KLIC_OBLIBENEHO = /^(twitch|kick):[a-z0-9_-]{1,30}$/;
@@ -110,13 +112,15 @@ export async function odesliFrontu(env, max = 10) {
   const db = env.DB;
   await zajistiSchemaPush(db);
   // Nejstarší čekající zprávy první, ať odběr s opakovanou chybou neblokuje ostatní.
-  const { results } = await db.prepare(`SELECT o.id, o.endpoint, MIN(z.id) AS prvni, MAX(z.id) AS posledni FROM push_zpravy z JOIN push_odbery o ON o.id = z.odber_id
+  const { results } = await db.prepare(`SELECT o.id, o.endpoint, MIN(z.id) AS prvni FROM push_zpravy z JOIN push_odbery o ON o.id = z.odber_id
     WHERE z.odeslano = 0 GROUP BY o.id ORDER BY prvni LIMIT ?`).bind(max).all();
   for (const o of results) {
     let vysledek;
     try { vysledek = await posliPush(env, o.endpoint); } catch (e) { console.warn("push:", e); vysledek = "znovu"; }
     // Označíme jen zprávy, které existovaly před odesláním – nové počkají na další oznámení.
-    if (vysledek === "ok") await db.prepare("UPDATE push_zpravy SET odeslano = 1 WHERE odber_id = ? AND odeslano = 0 AND id <= ?").bind(o.id, o.posledni).run();
+    // Jedno oznámení = nejvýš ZPRAV_NA_PUSH zpráv (tolik si jich service worker vyzvedne). Zbytek čeká na další push.
+    if (vysledek === "ok") await db.prepare(`UPDATE push_zpravy SET odeslano = 1 WHERE id IN
+      (SELECT id FROM push_zpravy WHERE odber_id = ? AND odeslano = 0 ORDER BY id LIMIT ${ZPRAV_NA_PUSH})`).bind(o.id).run();
     else if (vysledek === "neplatny") {
       await zajistiSchemaHlidac(db);
       await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(o.id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(o.id),
@@ -140,8 +144,10 @@ export async function pushApi(request, env) {
   if (cesta === "/klic" && request.method === "GET") return json({ klic: (await vapidKlice(env)).verejny });
   if (request.method !== "POST") return json({ chyba: "Metoda není povolena" }, 405);
   if (request.headers.get("Origin") && request.headers.get("Origin") !== url.origin) return json({ chyba: "Zakázáno" }, 403);
+  // Omezení velikosti těla požadavku (odběr = adresa + seznam oblíbených).
+  if (Number(request.headers.get("Content-Length") || 0) > 8192) return json({ chyba: "Příliš velký požadavek" }, 413);
   let b;
-  try { b = await request.json(); } catch { return json({ chyba: "Neplatná data" }, 400); }
+  try { const t = await request.text(); if (t.length > 8192) throw 0; b = JSON.parse(t); } catch { return json({ chyba: "Neplatná data" }, 400); }
   const endpoint = String(b?.endpoint || "");
   if (!platnyEndpoint(endpoint)) return json({ chyba: "Neplatný odběr" }, 400);
   const id = await otisk(endpoint);
@@ -168,8 +174,9 @@ export async function pushApi(request, env) {
     return json(v.chyba ? { chyba: v.chyba } : v, v.status || 200);
   }
   if (cesta === "/zpravy") {
-    const { results } = await db.prepare("SELECT id, titulek, text, url FROM push_zpravy WHERE odber_id = ? ORDER BY id DESC LIMIT 5").bind(id).all();
-    if (results.length) await db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(id).run();
+    // Vydáme jen zprávy, ke kterým už odešel push, nejstarší první, a smažeme přesně ty vydané.
+    const { results } = await db.prepare(`SELECT id, titulek, text, url FROM push_zpravy WHERE odber_id = ? AND odeslano = 1 ORDER BY id LIMIT ${ZPRAV_NA_PUSH}`).bind(id).all();
+    if (results.length) await db.prepare(`DELETE FROM push_zpravy WHERE odber_id = ? AND id IN (${results.map(() => "?").join(",")})`).bind(id, ...results.map((r) => r.id)).run();
     return json(results);
   }
   return json({ chyba: "Nenalezeno" }, 404);

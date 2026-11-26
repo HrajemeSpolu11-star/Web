@@ -12,7 +12,7 @@ const SLEDUJICICH_NA_BEH = 15;    // obnova počtu sledujících (1 požadavek n
 const ROZVRHU_NA_BEH = 5;         // obnova rozvrhů pro kalendář (1 požadavek na kanál)
 const PUSH_NA_BEH = 10;           // max. odeslaných upozornění za běh (limit 50 požadavků na běh)
 const ZIVE_PLATNOST = 25 * 60e3;
-const MIN_STATISTIKY = 3;         // statistiky (snímky, hry) jen od 3 diváků – šetří denní limit zápisů D1
+// Dřív MIN_STATISTIKY = 3 (statistiky jen od 3 diváků). Teď se počítají všechny streamy.
 
 export const SCHEMA_TWITCH = [
   `CREATE TABLE IF NOT EXISTS nastaveni (klic TEXT PRIMARY KEY, hodnota TEXT, plati_do INTEGER)`,
@@ -172,7 +172,7 @@ export async function sberTwitch(env) {
       );
       const slug = slugHry(s.game_name);
       if (slug && !videneHry.has(slug)) { videneHry.add(slug); prikazy.push(hraSeznam.bind(slug, s.game_name, ted, s.game_id ? String(s.game_id) : null)); }
-      if ((s.viewer_count || 0) >= MIN_STATISTIKY) {
+      { // od 2026-11-26 všechny streamy (i 0–2 diváci), ať jsou hodiny malých kanálů přesné
         prikazy.push(snimek.bind(s.user_id, den, s.viewer_count || 0, minut));
         if (s.game_name && minut) prikazy.push(hra.bind(s.user_id, s.game_name, minut, ted));
       }

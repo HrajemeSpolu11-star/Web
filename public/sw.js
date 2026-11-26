@@ -26,11 +26,12 @@ self.addEventListener("push", (e) => {
       }
     } catch {}
     if (!zpravy.length) zpravy = [{ titulek: "Herní puls", text: "Někdo z tvých oblíbených je živě", url: "/zive" }];
-    for (const z of zpravy.slice(0, 3)) {
+    for (const z of zpravy) {
       let url = "/zive";
       try { const u = new URL(z.url, self.location.origin); if (u.origin === self.location.origin) url = u.pathname; } catch {}
+      // Každá zpráva má vlastní značku – upozornění se navzájem nepřepisují.
       await self.registration.showNotification(String(z.titulek || "Herní puls").slice(0, 80), {
-        body: String(z.text || "").slice(0, 140), tag: url, data: { url }, icon: "/ikona-192.png", badge: "/ikona-192.png",
+        body: String(z.text || "").slice(0, 140), tag: `hp-${z.id || Math.random()}`, data: { url }, icon: "/ikona-192.png", badge: "/ikona-192.png",
       });
     }
   })());

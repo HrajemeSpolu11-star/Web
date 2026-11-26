@@ -173,7 +173,7 @@
   // Čeština podle údajů na Steamu: 2 = dabing, 1 = titulky/rozhraní, 0 = bez češtiny, null = zatím neověřeno.
   function czStitek(h, uplny = false) {
     if (h.cestina === 2) return `<span class="cz cz-dabing">CZ dabing</span>`;
-    if (h.cestina === 1) return `<span class="cz">CZ titulky</span>`;
+    if (h.cestina === 1) return `<span class="cz">CZ texty</span>`;
     if (uplny && h.cestina === 0) return `<span class="cz cz-ne">bez češtiny</span>`;
     if (uplny && h.cestina == null) return `<span class="cz cz-nevim">čeština se ověřuje</span>`;
     return "";
@@ -238,12 +238,12 @@
     nastavTitulek("Má to češtinu? – hry s češtinou ve slevě a zdarma");
     const filtr = new URLSearchParams(location.search).get("filtr") || "sleva";
     const q = new URLSearchParams(location.search).get("q") || "";
-    app.innerHTML = `${hubHry("cestina", "Má to češtinu?", "Napiš název hry a hned uvidíš, jestli má české titulky nebo dabing, kolik stojí a jestli je ve slevě. Údaje o češtině bereme ze Steamu.")}
+    app.innerHTML = `${hubHry("cestina", "Má to češtinu?", "Napiš název hry a hned uvidíš, jestli má český text nebo dabing, kolik stojí a jestli je ve slevě. Údaje o češtině bereme ze Steamu.")}
       <form class="hledat-hru" role="search"><input id="q-hra" type="search" placeholder="Např. Kingdom Come, Cyberpunk, Hollow Knight…" value="${esc(q)}" autocomplete="off" maxlength="60" aria-label="Název hry"><button type="submit">Hledat</button></form>
       <div class="mini-seg cz-filtry" role="group">${[["sleva", "Ve slevě s češtinou"], ["zdarma", "Zdarma s češtinou"], ["dabing", "S českým dabingem"], ["vse", "Vše s češtinou"]]
         .map(([k, v]) => `<a class="ms-b${!q && k === filtr ? " on" : ""}" href="/cestina?filtr=${k}">${v}</a>`).join("")}</div>
       <div id="cz-vysledky">${kostra(5)}</div>
-      <p class="source-note">Čeština podle seznamu jazyků na Steamu („dabing“ = Steam uvádí plnou podporu zvuku). Ceny v Kč ze Steamu, kontrolujeme je několikrát denně; vždy platí cena v obchodě. Hry do databáze přibývají – když hru nenajdeš, hledání se zeptá přímo Steamu.</p>`;
+      <p class="source-note">Čeština podle údajů vydavatele na Steamu: „CZ texty“ = český text (rozhraní nebo titulky – Steam je v tomto seznamu nerozlišuje), „CZ dabing“ = Steam uvádí plnou podporu zvuku. Nejde o nezávisle ověřený stav hry. Ceny v Kč ze Steamu, kontrolujeme je několikrát denně; vždy platí cena v obchodě. Hry do databáze přibývají – když hru nenajdeš, hledání se zeptá přímo Steamu.</p>`;
     app.querySelector(".hledat-hru").onsubmit = (e) => { e.preventDefault(); const v = app.querySelector("#q-hra").value.trim(); jdi(v ? `/cestina?q=${enc(v)}` : "/cestina"); };
     let d;
     try { d = await nacti(`cestina?${q ? `q=${enc(q)}` : `filtr=${enc(filtr)}`}`); } catch { d = { hry: [] }; }
@@ -342,7 +342,7 @@
       const k = h.presne || /^[A-Za-z]{3} \d{4}$/.test(h.human) ? new Date(h.datum).toLocaleDateString("cs-CZ", { month: "long", year: "numeric" }) : (h.human || "Termín neznámý");
       (mesice.get(k) || mesice.set(k, []).get(k)).push(h);
     }
-    const czTxt = (h) => h.cestina === 2 ? `<span class="cz cz-dabing">CZ dabing</span>` : h.cestina === 1 ? `<span class="cz">CZ titulky</span>`
+    const czTxt = (h) => h.cestina === 2 ? `<span class="cz cz-dabing">CZ dabing</span>` : h.cestina === 1 ? `<span class="cz">CZ texty</span>`
       : h.cestina === 0 ? `<span class="cz cz-ne">bez češtiny</span>` : `<span class="cz cz-nevim">čeština zatím neoznámena</span>`;
     app.innerHTML = `${hubHry("vydani", "Kalendář vydání her", "Co vychází, kdy a na čem – a jestli bude hra v češtině.")}
       <div class="mini-seg cz-filtry" role="group">${[["vse", "Všechny"], ["cz", "Jen s češtinou"], ["presne", "Jen s přesným datem"]].map(([k, v]) =>
@@ -725,12 +725,12 @@
   // ---------- Stránky ----------
   function strankaNovinky() {
     nastavTitulek("");
-    const platformy = ["Vše", "PC", "PS5", "Xbox", "Switch"];
+    const platformy = ["Vše", "PC", "PlayStation", "Xbox", "Switch"];
     const q = state.hledat.toLowerCase();
     const list = state.clanky
       .filter((c) => !state.zdrojNov || (state.zdrojNov === "cs" ? ceskyClanek(c) : !ceskyClanek(c)))
       .filter((c) => !state.katNov || katClanku(c).includes(state.katNov))
-      .filter((c) => state.filtr === "Vše" || (c.platformy || []).includes(state.filtr))
+      .filter((c) => state.filtr === "Vše" || (c.platformy || []).some((x) => x === state.filtr || (state.filtr === "PlayStation" && /^(PS4|PS5)$/.test(x))))
       .filter((c) => !q || (c.nadpis + " " + c.perex).toLowerCase().includes(q))
       .sort((a, b) => datum(b) - datum(a));
     // Nahoru jako hlavní článek dej nejnovější vlastní článek (pokud je z posledních 24 h).
@@ -1047,7 +1047,7 @@
       ep && obchod("Epic Games", "ob-epic", ep.url, ep.zdarma_ted ? `<strong>Zdarma</strong> ${ep.do ? esc(zbyva(ep.do)) : ""}` : `zdarma od ${esc(new Date(ep.od).toLocaleDateString("cs-CZ"))}`),
     ].filter(Boolean);
     const fakta = [
-      cz && ["Čeština", cz.dabing ? "✓ dabing i titulky" : cz.rozhrani ? "✓ titulky / rozhraní" : "✗ bez češtiny"],
+      cz && ["Čeština (podle Steamu)", cz.dabing ? "✓ dabing i titulky" : cz.rozhrani ? "✓ texty (rozhraní nebo titulky)" : "✗ bez češtiny"],
       st?.hodnoceni && ["Hodnocení hráčů", `${hodnoceniHry(st)} <span class="dim">Steam</span>`],
       gog?.hodnoceni && ["Hodnocení GOG", `${gog.hodnoceni.toLocaleString("cs-CZ")} / 5`],
       st?.metacritic && ["Metacritic", String(st.metacritic)],
@@ -1089,7 +1089,7 @@
     const ho = document.getElementById("hra-obr");
     if (ho) ho.onclick = () => sdilejObrazek({ stitek: "Hra", nadpis: h.nazev, odkaz: `/hra/${h.slug}`,
       radky: [st?.cena != null && [st.zdarma || st.cena === 0 ? "Zdarma" : cena(st.cena, st.mena), st.sleva ? `na Steamu, sleva −${st.sleva} %` : "na Steamu"],
-        cz && [cz.dabing ? "CZ dabing" : cz.rozhrani ? "CZ titulky" : "Bez češtiny", "čeština podle Steamu"],
+        cz && [cz.dabing ? "CZ dabing" : cz.rozhrani ? "CZ texty" : "Bez češtiny", "čeština podle Steamu"],
         st?.hodnoceni && [`${st.hodnoceni.kladne} %`, `kladných recenzí z ${num(st.hodnoceni.recenzi)}`],
         stat.hodin7 && [`${num(stat.hodin7)} h`, "sledování na českých streamech za 7 dní"]].filter(Boolean) });
   }
@@ -1315,7 +1315,7 @@
       ${(state.czSlevy || []).length ? `<section class="sekce">
         <div class="section-title">Ve slevě a česky · <a href="/cestina">Má to češtinu?</a></div>
         ${regal(state.czSlevy.slice(0, 15), {})}
-        <p class="source-note">Hry s českými titulky nebo dabingem (podle Steamu), které jsou právě ve slevě. Chceš upozornit na slevu konkrétní hry? <a href="/hlidac">Hlídač cen</a></p>
+        <p class="source-note">Hry s českým textem nebo dabingem (podle údajů na Steamu), které jsou právě ve slevě. Chceš upozornit na slevu konkrétní hry? <a href="/hlidac">Hlídač cen</a></p>
       </section>` : ""}
 
       <section id="hrane" class="sekce">

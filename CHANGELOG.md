@@ -6,6 +6,23 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 17) – Opravy podle druhého auditu (ChatGPT)
+- **Push fronta bez ztrát**: jedno oznámení = max. 4 zprávy; service worker si vyzvedne jen zprávy, ke kterým už push odešel,
+  a server smaže přesně ty vydané. Zbytek čeká na další push. Každé upozornění má vlastní značku (`tag`), takže se v telefonu
+  navzájem nepřepisují (dřív se cenová upozornění na /hlidac nahrazovala). Omezení velikosti těla push požadavků (8 kB).
+- **Čeština poctivě**: Steam v seznamu jazyků nerozlišuje rozhraní a titulky → štítek „CZ texty“ místo „CZ titulky“,
+  „CZ dabing“ jen při plném zvuku. U hry „Čeština (podle Steamu)“ a vysvětlení, že jde o údaj vydavatele, ne nezávislé ověření.
+- **Přesné hodiny malých streamerů**: odvysílané minuty a hry se počítají u všech streamů (dřív jen od 3 diváků).
+  „Aktivní kanál“ v reportu dál znamená aspoň chvíli 3+ diváků. Odhad zápisů D1 doplněn do `docs/ARCHITEKTURA.md`.
+- **PlayStation ve zprávách**: PS5, PS4 a obecné „PlayStation“ se rozlišují; filtr „PlayStation“ v novinkách zahrne všechny.
+- **AI články přísněji**: automaticky se zveřejní jen článek s plným textem aspoň jednoho zdroje a se zprávou potvrzenou
+  aspoň 2 různými weby; jinak čeká ke schválení. AI typy článků sjednoceny s RSS (Esport, Hardware, Streamování).
+- **RSS zdroje**: vypnutý zdroj se zkusí znovu po 24 h; 10 zdrojů na běh (každý ≈ 30 min místo ≈ 48 min).
+- **Kontrola domén** u stahování článků pro AI zvládá přípony typu co.uk / com.au.
+- **Hledání na Steamu** z veřejného „Má to češtinu?“: max. 20 nových dotazů za minutu pro celý web.
+- **Související články u hry** jen při shodě celého názvu (ne „Rust“ v „Trust“).
+- Záměrně neměněno: automatické testy a GitHub Actions (pravidlo projektu), zamčený admin (do vlastní domény).
+
 ## 2026-11-26 (odpoledne, 16) – Sekce Hry: kalendář vydání, akce s odpočtem, studia, předplatné, graf ceny
 - **Nová záložka „Hry“** v hlavním menu (Domů · Novinky · Hry · Streameři) s podzáložkami Kalendář vydání · Akce a odpočty ·
   Studia · Má to češtinu? · Hlídač cen.

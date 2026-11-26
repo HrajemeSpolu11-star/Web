@@ -196,6 +196,11 @@ async function apiHry(env) {
   return json(results, 200, results.length ? 120 : 0);
 }
 
+// Název hry jako celé slovo: „Rust“ ano, „Trust“ ne.
+function celyNazev(nazev) {
+  const n = String(nazev || "").replace(/[™®©]/g, "").trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${n}(?![\\p{L}\\p{N}])`, "iu");
+}
 async function apiHra(slug, env, ctx) {
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return json({ chyba: "Neplatná hra" }, 400);
   const ted = Date.now();
@@ -241,7 +246,9 @@ async function apiHra(slug, env, ctx) {
       cas: new Date(r.cas).toISOString(), streamer: { jmeno: r.jmeno || r.login, login: r.login, platforma: r.platforma || "twitch", profilovka: r.profilovka || "" } })),
     zive: zive.results.map((r) => naStreamera(r, ted)),
     nejvic: nejvic.results.map((r) => ({ ...naStreamera(r, ted), hodin: Math.round((r.minut_hra || 0) / 60) })),
-    clanky: [...vl.results.map(naPrispevek), ...rss.results.map(naClanek)].sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 12),
+    // LIKE najde i „Hra 2“ u „Hra“ nebo název uprostřed slova – necháme jen články, kde je název hry celé slovo/fráze.
+    clanky: [...vl.results.map(naPrispevek), ...rss.results.map(naClanek)].filter((c) => celyNazev(h.nazev).test(`${c.nadpis} ${c.perex || ""}`))
+      .sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 12),
   }, 200, 120);
 }
 

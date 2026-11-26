@@ -8,7 +8,7 @@ const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const ZDROJ = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
 const OFICIALNI = new Set(["psblog", "xboxwire"]);
 export const PLATFORMY = ["PC", "PS5", "Xbox", "Switch"];
-export const TYPY = ["Zpráva", "Oznámení", "Recenze", "Trailer", "Sleva", "Aktualizace"];
+export const TYPY = ["Zpráva", "Oznámení", "Recenze", "Trailer", "Sleva", "Aktualizace", "Esport", "Hardware", "Streamování"];
 const MAX_ZA_DEN_TVRDY = 10; // pojistka i pro ruční spuštění
 
 const STOP = new Set(("this that with from have will your their about what when after over into more just than they them been were also could would game games "
@@ -56,7 +56,9 @@ export function vyberTema(clanky, ted = Date.now()) {
 // Stáhne text článku ze zdroje (jen odstavce, max ~6000 znaků).
 // Stahujeme jen https stránky z domény webu, ze kterého RSS pochází (i u přesměrování, max. 3 kroky).
 // Podvržená adresa v RSS tak nemůže Worker poslat jinam.
-const domena = (host) => host.toLowerCase().split(".").slice(-2).join(".");
+// Registrovatelná doména: u přípon typu co.uk / com.au se berou 3 části, jinak 2.
+const DVOJITE_PRIPONY = /\.(co|com|org|net|gov|ac|edu)\.[a-z]{2}$/i;
+const domena = (host) => host.toLowerCase().split(".").slice(DVOJITE_PRIPONY.test(host) ? -3 : -2).join(".");
 function povolenaAdresa(url, zdrojId) {
   try {
     const u = new URL(url), z = ZDROJ[zdrojId];
@@ -193,6 +195,10 @@ async function napisClanekBezZamku(env, db, ted, limit, vynutit) {
     problemy.push("kontrolu faktů se nepodařilo provést");
   }
 
+  // Automaticky se zveřejní jen článek s pevnými podklady: aspoň jeden plný text zdroje (ne jen nadpis a perex)
+  // a zprávu potvrzují aspoň 2 různé weby. Jinak čeká ke schválení. Kontrolu dělá stejná AI, proto tahle pojistka.
+  if (!texty.some((t) => t && t.length >= 800)) problemy.push("podklady: chybí plný text zdroje (jen nadpis a perex)");
+  if (new Set(polozky.map((p) => p.zdroj_id)).size < 2) problemy.push("podklady: zprávu potvrzuje jen jeden web");
   const zverejnit = env.PUBLIKOVAT === "auto" && problemy.length === 0;
   const id = noveId();
   const zdroje = polozky.map((p) => ({ nazev: ZDROJ[p.zdroj_id]?.nazev || p.zdroj_id, url: p.url }));

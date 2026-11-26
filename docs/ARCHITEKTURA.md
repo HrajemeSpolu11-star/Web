@@ -18,7 +18,7 @@ návštěvník →│ statické soubory (public/)   ← servíruje Cloudflare As
 ## Plánované úlohy (Cron, UTC) – `wrangler.jsonc`
 | Cron | Co dělá | Kód |
 |---|---|---|
-| `*/15 * * * *` | RSS novinky (6 zdrojů na běh, střídají se) | `sber()` v `src/sber.js` |
+| `*/15 * * * *` | RSS novinky (10 z 19 zdrojů na běh, každý ≈ 30 min; vypnutý zdroj se zkusí znovu po 24 h) + studia a platformy (2 na běh) | `sber()` v `src/sber.js`, `sberStudii()` v `src/studia.js` |
 | `7 * * * *` | AI psaní (jen v hodinách `HODINY`, max `CLANKU_DENNE`) | `napisClanek()` v `src/psani.js` |
 | `5,20,35,50 * * * *` | Twitch + Kick streameři, rekordy, milníky, rozvrhy, push | `sberTwitch()`, `sberKick()` |
 | `25 * * * *` | Herní katalog: Steam (slevy, top, nové, brzy, nejhranější + hodnocení hráčů), Epic (zdarma), GOG (trendy, slevy) – ≈33 požadavků | `sberKatalogu()` v `src/katalog.js` |
@@ -74,3 +74,9 @@ Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?
   prázdný push; service worker si text vyzvedne z `/api/push/zpravy`.
 - Výsledek odeslání: 2xx = odesláno; 404/410/403 = odběr zanikl → smaže se; síťová chyba, 429, 5xx = **zůstane ve frontě**
   a zkusí se znovu v dalším běhu. Zprávy starší 2 dnů se mažou.
+
+
+## Zápisy D1 – odhad (2026-11-26)
+- Streameři (Twitch+Kick): řádek streamera + snímek dne + hra streamera u **každého** živého streamu (od 26. 11. i 0–2 diváci) ≈ 35–45 tis./den.
+- `hry_den` ≈ 6 tis., `scena` ≈ 200, katalog + steam_hry + ceny ≈ 8–10 tis., studia/videa/klipy jen nové řádky, deník ≈ 400.
+- Celkem zhruba 55–65 tis. z limitu 100 tis. denně. Při dalším růstu hlídat v Cloudflare → D1 → Metrics.

@@ -31,8 +31,8 @@ async function metaProStranku(url, env) {
     else if (p === "/prehled") m = { ...m, title: `Přehled české streamovací scény – týden v číslech | ${NAZEV}`, popis: "Kolik Čechů je živě během dne, kdo tento týden nejvíc rostl, rekordy, milníky a kalendář plánovaných streamů." };
     else if (p === "/porovnat") m = { ...m, title: `Porovnat streamery | ${NAZEV}`, popis: "Porovnej dva české streamery vedle sebe: sledující, diváci, odvysílané hodiny a hry.", index: false };
     else if (p === "/hry") m = { ...m, title: `Co hraje Česko – nejsledovanější hry českých streamů | ${NAZEV}`, popis: "Žebříček her podle hodin sledování na českých streamech Twitch a Kick za posledních 7 dní. Co roste, co je nového a kdo co hraje." };
-    else if (p === "/cestina") m = { ...m, title: `Má to češtinu? Hry s češtinou ve slevě a zdarma | ${NAZEV}`, popis: "Zjisti, jestli hra má české titulky nebo dabing, kolik stojí a jestli je ve slevě. Hry s češtinou ve slevě a zdarma na jednom místě." };
-    else if (p === "/vydani") m = { ...m, title: `Kalendář vydání her – co vychází a jestli bude česky | ${NAZEV}`, popis: "Přehled chystaných her: kdy vycházejí, na jakých platformách a jestli budou mít české titulky nebo dabing." };
+    else if (p === "/cestina") m = { ...m, title: `Má to češtinu? Hry s češtinou ve slevě a zdarma | ${NAZEV}`, popis: "Zjisti, jestli hra má český text nebo dabing, kolik stojí a jestli je ve slevě. Hry s češtinou ve slevě a zdarma na jednom místě." };
+    else if (p === "/vydani") m = { ...m, title: `Kalendář vydání her – co vychází a jestli bude česky | ${NAZEV}`, popis: "Přehled chystaných her: kdy vycházejí, na jakých platformách a jestli budou mít český text nebo dabing." };
     else if (p === "/akce") m = { ...m, title: `Herní akce s odpočtem – Steam výprodeje, The Game Awards, gamescom | ${NAZEV}`, popis: "Odpočet do Steam výprodejů, Next Festu, The Game Awards a gamescomu podle oficiálních termínů. Ohlášené přenosy a novinky PS Plus a Game Pass." };
     else if (p === "/studia") m = { ...m, title: `Herní studia a platformy – oficiální novinky a trailery | ${NAZEV}`, popis: "Novinky, trailery a oznámení přímo od PlayStation, Xboxu, Nintenda, Blizzardu, Rockstaru, CD PROJEKT RED i českých studií Warhorse, Bohemia a SCS Software." };
     else if (p.startsWith("/studio/")) {
@@ -72,7 +72,7 @@ async function metaProStranku(url, env) {
         try { st = i ? JSON.parse(i.data).steam : null; } catch { /* nic */ }
         if (st) {
           const casti = [];
-          if (st.cestina) casti.push(st.cestina.dabing ? "český dabing" : st.cestina.rozhrani ? "české titulky" : "bez češtiny");
+          if (st.cestina) casti.push(st.cestina.dabing ? "český dabing" : st.cestina.rozhrani ? "český text" : "bez češtiny");
           if (st.zdarma) casti.push("zdarma");
           else if (st.cena != null) casti.push(`${st.cena.toLocaleString("cs-CZ")} Kč na Steamu${st.sleva ? ` (−${st.sleva} %)` : ""}`);
           if (st.hodnoceni) casti.push(`${st.hodnoceni.kladne} % kladných recenzí`);

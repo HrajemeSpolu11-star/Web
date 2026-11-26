@@ -81,8 +81,8 @@
     "Nejprodávanější na Steamu": ["Najpredávanejšie na Steame", "Top sellers on Steam"], "Trendy na GOGu": ["Trendy na GOGu", "Trending on GOG"],
     "Nově vydané": ["Novo vydané", "New releases"], "Brzy vyjde": ["Čoskoro vyjde", "Coming soon"], "Nové": ["Nové", "New"], "Brzy": ["Čoskoro", "Soon"],
     "Ve slevě a česky ·": ["V zľave a po česky ·", "On sale with Czech ·"],
-    "Hry s českými titulky nebo dabingem (podle Steamu), které jsou právě ve slevě. Chceš upozornit na slevu konkrétní hry?":
-      ["Hry s českými titulkami alebo dabingom (podľa Steamu), ktoré sú práve v zľave. Chceš upozorniť na zľavu konkrétnej hry?", "Games with Czech subtitles or dubbing (per Steam) that are on sale now. Want an alert for a specific game?"],
+    "Hry s českým textem nebo dabingem (podle údajů na Steamu), které jsou právě ve slevě. Chceš upozornit na slevu konkrétní hry?":
+      ["Hry s českým textom alebo dabingom (podľa údajov na Steame), ktoré sú práve v zľave. Chceš upozorniť na zľavu konkrétnej hry?", "Games with Czech text or dubbing (per Steam listings) that are on sale now. Want an alert for a specific game?"],
     "Co hraje Česko ·": ["Čo hrá Česko ·", "What Czechia plays ·"], "celý žebříček": ["celý rebríček", "full chart"], "report týdne": ["report týždňa", "weekly report"],
     "Hodiny sledování českých streamů na Twitchi a Kicku za posledních 7 dní.": ["Hodiny sledovania českých streamov na Twitchi a Kicku za posledných 7 dní.", "Watch hours of Czech streams on Twitch and Kick in the last 7 days."],
     "Recenze": ["Recenzie", "Reviews"], "Recenze píšou redakce uvedených webů, u každé je odkaz na celý článek.": ["Recenzie píšu redakcie uvedených webov, pri každej je odkaz na celý článok.", "Reviews are written by the listed sites; each links to the full article."],
@@ -98,15 +98,15 @@
     "Data ověřila AI z oficiálního zdroje": ["Dáta overila AI z oficiálneho zdroja", "Data verified by AI from the official source"],
 
     // čeština a hlídač
-    "CZ dabing": ["CZ dabing", "Czech dub"], "CZ titulky": ["CZ titulky", "Czech subs"], "bez češtiny": ["bez češtiny", "no Czech"], "čeština se ověřuje": ["čeština sa overuje", "checking Czech"],
-    "Napiš název hry a hned uvidíš, jestli má české titulky nebo dabing, kolik stojí a jestli je ve slevě. Údaje o češtině bereme ze Steamu.":
-      ["Napíš názov hry a hneď uvidíš, či má české titulky alebo dabing, koľko stojí a či je v zľave. Údaje o češtine berieme zo Steamu.",
-       "Type a game's name to see whether it has Czech subtitles or dubbing, what it costs and whether it's on sale. Language info comes from Steam."],
+    "CZ dabing": ["CZ dabing", "Czech dub"], "CZ texty": ["CZ texty", "Czech text"], "bez češtiny": ["bez češtiny", "no Czech"], "čeština se ověřuje": ["čeština sa overuje", "checking Czech"],
+    "Napiš název hry a hned uvidíš, jestli má český text nebo dabing, kolik stojí a jestli je ve slevě. Údaje o češtině bereme ze Steamu.":
+      ["Napíš názov hry a hneď uvidíš, či má český text alebo dabing, koľko stojí a či je v zľave. Údaje o češtine berieme zo Steamu.",
+       "Type a game's name to see whether it has Czech text or dubbing, what it costs and whether it's on sale. Language info comes from Steam."],
     "Hledat": ["Hľadať", "Search"], "Najít": ["Nájsť", "Find"], "Název hry": ["Názov hry", "Game title"],
     "Ve slevě s češtinou": ["V zľave s češtinou", "On sale with Czech"], "Zdarma s češtinou": ["Zadarmo s češtinou", "Free with Czech"], "S českým dabingem": ["S českým dabingom", "With Czech dubbing"], "Vše s češtinou": ["Všetko s češtinou", "All with Czech"],
-    "Čeština podle seznamu jazyků na Steamu („dabing“ = Steam uvádí plnou podporu zvuku). Ceny v Kč ze Steamu, kontrolujeme je několikrát denně; vždy platí cena v obchodě. Hry do databáze přibývají – když hru nenajdeš, hledání se zeptá přímo Steamu.":
-      ["Čeština podľa zoznamu jazykov na Steame („dabing“ = Steam uvádza plnú podporu zvuku). Ceny v Kč zo Steamu kontrolujeme niekoľkokrát denne; vždy platí cena v obchode. Hry do databázy pribúdajú – keď hru nenájdeš, vyhľadávanie sa opýta priamo Steamu.",
-       "Czech support per Steam's language list (\"dub\" = Steam lists full audio). Prices in CZK from Steam, checked several times a day; the store price always applies. Games are added continuously – if a game is missing, the search asks Steam directly."],
+    "Čeština podle údajů vydavatele na Steamu: „CZ texty“ = český text (rozhraní nebo titulky – Steam je v tomto seznamu nerozlišuje), „CZ dabing“ = Steam uvádí plnou podporu zvuku. Nejde o nezávisle ověřený stav hry. Ceny v Kč ze Steamu, kontrolujeme je několikrát denně; vždy platí cena v obchodě. Hry do databáze přibývají – když hru nenajdeš, hledání se zeptá přímo Steamu.":
+      ["Čeština podľa údajov vydavateľa na Steame: „CZ texty“ = český text (rozhranie alebo titulky – Steam ich v tomto zozname nerozlišuje), „CZ dabing“ = Steam uvádza plnú podporu zvuku. Nejde o nezávisle overený stav hry. Ceny v Kč zo Steamu kontrolujeme niekoľkokrát denne; vždy platí cena v obchode. Hry do databázy pribúdajú – keď hru nenájdeš, vyhľadávanie sa opýta priamo Steamu.",
+       "Czech support per the publisher's Steam listing: \"Czech text\" = Czech interface or subtitles (Steam's list doesn't tell them apart), \"Czech dub\" = Steam lists full audio. Not independently verified. Prices in CZK from Steam, checked several times a day; the store price always applies. Games are added continuously – if a game is missing, the search asks Steam directly."],
     "Databáze se teprve plní – zkus to za hodinu nebo hledej konkrétní hru.": ["Databáza sa ešte plní – skús to o hodinu alebo hľadaj konkrétnu hru.", "The database is still filling up – try in an hour or search for a specific game."],
     "Nic jsme nenašli. Zkus anglický název hry, jak je na Steamu.": ["Nič sme nenašli. Skús anglický názov hry, ako je na Steame.", "Nothing found. Try the English title as listed on Steam."],
     "Nic jsme nenašli – zkus anglický název ze Steamu.": ["Nič sme nenašli – skús anglický názov zo Steamu.", "Nothing found – try the English title from Steam."],
@@ -131,7 +131,7 @@
 
     // stránka hry
     "← Co hraje Česko": ["← Čo hrá Česko", "← What Czechia plays"], "Kde koupit": ["Kde kúpiť", "Where to buy"], "Čeština": ["Čeština", "Czech"],
-    "✓ dabing i titulky": ["✓ dabing aj titulky", "✓ dubbing and subtitles"], "✓ titulky / rozhraní": ["✓ titulky / rozhranie", "✓ subtitles / interface"], "✗ bez češtiny": ["✗ bez češtiny", "✗ no Czech"],
+    "✓ dabing i titulky": ["✓ dabing aj titulky", "✓ dubbing and subtitles"], "✓ texty (rozhraní nebo titulky)": ["✓ texty (rozhranie alebo titulky)", "✓ text (interface or subtitles)"], "Čeština (podle Steamu)": ["Čeština (podľa Steamu)", "Czech (per Steam)"], "✗ bez češtiny": ["✗ bez češtiny", "✗ no Czech"],
     "Hodnocení hráčů": ["Hodnotenie hráčov", "Player rating"], "Hodnocení GOG": ["Hodnotenie GOG", "GOG rating"], "Hraje právě teď": ["Hrá práve teraz", "Playing right now"],
     "Vydáno": ["Vydané", "Released"], "Vyjde": ["Vyjde", "Release"], "Žánr": ["Žáner", "Genre"], "Vývojář": ["Vývojár", "Developer"],
     "Na českých streamech": ["Na českých streamoch", "On Czech streams"], "hodin sledování za 7 dní": ["hodín sledovania za 7 dní", "watch hours in 7 days"], "diváků ve špičce": ["divákov v špičke", "peak viewers"],
