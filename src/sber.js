@@ -17,6 +17,14 @@ export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS zdroje (
      id TEXT PRIMARY KEY, posledni INTEGER DEFAULT 0, chyby INTEGER DEFAULT 0,
      etag TEXT, lastmod TEXT, stav TEXT, ulozeno INTEGER DEFAULT 0)`,
+  // Vlastní články (napsané AI nebo ručně v adminu).
+  `CREATE TABLE IF NOT EXISTS prispevky (
+     id TEXT PRIMARY KEY, nadpis TEXT NOT NULL, perex TEXT, text TEXT, platformy TEXT, typ TEXT,
+     obrazek TEXT, zdroje TEXT, stav TEXT NOT NULL, autor TEXT NOT NULL, model TEXT, poznamka TEXT,
+     den TEXT, vytvoreno INTEGER NOT NULL, upraveno INTEGER, publikovano INTEGER)`,
+  `CREATE INDEX IF NOT EXISTS idx_prispevky_stav ON prispevky(stav, publikovano DESC)`,
+  // Zprávy, ze kterých už článek vznikl (aby se téma neopakovalo).
+  `CREATE TABLE IF NOT EXISTS pouzite (clanek_id TEXT PRIMARY KEY, prispevek_id TEXT, cas INTEGER)`,
 ];
 
 export async function zajistiSchema(db) {

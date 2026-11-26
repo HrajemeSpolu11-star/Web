@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin – Herní puls</title>
+<meta name="theme-color" content="#0d0f14">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+<header class="top">
+  <a href="/" class="logo"><span class="pulse"></span><span>Herní puls</span><span class="adm-badge">admin</span></a>
+  <nav class="tabs">
+    <a href="#koncept" data-tab="koncept">Ke schválení</a>
+    <a href="#publikovano" data-tab="publikovano">Zveřejněné</a>
+    <a href="#novy" data-tab="novy">+ Nový článek</a>
+  </nav>
+</header>
+
+<main class="adm">
+  <div id="info" class="adm-info"></div>
+  <div id="zprava" class="adm-zprava" role="status" aria-live="polite"></div>
+
+  <section id="seznam-sekce">
+    <button id="napis-ted" class="adm-btn adm-btn-ai" type="button">Nechat AI napsat článek teď</button>
+    <div id="seznam" class="adm-seznam"><p class="empty">Načítám…</p></div>
+  </section>
+
+  <section id="editor-sekce" hidden>
+    <details class="adm-import">
+      <summary>Vložit hotový text (např. článek z chatu)</summary>
+      <p class="adm-help">Vlož celý článek. První řádek = nadpis, první odstavec = perex, zbytek = text. Řádky začínající „Zdroj:“ se uloží jako zdroje (formát: <code>Zdroj: Název | https://odkaz</code>).</p>
+      <textarea id="import-text" rows="8" placeholder="Nadpis článku&#10;&#10;Perex…&#10;&#10;První odstavec…"></textarea>
+      <button id="import-btn" class="adm-btn" type="button">Rozdělit do polí</button>
+    </details>
+
+    <form id="editor" class="adm-form" novalidate>
+      <input type="hidden" id="f-id">
+      <label>Nadpis<input id="f-nadpis" maxlength="160" required></label>
+      <label>Perex<textarea id="f-perex" rows="3" maxlength="600"></textarea></label>
+      <label>Text
+        <textarea id="f-text" rows="14" maxlength="20000"></textarea>
+        <span class="adm-help">Prázdný řádek = nový odstavec · <code>**tučně**</code> · <code>[odkaz](https://…)</code> · <code>## Mezititulek</code></span>
+      </label>
+      <fieldset><legend>Platformy</legend>
+        <div class="adm-checks" id="f-platformy"></div>
+      </fieldset>
+      <label>Typ<select id="f-typ"></select></label>
+      <label>Obrázek (odkaz https://, nepovinné)<input id="f-obrazek" inputmode="url" placeholder="https://…"></label>
+      <label>Zdroje (jeden na řádek: <code>Název | https://odkaz</code>)<textarea id="f-zdroje" rows="3"></textarea></label>
+      <div id="f-poznamka" class="adm-poznamka" hidden></div>
+      <div class="adm-akce">
+        <button class="adm-btn" type="submit" data-stav="koncept">Uložit koncept</button>
+        <button class="adm-btn adm-btn-primary" type="submit" data-stav="publikovano">Zveřejnit</button>
+      </div>
+    </form>
+  </section>
+</main>
+<script src="/admin/admin.js"></script>
+</body>
+</html>

@@ -58,11 +58,20 @@
   }
   const pfs = (list) => (list || []).map((p) => `<span class="pf pf-${esc(p)}">${esc(p)}</span>`).join("");
 
+  // Bezpečné vykreslení jednoduchého formátování: odstavce, ## mezititulky, **tučně**, [odkaz](https://…).
+  function md(text) {
+    const inline = (t) => esc(t)
+      .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+      .replace(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer nofollow">$1</a>');
+    return String(text || "").replace(/\r/g, "").split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean)
+      .map((b) => b.startsWith("## ") ? `<h2>${inline(b.slice(3))}</h2>` : `<p>${inline(b).replace(/\n/g, "<br>")}</p>`).join("");
+  }
+
   function kartaClanku(c, i) {
     return `<a class="card${c.hlavni || i === 0 ? " hero" : ""}" href="#/clanek/${esc(c.id)}">
       ${cover(c, c.nadpis[0])}
       <div class="body"><h3>${esc(c.nadpis)}</h3><p>${esc(c.perex)}</p>
-      <div class="meta">${pfs(c.platformy)}<span>· ${kdy(datum(c))}</span></div></div></a>`;
+      <div class="meta">${c.vlastni ? `<span class="own">Herní puls</span>` : ""}${pfs(c.platformy)}<span>· ${c.vlastni ? "" : esc(c.zdroje?.[0]?.nazev || "") + " · "}${kdy(datum(c))}</span></div></div></a>`;
   }
 
   function avatar(s, extra = "") {
@@ -83,6 +92,9 @@
       .filter((c) => state.filtr === "Vše" || (c.platformy || []).includes(state.filtr))
       .filter((c) => !q || (c.nadpis + " " + c.perex).toLowerCase().includes(q))
       .sort((a, b) => datum(b) - datum(a));
+    // Nahoru jako hlavní článek dej nejnovější vlastní článek (pokud je z posledních 24 h).
+    const hi = list.findIndex((c) => c.vlastni && Date.now() - datum(c) < 864e5);
+    if (hi > 0) list.unshift(...list.splice(hi, 1));
     const zive = state.streameri.filter((s) => s.zive).sort((a, b) => b.divaci - a.divaci).slice(0, 3);
     app.innerHTML = `
       <input class="search" id="q" type="search" placeholder="Hledat ve zprávách" value="${esc(state.hledat)}">
@@ -107,10 +119,10 @@
       <h1>${esc(c.nadpis)}</h1>
       <div class="meta">${pfs(c.platformy)}<span>· ${kdy(datum(c))}</span></div>
       <p class="perex">${esc(c.perex)}</p>
-      <div class="text">${(c.text || []).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
-      ${c.url ? `<a class="btn-source" href="${esc(bezpecnaUrl(c.url))}" target="_blank" rel="noopener noreferrer">Číst celý článek na ${esc(c.zdroje?.[0]?.nazev || "zdroji")} →</a>` : ""}
-      <div class="sources"><b>Zdroj:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer nofollow">${esc(z.nazev)}</a>`).join(", ")}
-        <div class="ai-note">${c.ai ? "Článek napsala automaticky AI ze zpráv uvedených zdrojů." : "Zpráva byla automaticky převzata z RSS kanálu zdroje. Celý článek najdeš u autora."}</div></div>
+      <div class="text">${c.md ? md(c.md) : (c.text || []).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+      ${c.url && !c.vlastni ? `<a class="btn-source" href="${esc(bezpecnaUrl(c.url))}" target="_blank" rel="noopener noreferrer">Číst celý článek na ${esc(c.zdroje?.[0]?.nazev || "zdroji")} →</a>` : ""}
+      <div class="sources"><b>${(c.zdroje || []).length > 1 ? "Zdroje" : "Zdroj"}:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer nofollow">${esc(z.nazev)}</a>`).join(", ")}
+        <div class="ai-note">${c.ai ? "Článek napsala AI na základě uvedených zdrojů a prošel automatickou kontrolou faktů." : c.vlastni ? "Článek redakce Herní puls." : "Zpráva byla automaticky převzata z RSS kanálu zdroje. Celý článek najdeš u autora."}</div></div>
       ${streameri.length ? `<div class="section-title">Kdo tuhle hru streamuje</div><div class="grid">${streameri.map(radekStreamera).join("")}</div>` : ""}
     </article>`;
     scrollTo(0, 0);

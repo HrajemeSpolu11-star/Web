@@ -4,13 +4,14 @@
   "main": "src/index.js",
   "compatibility_date": "2025-11-01",
 
-  // Statický web (HTML, CSS, JS) ze složky public/.
+  // Statický web ze složky public/. Admin a API vždy nejdřív projdou Workerem
+  // (kvůli ověření přihlášení), ostatní soubory se servírují přímo.
   "assets": {
     "directory": "./public",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": ["/admin", "/admin/*", "/api/*"]
   },
 
-  // Databáze s novinkami.
   "d1_databases": [
     {
       "binding": "DB",
@@ -19,9 +20,23 @@
     }
   ],
 
-  // Sběrač novinek běží každých 15 minut.
+  // Záložní AI model (Cloudflare Workers AI).
+  "ai": { "binding": "AI" },
+
+  // */15 = sběr novinek, "7 * * * *" = psaní článků (každou hodinu, píše se jen v HODINY).
   "triggers": {
-    "crons": ["*/15 * * * *"]
+    "crons": ["*/15 * * * *", "7 * * * *"]
+  },
+
+  // Nastavení. Tajné klíče (GROQ_API_KEY) sem NEPATŘÍ – ty jsou v Cloudflare jako Secret.
+  "vars": {
+    "PUBLIKOVAT": "auto",           // "auto" = zveřejnit, když projde kontrolou; "schvalit" = vždy čeká na schválení
+    "CLANKU_DENNE": "5",
+    "HODINY": "8,11,14,17,20",       // hodiny (pražský čas), kdy AI píše
+    "GROQ_MODEL": "openai/gpt-oss-120b",
+    "CF_MODEL": "@cf/google/gemma-3-12b-it",
+    "ACCESS_TEAM_DOMAIN": "",        // doplní se po nastavení Cloudflare Access, např. "mojejmeno.cloudflareaccess.com"
+    "ACCESS_AUD": ""                 // doplní se po nastavení Cloudflare Access (Application Audience tag)
   },
 
   "observability": { "enabled": true }

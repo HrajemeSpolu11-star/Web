@@ -1,0 +1,34 @@
+.adm{max-width:760px;margin:0 auto;padding:16px}
+.adm-badge{font-size:11px;font-weight:700;background:var(--accent2);color:#fff;padding:2px 7px;border-radius:6px;margin-left:4px}
+.adm-info{font-size:13px;color:var(--muted);margin-bottom:10px}
+.adm-zprava{font-size:14px;padding:0;margin-bottom:10px;border-radius:10px}
+.adm-zprava.ok{background:#12301f;color:#8ee0ad;padding:10px 12px}
+.adm-zprava.chyba{background:#3a1216;color:#ffadb5;padding:10px 12px}
+.adm-btn{min-height:44px;padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:15px;font-weight:600;cursor:pointer}
+.adm-btn:focus-visible,.adm-form input:focus-visible,.adm-form textarea:focus-visible,.adm-form select:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+.adm-btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.adm-btn-ai{width:100%;margin-bottom:14px;background:#1d1838;border-color:#3b2f80}
+.adm-btn[disabled]{opacity:.6}
+.adm-seznam{display:flex;flex-direction:column;gap:10px}
+.adm-polozka{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.adm-polozka h3{margin:0 0 4px;font-size:16px;line-height:1.3}
+.adm-polozka .meta{margin:6px 0}
+.adm-polozka .tlacitka{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.adm-polozka .tlacitka .adm-btn{min-height:40px;padding:8px 12px;font-size:14px}
+.adm-autor{font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:#2a2f3b}
+.adm-poznamka{background:#2a2112;color:#f2c879;font-size:13px;border-radius:10px;padding:8px 10px;white-space:pre-line;margin-top:8px}
+.adm-form{display:flex;flex-direction:column;gap:14px}
+.adm-form label,.adm-form fieldset{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:600;color:var(--muted);border:0;padding:0;margin:0}
+.adm-form legend{padding:0;margin-bottom:6px}
+.adm-form input,.adm-form textarea,.adm-form select,.adm-import textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);font:16px/1.5 system-ui,sans-serif}
+.adm-form textarea{resize:vertical}
+.adm-help{font-size:12px;font-weight:400;color:var(--muted)}
+.adm-help code,.adm-form code{background:var(--card2);padding:1px 4px;border-radius:4px}
+.adm-checks{display:flex;gap:8px;flex-wrap:wrap}
+.adm-checks label{flex-direction:row;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--text)}
+.adm-checks input{width:auto}
+.adm-akce{display:flex;gap:10px;position:sticky;bottom:0;background:var(--bg);padding:10px 0}
+.adm-akce .adm-btn{flex:1}
+.adm-import{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:16px}
+.adm-import summary{cursor:pointer;font-weight:600}
+.adm-import textarea{margin:8px 0}
