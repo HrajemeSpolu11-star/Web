@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 15) – Videa: YouTube kanály z popisů streamerů
+- Videa se neukazovala, protože YouTube kanál šel zadat jen v adminu (zamčený). Nově se kanál bere i z popisu, který si
+  streamer sám napsal na Twitchi/Kicku (odkaz `youtube.com/@…`, `/channel/…`, `/c/…`, `/user/…`; odkazy na videa ne).
+  Nic se nedohledává podle jména. Odkaz z adminu má přednost.
+- ID kanálu se čte ze stránky kanálu po kouscích a čtení skončí, jakmile se najde (šetří CPU). Až 4 nové kanály za hodinu,
+  každý kanál se obnovuje po 3 h. Běh obsahu ≈ 36 požadavků z 50.
+- Texty na Domů a `/o-webu` upraveny podle toho.
+
 ## 2026-11-26 (odpoledne, 14) – Přepínač jazyka CZ / SK / EN
 - V hlavičce přepínač **CZ · SK · EN** (pamatuje se v prohlížeči, `hp_jazyk`; návštěvník se slovenským prohlížečem dostane
   napoprvé slovenštinu). Výchozí je čeština.

@@ -1208,7 +1208,7 @@
 
       <section class="sekce">
         <div class="section-title">Nová videa streamerů</div>
-        ${(o.videa || []).length ? `<div class="regal">${o.videa.map((v) => kartaVidea(v)).join("")}</div><p class="source-note">Nejnovější videa z YouTube kanálů českých streamerů. Kliknutím se otevře YouTube.</p>` : `<p class="dim">Zatím tu nejsou žádná videa – YouTube kanály streamerů se postupně doplňují.</p>`}
+        ${(o.videa || []).length ? `<div class="regal">${o.videa.map((v) => kartaVidea(v)).join("")}</div><p class="source-note">Nejnovější videa z YouTube kanálů českých streamerů. Kliknutím se otevře YouTube.</p>` : `<p class="dim">Zatím tu nejsou žádná videa. Kanály hledáme v popisech streamerů na Twitchi a Kicku (odkaz youtube.com/@…) a doplňují se postupně každou hodinu.</p>`}
       </section>
 
       <section class="sekce">

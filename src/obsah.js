@@ -1,5 +1,5 @@
 // Obsah od streamerů: videa z YouTube (veřejné RSS kanálu, bez klíče) a nejlepší klipy z Twitche za týden.
-// Cron "40 * * * *". Jeden běh: max 2 dohledání ID kanálu + 8 YouTube RSS + 8× Twitch /clips (+1 token) ≈ 19 požadavků
+// Cron "40 * * * *". Jeden běh: max 4 dohledání ID kanálu + 8 YouTube RSS + 8× Twitch /clips (+1 token) ≈ 19 požadavků
 // + hlídač cen a čeština (src/hlidac.js): 3 požadavky na ceny + 12 na jazyky → celkem ≈ 34 z 50.
 // Zápisy: jen nová videa (INSERT OR IGNORE), klipy (max 40) a značky času obnovy (16) → ~1 500 řádků denně.
 import { token, helix, zajistiSchemaTwitch } from "./twitch.js";
@@ -11,7 +11,7 @@ const NAZEV_ZDROJE = Object.fromEntries(ZDROJE.map((z) => [z.id, z.nazev]));
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const KANALU_NA_BEH = 8;
 const KLIPU_STREAMERU_NA_BEH = 8;
-const DOHLEDANI_NA_BEH = 2;
+const DOHLEDANI_NA_BEH = 4;
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS videa (id TEXT PRIMARY KEY, streamer_id TEXT NOT NULL, nazev TEXT NOT NULL, cas INTEGER NOT NULL)`,
@@ -27,6 +27,12 @@ export async function zajistiSchemaObsah(db) { await db.batch(SCHEMA.map((s) => 
 const https = (u) => /^https:\/\//.test(String(u || "")) ? String(u) : "";
 const ytId = (s) => /^UC[\w-]{22}$/.test(String(s || "")) ? String(s) : "";
 const odkazYoutube = (odkazy) => { try { return https(JSON.parse(odkazy || "{}").youtube); } catch { return ""; } };
+// Odkaz na YouTube kanál z popisu, který si streamer sám napsal na Twitchi/Kicku (např. „youtube.com/@jmeno“).
+// Odkazy na jednotlivá videa (youtu.be, watch?v=) se neberou – jen kanály.
+function youtubeZPopisu(popis) {
+  const m = /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/(@[\w.\-]{3,40}|channel\/UC[\w-]{22}|c\/[\w.\-]{2,60}|user\/[\w.\-]{2,60})/i.exec(String(popis || ""));
+  return m ? `https://www.youtube.com/${m[1].replace(/\.+$/, "")}` : "";
+}
 const dekoduj = (s) => String(s || "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
   .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).trim();
 
@@ -42,11 +48,19 @@ async function idKanalu(url) {
   });
   if (!r.ok) throw new Error(`YouTube HTTP ${r.status}`);
   let id = "";
-  // HTMLRewriter čte stránku proudem – nemusí se celá držet v paměti ani procházet regexem.
-  await new HTMLRewriter()
-    .on('link[rel="canonical"]', { element(e) { id ||= ytId((e.getAttribute("href") || "").split("/channel/")[1]); } })
-    .on('meta[itemprop="identifier"], meta[itemprop="channelId"]', { element(e) { id ||= ytId(e.getAttribute("content")); } })
-    .transform(r).arrayBuffer();
+  // Stránka kanálu je velká (přes 1 MB). Čteme ji po kouscích a skončíme, jakmile najdeme ID kanálu
+  // (je v hlavičce v odkazu „canonical“) – šetří to procesorový čas (limit 10 ms).
+  const cteni = r.body.getReader(), dekoder = new TextDecoder();
+  let okno = "", precteno = 0;
+  while (!id && precteno < 1_500_000) {
+    const { value, done } = await cteni.read();
+    if (done) break;
+    precteno += value.length;
+    okno = (okno.slice(-300) + dekoder.decode(value, { stream: true }));
+    const m = /(?:rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/|"externalId":"|itemprop="identifier" content=")(UC[\w-]{22})/.exec(okno);
+    if (m) id = m[1];
+  }
+  await cteni.cancel().catch(() => {});
   if (!id) throw new Error("ID kanálu se nenašlo – vlož odkaz ve tvaru youtube.com/channel/UC…");
   return id;
 }
@@ -64,13 +78,15 @@ function parsujYoutube(xml) {
 
 async function youtube(env, db, ted) {
   const vysledek = { videi: 0, chyby: [] };
-  const { results } = await db.prepare(`SELECT s.id, s.odkazy, o.data, o.zdroj, o.cas FROM streameri s
+  // Kanál z odkazu v adminu, jinak z popisu kanálu na Twitchi/Kicku.
+  const { results } = await db.prepare(`SELECT s.id, s.odkazy, s.popis, o.data, o.zdroj, o.cas FROM streameri s
       LEFT JOIN obsah_stav o ON o.klic = 'yt:' || s.id
-      WHERE s.skryty = 0 AND s.odkazy LIKE '%youtube.com%' ORDER BY COALESCE(o.cas, 0) ASC LIMIT ?`).bind(KANALU_NA_BEH).all();
+      WHERE s.skryty = 0 AND (s.odkazy LIKE '%youtube.com%' OR s.popis LIKE '%youtube.com/%') AND COALESCE(o.cas, 0) < ?
+      ORDER BY COALESCE(o.cas, 0) ASC LIMIT ?`).bind(ted - 3 * 3600e3, KANALU_NA_BEH).all();
   let dohledano = 0;
   const prikazy = [];
   for (const s of results) {
-    const url = odkazYoutube(s.odkazy);
+    const url = odkazYoutube(s.odkazy) || youtubeZPopisu(s.popis);
     if (!url) continue;
     let kanal = s.zdroj === url ? ytId(s.data) : "";
     try {
