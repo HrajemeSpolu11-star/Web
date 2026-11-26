@@ -12,6 +12,10 @@ navázat bez čtení celé historie. **Aktualizuj ho, když se změní stav nebo
 - **Nasazení:** push do `main` → Cloudflare Workers Builds nasadí automaticky. Žádné GitHub Actions.
 
 ## Co web umí (stav k 2026-11-26)
+0. **Struktura (od 26. 11. večer)**: menu Domů / Novinky / Hry / Streameři. Domů = rozcestník (ranní přehled, živě, zprávy,
+   4 nástroje, jedna hra týdne, týden na scéně, výročí) – **ne katalog obchodů** (uživatel nechce, aby web působil jako prodejní).
+   Obchody jsou na `/obchody`. Hry = rozcestník `/pruvodce` se skupinami. Nové: `/ranni`, `/aktualizace`, `/ceska-scena`,
+   `/co-hrat`, `/rozjede-se`, `/vyssi-nizsi`, `/radce`. Přání uživatele: nic nezahlcovat, přehlednost přede vším.
 1. **Novinky** – sběr z RSS (19 zdrojů: 11 zahraničních, 8 českých – `src/zdroje.js`) každých 15 min, jen zprávy mladší 12 h.
    Přepínač České weby / Ze zahraničí, kategorie, platformy, hledání. RSS zprávy odkazují na původní článek
    a mají `noindex`. České zdroje (Games.cz, Zing, Hrej, Doupě, Spite, Gaming Professors, PCTuning) ověřené 26. 11. 2026.

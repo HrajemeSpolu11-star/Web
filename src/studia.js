@@ -176,3 +176,21 @@ export async function zpravyPlatforem(db, re, limit = 8) {
   const { results } = await db.prepare("SELECT * FROM studia_zpravy WHERE studio IN ('playstation', 'xbox', 'nintendo') ORDER BY cas DESC LIMIT 300").all();
   return results.filter((r) => re.test(r.nazev)).slice(0, limit).map(naPolozku);
 }
+
+// /api/ceska-scena – česká studia, jejich nejnovější zprávy a videa a jejich hry (pro „kdo je právě streamuje“).
+export async function apiCeskaScena(env) {
+  const db = env.DB;
+  await zajistiSchemaStudia(db);
+  const cz = STUDIA.filter((s) => s.cz);
+  const sl = cz.map((s) => s.slug);
+  const otazniky = sl.map(() => "?").join(",");
+  const [zpr, vid] = await db.batch([
+    db.prepare(`SELECT * FROM studia_zpravy WHERE studio IN (${otazniky}) AND druh <> 'video' ORDER BY cas DESC LIMIT 12`).bind(...sl),
+    db.prepare(`SELECT * FROM studia_zpravy WHERE studio IN (${otazniky}) AND druh = 'video' ORDER BY cas DESC LIMIT 8`).bind(...sl),
+  ]);
+  const nahledy = await nactiNahledy(db, cz.map((s) => s.web)).catch(() => new Map());
+  return {
+    studia: cz.map((s) => ({ ...verejneStudio(s), nahled: nahledy.get(s.web) || null })),
+    zpravy: zpr.results.map(naPolozku), videa: vid.results.map(naPolozku),
+  };
+}

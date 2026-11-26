@@ -14,7 +14,9 @@
     "run_worker_first": ["/", "/admin", "/admin/*", "/api/*", "/robots.txt", "/sitemap.xml",
       "/novinky", "/novinky/", "/zive", "/zive/", "/streameri", "/streameri/", "/hry", "/hry/", "/prehled", "/prehled/",
       "/porovnat", "/porovnat/", "/report", "/report/*", "/cestina", "/cestina/", "/hlidac", "/hlidac/", "/stav", "/stav/",
-      "/vydani", "/vydani/", "/akce", "/akce/", "/studia", "/studia/", "/studio/*", "/clanek/*", "/hra/*", "/streamer/*"],
+      "/vydani", "/vydani/", "/akce", "/akce/", "/studia", "/studia/", "/studio/*", "/clanek/*", "/hra/*", "/streamer/*",
+      "/pruvodce", "/pruvodce/", "/obchody", "/obchody/", "/ranni", "/ranni/", "/aktualizace", "/aktualizace/", "/ceska-scena", "/ceska-scena/",
+      "/co-hrat", "/co-hrat/", "/rozjede-se", "/rozjede-se/", "/vyssi-nizsi", "/vyssi-nizsi/", "/radce", "/radce/"],
     // Neexistující adresa → public/404.html se stavem 404.
     "not_found_handling": "404-page"
   },

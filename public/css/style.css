@@ -670,3 +670,153 @@ a.ai-stav u{text-decoration-color:var(--line)}
   .chips-barvy .chip.on:hover{background:var(--c)}}
 @media (prefers-reduced-motion:reduce){.chips-barvy .chip,.chips-barvy .chip::before{transition:none}.chips-barvy .chip:hover,.chips-barvy .chip:active{transform:none}}
 .vyd-uz{margin:6px 0 2px;font-size:13px;line-height:1.4;color:var(--muted);border-left:3px solid #5cc8ff;padding-left:8px}
+
+/* ===== Nové části (2026-11-26 večer): rozcestník Hry, ranní přehled, nástroje ===== */
+.zpet-hub{display:inline-flex;align-items:center;min-height:40px;font-weight:700;color:var(--muted);font-size:14px}
+.zpet-hub:hover{color:var(--text)}
+.ai-stitek{display:inline-flex;align-items:center;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;
+  background:color-mix(in srgb,var(--accent2) 22%,transparent);color:#d9c6ff;border:1px solid color-mix(in srgb,var(--accent2) 55%,transparent)}
+
+/* Rozcestník Hry: skupiny s barvou, dlaždice s jednou větou */
+.pruvodce{display:grid;gap:26px;margin-top:8px}
+.pr-skupina{--sk:#ffc04d}
+.pr-skupina h2{font-size:15px;font-weight:800;margin:0 0 10px;color:var(--sk);display:flex;align-items:center;gap:8px}
+.pr-skupina h2::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--sk)}
+.pr-dlazdice{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.pr-dl{display:flex;flex-direction:column;gap:4px;padding:16px 18px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);
+  border-left:4px solid var(--sk);transition:transform .18s ease,border-color .18s ease,background-color .18s ease;min-width:0}
+.pr-dl b{font-size:17px}
+.pr-dl span{color:var(--muted);font-size:14px;line-height:1.4}
+.pr-dl:hover{transform:translateY(-2px);border-color:var(--sk);background:var(--card2)}
+.pr-dl:active{transform:scale(.98)}
+
+/* Ranní přehled */
+.ranni-karta{margin:18px 0 6px;padding:18px 20px;border-radius:var(--r-l);background:linear-gradient(160deg,var(--card2),var(--card));border:1px solid var(--line)}
+.ranni-karta header{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}
+.ranni-karta h2{margin:0;font-size:clamp(21px,5vw,26px);font-weight:800}
+.ranni-body{margin:8px 0 6px;padding:0;list-style:none;counter-reset:r;display:grid;gap:12px}
+.ranni-body li{counter-increment:r;display:grid;grid-template-columns:30px 1fr;column-gap:10px;row-gap:2px;min-width:0}
+.ranni-body li::before{content:counter(r);grid-row:span 3;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:13px;margin-top:2px}
+.ranni-body li a{color:var(--text)}
+.ranni-body li a:hover b{text-decoration:underline}
+.ranni-body li span{color:var(--muted);font-size:15px;line-height:1.45}
+.ranni-body li small{font-size:12px}
+.dalsi-odkaz{display:inline-flex;margin-top:6px;font-weight:700;color:var(--accent);min-height:40px;align-items:center}
+.ranni-odkaz{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:0 0 14px;padding:12px 16px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+.ranni-odkaz span:last-child{color:var(--muted);font-size:14px}
+.ranni-odkaz:hover{border-color:var(--accent2)}
+
+/* Domů: nástroje, výročí, obchody */
+.nastroje{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.nastroj{--sk:#ffc04d;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:4px;padding:16px 16px 16px 18px;border-radius:var(--r);
+  background:var(--card);border:1px solid var(--line);transition:transform .18s ease,border-color .18s ease;min-width:0}
+.nastroj::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--sk)}
+.nastroj b{font-size:17px}
+.nastroj span{color:var(--muted);font-size:14px}
+.nastroj:hover{transform:translateY(-2px);border-color:var(--sk)}
+.nastroj:active{transform:scale(.98)}
+.vice-nastroju{margin:10px 0 0;color:var(--muted);font-size:14px}
+.vice-nastroju a{font-weight:700;color:var(--text)}
+.domu-shrnuti{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0 0;font-size:15px}
+.titul-pocet{font-size:15px;font-weight:600}
+.vyroci{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.vyr{display:flex;flex-direction:column;gap:3px;min-width:0}
+.vyr img,.vyr-bez{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:var(--r-s);background:var(--card2);display:grid;place-items:center;font-size:34px;font-weight:800;color:var(--muted)}
+.vyr-pred{font-size:12px;font-weight:800;color:var(--accent)}
+.vyr b{font-size:14px;line-height:1.3}
+.vyr:hover img{filter:brightness(1.1)}
+
+/* Aktualizace her */
+.patche{display:grid;gap:12px}
+.patch{padding:16px 18px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);min-width:0}
+.patch header{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px}
+.patch-hra{font-weight:800;color:#5cc8ff}
+.patch h3{margin:6px 0;font-size:18px;line-height:1.3;overflow-wrap:anywhere}
+.patch p{margin:0 0 8px;color:var(--muted)}
+.patch ul{margin:0 0 10px;padding-left:20px;display:grid;gap:4px}
+.patch footer{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;font-size:14px}
+.patch footer a{font-weight:700}
+
+/* Česká scéna */
+.cz-studia{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.cz-studio{display:flex;gap:12px;align-items:center;padding:10px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);min-width:0}
+.cz-studio img,.cz-studio-bez{width:84px;height:56px;flex:none;object-fit:cover;border-radius:var(--r-s);background:var(--card2);display:grid;place-items:center;font-weight:800;font-size:22px}
+.cz-studio div{display:flex;flex-direction:column;min-width:0}
+.cz-studio span{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cz-studio:hover{border-color:#ff7a9c}
+
+/* Co dnes hrát? */
+.cohrat{display:grid;gap:14px;margin:6px 0 4px}
+.cohrat fieldset{border:0;margin:0;padding:0;min-width:0}
+.cohrat legend{font-weight:800;margin-bottom:8px;padding:0}
+.ch-volby{display:flex;flex-wrap:wrap;gap:8px}
+.ch-v{position:relative;display:inline-flex}
+.ch-v input{position:absolute;opacity:0;width:1px;height:1px}
+.ch-v span{display:inline-flex;align-items:center;min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);
+  font-size:14px;font-weight:600;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .15s ease}
+.ch-v span:hover{border-color:var(--accent)}
+.ch-v input:checked + span{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.ch-v input:focus-visible + span{outline:3px solid var(--accent);outline-offset:2px}
+.ch-v span:active{transform:scale(.95)}
+.ch-vysledky{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.ch-hra{display:flex;gap:12px;padding:10px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);min-width:0}
+.ch-hra:hover{border-color:var(--accent)}
+.ch-hra img,.ch-bez{width:120px;height:56px;flex:none;object-fit:cover;border-radius:var(--r-s);background:var(--card2)}
+.ch-t{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:13px}
+.ch-t b{font-size:15px;line-height:1.3}
+.ch-meta{display:flex;flex-wrap:wrap;gap:4px}
+.ch-proc{color:var(--muted)}
+.ch-cena em{color:#4fd88f;font-style:normal;font-weight:700}
+
+/* Rozjede se mi to? */
+.rozjede{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));align-items:start}
+.rozjede section{padding:16px 18px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);min-width:0}
+.h-maly{font-size:17px;margin:0 0 10px}
+.pc-form{display:grid;gap:10px}
+.pc-form label{display:grid;gap:4px;font-weight:700;font-size:14px}
+.pc-form input{min-height:44px;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);color:var(--text);font:inherit}
+.pc-form button,.vn-tlacitka button{min-height:44px;padding:8px 18px;border-radius:999px;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:800;cursor:pointer}
+.pc-pozn{font-size:13px;margin:0}
+.hw-nalez{display:flex;flex-direction:column;gap:2px;margin:8px 0}
+.hw-nalez a{padding:8px 10px;border-radius:10px;min-height:40px;display:flex;align-items:center}
+.hw-nalez a:hover{background:var(--card2)}
+.hw-hra{display:flex;align-items:center;gap:10px;margin:10px 0}
+.hw-hra img{width:120px;border-radius:var(--r-s)}
+.hw-vysledek{margin-top:10px;padding:12px 14px;border-radius:var(--r-s);background:var(--bg2);border-left:4px solid var(--muted)}
+.hw-vysledek.hw-ok{border-color:#4fd88f}.hw-vysledek.hw-stredne{border-color:#ffc04d}.hw-vysledek.hw-ne{border-color:#ff5b5b}
+.hw-verdikt{font-weight:800;margin:0 0 8px}
+.hw-vysledek ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.hw-vysledek li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.hw-vysledek li small{flex-basis:100%;font-size:12px;overflow-wrap:anywhere}
+.hw-vysledek i{font-style:normal;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--card2)}
+i.hw-ok{background:#4fd88f;color:#0b2a17}i.hw-stredne{background:#ffc04d;color:#2a1d00}i.hw-ne{background:#ff5b5b;color:#2a0606}
+.hw-na-hre{margin:10px 0;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+.hw-na-hre a{font-weight:700}
+
+/* Vyšší, nebo nižší? */
+.vn{margin:10px 0;padding:18px;border-radius:var(--r-l);background:var(--card);border:1px solid var(--line);text-align:center}
+.vn-stav{display:flex;justify-content:center;gap:16px;font-size:14px;color:var(--muted)}
+.vn-stav b{color:var(--text)}
+.vn-otazka{font-size:clamp(19px,4.6vw,24px);font-weight:800;margin:12px 0}
+.vn-otazka-mala{color:var(--muted);margin:12px 0}
+.vn-dvojice{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.vn-vs{font-weight:800;color:var(--muted)}
+.vn-hra{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.vn-hra img,.vn-bez{width:100%;max-width:260px;aspect-ratio:460/215;object-fit:cover;border-radius:var(--r-s);background:var(--card2);display:grid;place-items:center;font-size:30px;font-weight:800}
+.vn-hra b{font-size:15px;line-height:1.3;overflow-wrap:anywhere}
+.vn-cislo{font-size:clamp(20px,5vw,28px);font-weight:800;display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.vn-cislo small{font-size:12px;font-weight:600;color:var(--muted)}
+.vn-skryte{color:var(--accent)}
+.vn-dobre{color:#4fd88f;animation:vn-pop .4s ease}.vn-spatne{color:#ff5b5b;animation:vn-pop .4s ease}
+@keyframes vn-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.vn-tlacitka{display:flex;justify-content:center;gap:12px}
+.vn-tlacitka button{min-width:120px;font-size:17px}
+.vn-tlacitka button[data-vn="0"]{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+.vn-tlacitka button:disabled{opacity:.5}
+.vn-velke{font-size:48px;font-weight:800;margin:6px 0}
+.vn-tecky{font-size:20px;letter-spacing:2px}
+.vn-konec .vyd-akce{justify-content:center}
+@media (max-width:520px){.vn{padding:14px 10px}.vn-dvojice{gap:6px}.vn-hra b{font-size:13px}.vn-cislo{font-size:19px}}
+@media (prefers-reduced-motion:reduce){.vn-dobre,.vn-spatne{animation:none}.pr-dl,.nastroj{transition:none}.pr-dl:hover,.nastroj:hover{transform:none}}
+#q-radce{margin:10px 0 12px}

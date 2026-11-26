@@ -152,7 +152,8 @@ export async function sberKatalogu(env) {
 export async function apiKatalog(env) {
   const db = env.DB;
   await db.prepare(SCHEMA).run();
-  const { results } = await db.prepare("SELECT klic, data, cas FROM katalog").all();
+  // Kalendář vydání a výročí mají vlastní API – sem nepatří (zbytečně by zvětšovaly odpověď).
+  const { results } = await db.prepare("SELECT klic, data, cas FROM katalog WHERE klic NOT IN ('vydani', 'vyroci')").all();
   const out = { cas: null };
   for (const r of results) {
     try { out[r.klic] = JSON.parse(r.data); } catch { out[r.klic] = []; }

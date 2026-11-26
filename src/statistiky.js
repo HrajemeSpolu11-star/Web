@@ -153,6 +153,17 @@ export async function apiReport(env, naStreamera, tydenId) {
 
   // Seznam týdnů, pro které máme data.
   const od = await zacatekDat(db);
+
+  // Nově zachycené kanály (poprvé jsme je viděli vysílat tento týden) – má smysl až od druhého týdne měření.
+  let novacci = [], klipy = [];
+  if (od && od < po) {
+    novacci = await db.prepare(`SELECT s.*, MAX(n.max_divaku) AS t_max FROM snimky n JOIN streameri s ON s.id = n.user_id
+      WHERE n.den BETWEEN ?1 AND ?2 AND s.skryty = 0 AND NOT EXISTS (SELECT 1 FROM snimky b WHERE b.user_id = n.user_id AND b.den < ?1)
+      GROUP BY s.id HAVING t_max >= 3 ORDER BY t_max DESC LIMIT 5`).bind(po, ne).all().then((r) => r.results).catch(() => []);
+  }
+  klipy = await db.prepare(`SELECT k.url, k.nazev, k.nahled, k.zhlednuti, k.delka, k.cas, s.jmeno, s.login, s.platforma, s.profilovka FROM klipy k
+    JOIN streameri s ON s.id = k.streamer_id WHERE s.skryty = 0 AND k.cas >= ? AND k.cas < ? ORDER BY k.zhlednuti DESC LIMIT 6`)
+    .bind(odMs, doMs).all().then((r) => r.results).catch(() => []);
   const tydny = [];
   if (od) for (let t = aktualniPondeli; t >= pondeli(od) && tydny.length < 60; t = posunDne(t, -7)) tydny.push({ id: isoTyden(t), od: t, do: posunDne(t, 6), probiha: t === aktualniPondeli });
 
@@ -162,7 +173,10 @@ export async function apiReport(env, naStreamera, tydenId) {
       divaci: top.results.map((r) => str(r, { hodnota: r.t_max })),
       hodiny: hodinyStr.results.map((r) => str(r, { hodnota: Math.round((r.t_minut || 0) / 60) })),
       rust: rust.results.filter((r) => r.t_rust > 0).map((r) => str(r, { hodnota: r.t_rust })),
+      novacci: novacci.map((r) => str(r, { hodnota: r.t_max })),
     },
+    klipy: klipy.map((k) => ({ url: k.url, nazev: k.nazev, nahled: k.nahled, zhlednuti: k.zhlednuti, delka: k.delka, cas: new Date(k.cas).toISOString(),
+      jmeno: k.jmeno || k.login, login: k.login, platforma: k.platforma || "twitch", profilovka: /^https:\/\//.test(k.profilovka || "") ? k.profilovka : "" })),
     udalosti: udal.results.map((r) => str(r, { typ: r.u_typ, hodnota: r.u_hodnota, cas: new Date(r.u_cas).toISOString() })),
     tydny, data_od: od, cache: probiha ? 1800 : 86400,
   };

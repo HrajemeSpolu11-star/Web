@@ -83,3 +83,16 @@ Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?
 - Streameři (Twitch+Kick): řádek streamera + snímek dne + hra streamera u **každého** živého streamu (od 26. 11. i 0–2 diváci) ≈ 35–45 tis./den.
 - `hry_den` ≈ 6 tis., `scena` ≈ 200, katalog + steam_hry + ceny ≈ 8–10 tis., studia/videa/klipy jen nové řádky, deník ≈ 400.
 - Celkem zhruba 55–65 tis. z limitu 100 tis. denně. Při dalším růstu hlídat v Cloudflare → D1 → Metrics.
+
+## Nové části (2026-11-26 večer)
+| Část | Soubor | Kdy běží | Požadavky |
+|---|---|---|---|
+| Ranní přehled (AI) | `src/ranni.js`, tabulka `ranni` | Cron psaní „7“, od 6:00 Praha, 1× denně | 1 AI volání |
+| Aktualizace her | `src/patche.js`, tabulka `patche` | sběr v Cronu obsahu „40“ (3 hry), shrnutí v Cronu psaní (1/h) | 3 Steam + 1 AI |
+| Výročí | `src/vyroci.js`, katalog `vyroci` | Cron katalogu „25“, 1× denně | 1–3 IGDB |
+| Co hrát, Rádce, Vyšší/nižší | `src/nastroje.js` | jen na žádost (mezipaměť 30 min) | 0 externích |
+| Česká scéna | `apiCeskaScena` v `src/studia.js` | jen na žádost | 0 externích |
+| Rozjede se mi to? | `public/js/hw.js` | v prohlížeči | 0 |
+
+Kontrola AI textů (ranní přehled, aktualizace): každé číslo v AI textu musí být i ve zdroji, jinak se bod/řádek vyřadí.
+Rozcestník Hry: `SKUPINY_HER` v `app.js` – nová stránka sekce Hry se přidá do jedné skupiny.

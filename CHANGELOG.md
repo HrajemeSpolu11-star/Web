@@ -6,6 +6,32 @@
 
 ---
 
+## 2026-11-26 (večer, 21) – Web už není jen katalog obchodů: nový Domů, rozcestník Hry a 8 nových částí
+- **Domů přestavěn**: ranní přehled → právě živě → zprávy → 4 nástroje → jedna hra týdne + odkaz na slevy → týden na české
+  scéně → „dnes před lety vyšlo“. Všechny obchodní sekce (slevy, žebříčky, novinky v obchodech) jsou na nové stránce
+  **/obchody „Slevy a hry zdarma“**. Klipy a videa streamerů jsou v Týdnu na scéně a na stránce Živě.
+- **Rozcestník Hry `/pruvodce`** (menu „Hry“): stránky rozdělené do 5 skupin (Najdi si hru, Ušetři, Co se chystá, Kdo hry dělá,
+  Zahraj si). Na podstránkách jen odkaz zpět a záložky stejné skupiny – žádná dlouhá řada odkazů.
+- **Ranní přehled (AI)** `/ranni` (`src/ranni.js`, Cron psaní od 6:00): 5 bodů ze zpráv za 24 h; bod musí odkazovat na
+  existující zprávu a čísla v něm se musí objevit ve zprávě, jinak se vyřadí. Archiv 60 dní. Odkaz i v Novinkách.
+- **Aktualizace her** `/aktualizace` (`src/patche.js`): oficiální oznámení vývojářů na Steamu u nejhranějších her (Cron obsahu,
+  3 hry/běh) → AI shrnutí česky (Cron psaní, 1/h). Stejná kontrola čísel; nepovedené shrnutí se nezveřejní.
+- **Česká herní scéna** `/ceska-scena` (`/api/ceska-scena`): česká studia, jejich zprávy a videa, kdo právě streamuje jejich hry.
+- **Co dnes hrát?** `/co-hrat` (`/api/co-hrat`): volby s kým / cena / čeština / žánr → hry seřazené podle hodnocení hráčů
+  (nebo Metacritic) a počtu doporučení. Databáze her ze Steamu má nové sloupce `zanry`, `rezim`, `doporuceni`, `metacritic`
+  (plní je `sberJazyku`, 12 her/h; nejdřív hry bez žánrů).
+- **Rozjede se mi to?** `/rozjede-se` + kontrola na stránce každé hry: počítač se uloží jen v prohlížeči (`hp_pc`),
+  porovnání s požadavky ze Steamu podle orientační tabulky výkonu (`public/js/hw.js`, načítá se jen na těchto stránkách).
+- **Vyšší, nebo nižší?** `/vyssi-nizsi` (`/api/vyssi-nizsi`): denní minihra, 3 sady čísel (hráči na Steamu, hodiny sledování
+  českých streamů, doporučení na Steamu), stejné kolo pro všechny, skóre a rekord v prohlížeči, sdílení textem i obrázkem.
+- **Rádce pro streamery** `/radce` (`/api/radce`): průměrný počet diváků jednoho českého streamu každé hry za 7 dní
+  (`hry_den`: divácké minuty / minuty vysílání), průměrný počet souběžných streamů, počet streamerů.
+- **Týden na české scéně** (report): nově „Nově zachycené kanály“ (od 2. týdne měření) a „Klipy týdne“; záložka se jmenuje
+  „Týden na scéně“.
+- **Dnes před lety vyšlo** (`src/vyroci.js`, Cron katalogu 1× denně, 1 dotaz na IGDB).
+- Oprava: `/api/katalog` už neposílá celý kalendář vydání (zbytečně velká odpověď na Domů).
+- Požadavky v Cronech: katalog nejhůř ~45 z 50 (výročí jen 1× denně), obsah ~39, psaní ~3 AI volání za hodinu.
+
 ## 2026-11-26 (odpoledne, 20) – Oprava 404 po obnovení stránky, kalendář vydání bez starých her, barevné filtry, audit
 - **Oprava: obnovení stránky vracelo 404** (např. `/porovnat?a=…`, ale týkalo se všech podstránek). Cloudflare při navigaci
   servíroval rovnou `404.html` a Worker nespustil. Všechny stránky webu jsou teď ve `run_worker_first` (`wrangler.jsonc`) –

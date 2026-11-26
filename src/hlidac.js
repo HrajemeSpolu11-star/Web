@@ -25,10 +25,21 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS idx_hlidani_hra ON hlidani(steam_id)`,
 ];
 let schemaHotova = false;
+// Doplněné sloupce (Co dnes hrát): žánry Steamu (čísla), režim hraní (bity), počet doporučení, Metacritic.
+const NOVE_SLOUPCE = ["zanry TEXT", "rezim INTEGER", "doporuceni INTEGER", "metacritic INTEGER"];
 export async function zajistiSchemaHlidac(db) {
   if (schemaHotova) return;
   await db.batch(SCHEMA.map((s) => db.prepare(s)));
+  const { results } = await db.prepare("PRAGMA table_info(steam_hry)").all();
+  const ma = new Set(results.map((r) => r.name));
+  for (const sl of NOVE_SLOUPCE) if (!ma.has(sl.split(" ")[0])) await db.prepare(`ALTER TABLE steam_hry ADD COLUMN ${sl}`).run().catch(() => {});
   schemaHotova = true;
+}
+
+// Režim hraní z kategorií Steamu: 1 = pro jednoho, 2 = kooperace, 4 = hraní proti ostatním online.
+export function rezimHry(kategorie) {
+  const k = new Set((kategorie || []).map((x) => Number(x.id)));
+  return (k.has(2) ? 1 : 0) | ([9, 38, 39, 48].some((i) => k.has(i)) ? 2 : 0) | ([1, 20, 27, 36, 47, 49].some((i) => k.has(i)) ? 4 : 0);
 }
 
 const https = (u) => /^https:\/\//.test(String(u || "")) ? String(u) : "";
@@ -63,7 +74,8 @@ export function prikazyUlozHry(db, hry, ted) {
 // Jazyky (čeština) pro hry, které je ještě nemají nebo je mají starší než 30 dní. Hlídané hry první.
 async function sberJazyku(db, ted, limit = JAZYKU_NA_BEH) {
   const { results } = await db.prepare(`SELECT g.id FROM steam_hry g LEFT JOIN (SELECT DISTINCT steam_id FROM hlidani) h ON h.steam_id = g.id
-    WHERE g.jazyky_cas IS NULL OR g.jazyky_cas < ? ORDER BY (h.steam_id IS NULL), (g.jazyky_cas IS NOT NULL), g.pridano DESC LIMIT ?`)
+    WHERE g.jazyky_cas IS NULL OR g.jazyky_cas < ? OR g.zanry IS NULL
+    ORDER BY (h.steam_id IS NULL), (g.jazyky_cas IS NOT NULL), (g.zanry IS NOT NULL), g.pridano DESC LIMIT ?`)
     .bind(ted - 30 * 86400e3, limit).all();
   const odp = await Promise.allSettled(results.map((r) => json(`https://store.steampowered.com/api/appdetails?appids=${r.id}&cc=cz&l=czech`)));
   const prikazy = [];
@@ -71,12 +83,15 @@ async function sberJazyku(db, ted, limit = JAZYKU_NA_BEH) {
     const o = odp[i];
     if (o.status !== "fulfilled") return;
     const d = o.value?.[r.id]?.success ? o.value[r.id].data : null;
-    if (!d) { prikazy.push(db.prepare("UPDATE steam_hry SET jazyky_cas = ? WHERE id = ?").bind(ted, r.id)); return; }
+    if (!d) { prikazy.push(db.prepare("UPDATE steam_hry SET jazyky_cas = ?, zanry = COALESCE(zanry, ',') WHERE id = ?").bind(ted, r.id)); return; }
     const p = d.price_overview;
+    const zanry = (d.genres || []).map((g) => parseInt(g.id, 10)).filter((x) => x > 0 && x < 1000).slice(0, 8).join(",");
     prikazy.push(db.prepare(`UPDATE steam_hry SET cestina = ?, zdarma = ?, vychazi = ?, obrazek = COALESCE(?, obrazek),
-        cena = COALESCE(?, cena), puvodni = COALESCE(?, puvodni), sleva = COALESCE(?, sleva), jazyky_cas = ? WHERE id = ?`)
+        cena = COALESCE(?, cena), puvodni = COALESCE(?, puvodni), sleva = COALESCE(?, sleva), jazyky_cas = ?,
+        zanry = ?, rezim = ?, doporuceni = ?, metacritic = ? WHERE id = ?`)
       .bind(urovenCestiny(d.supported_languages), d.is_free ? 1 : 0, d.release_date?.coming_soon ? 1 : 0, https(d.header_image) || null,
-        p ? p.final / 100 : null, p ? p.initial / 100 : null, p ? p.discount_percent || 0 : null, ted, r.id));
+        p ? p.final / 100 : null, p ? p.initial / 100 : null, p ? p.discount_percent || 0 : null, ted,
+        `,${zanry},`, rezimHry(d.categories), Number(d.recommendations?.total) || 0, Number(d.metacritic?.score) || null, r.id));
   });
   if (prikazy.length) await db.batch(prikazy);
   return prikazy.length;

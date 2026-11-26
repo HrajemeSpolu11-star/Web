@@ -22,6 +22,8 @@ export const ULOHY = {
   studia: { nazev: "Studia a platformy (novinky, trailery)", interval: 15 },
   obsah: { nazev: "Videa, klipy, ceny a čeština", interval: 60 },
   psani: { nazev: "Psaní článků (AI)", interval: null }, // běží jen v nastavené hodiny a jen s AI klíčem
+  ranni: { nazev: "Ranní přehled (AI)", interval: null }, // jednou denně ráno
+  patche: { nazev: "Shrnutí aktualizací her (AI)", interval: null }, // jen když je nová aktualizace
 };
 
 export async function zapis(db, uloha, ok, text) {
