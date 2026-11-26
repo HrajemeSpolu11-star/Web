@@ -56,9 +56,14 @@ export async function sberKick(env) {
       catch (e) { if (e.kod !== 401) throw e; tok = await token(env, true); return kick(c, tok); }
     };
 
-    // 1) Živé streamy v češtině (API vrací max. 100, seřazené podle diváků).
-    const d = await volej(`/livestreams?language=${JAZYK}&limit=100&sort=viewer_count`);
-    const streamy = (d.data || []).filter((s) => s.slug && s.broadcaster_user_id);
+    // 1) Živé streamy v češtině. Oficiální API vrátí max. 100 a další stránky nemá → dva dotazy:
+    //    100 nejsledovanějších + 100 naposledy spuštěných (zachytí menší streamy). Sloučeno podle ID.
+    const [d, d2] = await Promise.all([
+      volej(`/livestreams?language=${JAZYK}&limit=100&sort=viewer_count`),
+      volej(`/livestreams?language=${JAZYK}&limit=100&sort=started_at`).catch(() => ({ data: [] })),
+    ]);
+    const vid = new Set();
+    const streamy = [...(d.data || []), ...(d2.data || [])].filter((s) => s.slug && s.broadcaster_user_id && !vid.has(s.broadcaster_user_id) && vid.add(s.broadcaster_user_id));
 
     const upsert = db.prepare(`
       INSERT INTO streameri (id, platforma, login, jmeno, profilovka, prvni_videno, posledni_zive, posledni_stream, pocet_streamu, max_divaku, posledni_hra,

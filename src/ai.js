@@ -16,11 +16,22 @@ async function groq(env, messages) {
   return { text: d.choices?.[0]?.message?.content || "", model: `groq:${model}` };
 }
 
+// Workers AI: řada modelů – když jeden účet nesmí používat nebo nefunguje, zkusí se další.
+// (Gemma 3 přestala být pro tento účet dostupná: „5018: This account is not allowed to access…“.)
+const CF_MODELY = ["@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast", "@cf/google/gemma-3-12b-it"];
 async function workersAi(env, messages) {
-  const model = env.CF_MODEL || "@cf/google/gemma-3-12b-it";
-  const r = await env.AI.run(model, { messages, max_tokens: 3000, temperature: 0.4 });
-  const text = typeof r?.response === "string" ? r.response : JSON.stringify(r?.response ?? "");
-  return { text, model: `cf:${model}` };
+  const modely = [...new Set([env.CF_MODEL, ...CF_MODELY].filter(Boolean))];
+  const chyby = [];
+  for (const model of modely) {
+    try {
+      const r = await env.AI.run(model, { messages, max_tokens: 3000, temperature: 0.4 });
+      const text = typeof r?.response === "string" ? r.response : JSON.stringify(r?.response ?? "");
+      if (!text) throw new Error("prázdná odpověď");
+      vytahniJson(text); // ověřit, že je to JSON – jinak zkusit další model
+      return { text, model: `cf:${model}` };
+    } catch (e) { chyby.push(`${model.split("/").pop()}: ${String(e.message || e).slice(0, 80)}`); }
+  }
+  throw new Error(chyby.join("; "));
 }
 
 export function vytahniJson(text) {

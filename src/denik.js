@@ -25,6 +25,7 @@ export const ULOHY = {
   ranni: { nazev: "Ranní přehled (AI)", interval: null }, // jednou denně ráno
   patche: { nazev: "Shrnutí aktualizací her (AI)", interval: null }, // jen když je nová aktualizace
   aktualizace: { nazev: "Aktualizace her (Steam, ~1 000 her)", interval: 15 },
+  kalendar: { nazev: "Kalendář vydání a výročí (IGDB)", interval: null },
 };
 
 export async function zapis(db, uloha, ok, text) {

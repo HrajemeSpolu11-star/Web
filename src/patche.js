@@ -202,8 +202,7 @@ TEXT:
 ${String(p.text || "").slice(0, 7000)}` },
     ]));
   } catch (e) {
-    await db.prepare("UPDATE patche SET stav = 'chyba' WHERE gid = ?").bind(p.gid).run();
-    throw e;
+    throw e; // výpadek AI: aktualizace zůstane „čeká na shrnutí“ a zkusí se při dalším běhu
   }
   const zdroj = new Set(cisla(`${p.nadpis} ${p.text}`));
   const ok = (t) => !cisla(t).some((c) => !zdroj.has(c));
@@ -224,6 +223,12 @@ ${String(p.text || "").slice(0, 7000)}` },
 export async function shrnPatch(env, kolik = 2) {
   const db = env.DB;
   await zajistiSchemaPatchu(db);
+  // Jednorázově: aktualizace, u kterých 26. 11. selhala AI (zakázaný model), vrátit do fronty.
+  const oprava = await db.prepare("SELECT hodnota FROM nastaveni WHERE klic = 'patche_oprava_ai'").first().catch(() => null);
+  if (!oprava) await db.batch([
+    db.prepare("UPDATE patche SET stav = 'novy' WHERE stav = 'chyba' AND text IS NOT NULL AND shrnuti IS NULL"),
+    db.prepare("INSERT OR REPLACE INTO nastaveni (klic, hodnota, plati_do) VALUES ('patche_oprava_ai', '1', 0)"),
+  ]);
   const { results } = await db.prepare("SELECT * FROM patche WHERE stav = 'novy' AND datum > ? ORDER BY COALESCE(poradi, 9999) ASC, datum DESC LIMIT ?")
     .bind(Date.now() - 14 * DEN, kolik).all();
   if (!results.length) return { stav: "nic nového" };

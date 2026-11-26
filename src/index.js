@@ -475,13 +475,12 @@ export default {
     const pl = (n, a, b, c) => `${n} ${n === 1 ? a : n >= 2 && n <= 4 ? b : c}`;
     if (event.cron === CRON_KATALOG) {
       ctx.waitUntil(behUlohy(env, "katalog", async () => {
+        // Jen obchody (~40 požadavků). Kalendář vydání a výročí (IGDB) jsou v Cronu psaní – sem by se nevešly (limit 50).
         const v = await sberKatalogu(env);
-        try { v.vydani = await sberVydani(env); } catch (e) { v.chyby.push(`IGDB: ${String(e.message || e).slice(0, 100)}`); }
         await obnovObrazkyAkci(env.DB).catch((e) => v.chyby.push(`obrázky akcí: ${String(e.message || e).slice(0, 80)}`));
-        await sberVyroci(env).catch((e) => v.chyby.push(`výročí (IGDB): ${String(e.message || e).slice(0, 80)}`));
         return v;
       }, (v) => `Zkontrolovala obchody Steam, Epic a GOG – hry zdarma, slevy, žebříčky a hodnocení hráčů.` +
-        `${v.vydani?.her ? ` Aktualizovala kalendář vydání (${pl(v.vydani.her, "hra", "hry", "her")}).` : ""}${v.chyby.length ? ` Nedostupné: ${v.chyby.join("; ")}.` : ""}`));
+        `${v.chyby.length ? ` Nedostupné: ${v.chyby.join("; ")}.` : ""}`));
     } else if (event.cron === CRON_OBSAH) {
       ctx.waitUntil(behUlohy(env, "obsah", () => sberObsahu(env), (v) => {
         const h = typeof v.hlidac === "object" ? v.hlidac : {};
@@ -504,15 +503,33 @@ export default {
     } else if (event.cron === CRON_PSANI) {
       ctx.waitUntil(behUlohy(env, "psani", () => napisClanek(env), (v) => v?.id || v?.nadpis ? `Napsala článek: ${v.nadpis || v.id}.` : null));
       ctx.waitUntil(behUlohy(env, "ranni", () => generujRanni(env), (v) => v?.bodu ? `Sestavila ranní přehled (${pl(v.bodu, "bod", "body", "bodů")}).` : null));
+      // Kalendář vydání (každých 6 h, ≤5 dotazů na IGDB) a výročí (1× denně, ≤3) – přesunuto z Cronu obchodů kvůli limitu 50.
+      ctx.waitUntil(behUlohy(env, "kalendar", async () => {
+        const v = { chyby: [] };
+        try { v.vydani = await sberVydani(env); } catch (e) { v.chyby.push(`kalendář: ${String(e.message || e).slice(0, 100)}`); }
+        try { v.vyroci = await sberVyroci(env); } catch (e) { v.chyby.push(`výročí: ${String(e.message || e).slice(0, 100)}`); }
+        if (v.chyby.length === 2) throw new Error(v.chyby.join("; "));
+        return v;
+      }, (v) => {
+        const casti = [];
+        if (v.vydani?.her) casti.push(`Aktualizovala kalendář vydání (${pl(v.vydani.her, "hra", "hry", "her")}).`);
+        if (v.vyroci?.her) casti.push(`Našla ${pl(v.vyroci.her, "výročí", "výročí", "výročí")} her vydaných v dnešní den.`);
+        if (v.chyby.length) casti.push(`Nepovedlo se: ${v.chyby.join("; ")}.`);
+        return casti.length ? casti.join(" ") : null;
+      }));
       ctx.waitUntil(behUlohy(env, "patche", async () => {
         const sez = await sestavSledovane(env).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) })); // 1× denně, ~7 dotazů na IGDB
-        return { ...(await shrnPatch(env, 2)), sez };
+        let shr;
+        try { shr = await shrnPatch(env, 2); }
+        catch (e) { if (!sez.her) throw e; shr = { chybaAi: String(e.message || e).slice(0, 160) }; } // seznam her se sestavil i bez AI
+        return { ...shr, sez };
       }, (v) => {
         const casti = [];
         if (v.sez?.her) casti.push(`Sestavila seznam ${pl(v.sez.her, "sledované hry", "sledovaných her", "sledovaných her")}${v.sez.chyba ? ` (IGDB: ${v.sez.chyba})` : ""}.`);
         else if (v.sez?.chyba) casti.push(`Seznam sledovaných her se nepodařilo obnovit: ${v.sez.chyba}.`);
         for (const h of v.hotove || []) casti.push(`Shrnula aktualizaci hry ${h.hra}: ${h.nadpis}.`);
         for (const h of v.neprosle || []) casti.push(`Shrnutí aktualizace hry ${h.hra} neprošlo kontrolou faktů – zůstává jen originální nadpis.`);
+        if (v.chybaAi) casti.push(`AI teď nepíše: ${v.chybaAi}`);
         return casti.length ? casti.join(" ") : null;
       }));
     } else {

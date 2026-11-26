@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-11-26 (večer, 32) – Oprava AI, kalendáře a Kicku podle stránky /stav
+- **AI nepsala nic**: Cloudflare účtu zakázal model `@cf/google/gemma-3-12b-it` (chyba 5018). `ai.js` má teď řadu záložních
+  modelů Workers AI (Mistral Small 3.1 → Llama 3.3 70B → Llama 3.1 8B → Gemma), použije první funkční a ověří, že vrátil JSON.
+  `CF_MODEL` ve `wrangler.jsonc` = Mistral Small 3.1.
+- Při výpadku AI zůstane aktualizace hry ve frontě (dřív se označila „bez shrnutí“ natrvalo); jednorázově vráceny ty z 26. 11.
+- **Kalendář vydání a výročí** hlásily „Too many subrequests“ – Cron obchodů má sám ~40 požadavků. Přesunuto do Cronu psaní
+  jako nová úloha „Kalendář vydání a výročí (IGDB)“.
+- **Kick**: oficiální API vrátí max. 100 streamů bez stránkování → dva dotazy (100 nejsledovanějších + 100 naposledy spuštěných).
+
 ## 2026-11-26 (večer, 31) – Oprava: polovina webu v EN/SK zůstávala česky
 - Nové části webu neměly překlady v `jazyk.js` a věty poskládané z více kousků (např. řádek pod EKG) slovník nepoznal.
   Doplněno ~150 textů a frází (Domů, aktualizace + slovníček, Co hrát, Rozjede se, Vyšší/nižší, Česká scéna, seznam přání,
