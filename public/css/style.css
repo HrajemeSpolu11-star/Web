@@ -819,4 +819,3 @@ i.hw-ok{background:#4fd88f;color:#0b2a17}i.hw-stredne{background:#ffc04d;color:#
 .vn-konec .vyd-akce{justify-content:center}
 @media (max-width:520px){.vn{padding:14px 10px}.vn-dvojice{gap:6px}.vn-hra b{font-size:13px}.vn-cislo{font-size:19px}}
 @media (prefers-reduced-motion:reduce){.vn-dobre,.vn-spatne{animation:none}.pr-dl,.nastroj{transition:none}.pr-dl:hover,.nastroj:hover{transform:none}}
-#q-radce{margin:10px 0 12px}

@@ -334,7 +334,7 @@
         <h2>${esc(g.nazev)}</h2>
         <div class="pr-dlazdice">${g.polozky.map(([, h, t, popis]) => `<a class="pr-dl" href="${h}"><b>${t}</b><span>${popis}</span></a>`).join("")}</div>
       </section>`).join("")}</div>
-      <p class="source-note">Hledáš streamery? Jsou v sekci <a href="/zive">Streameři</a> – i s <a href="/radce">Rádcem pro streamery</a>.</p>`;
+      <p class="source-note">Hledáš streamery? Jsou v sekci <a href="/zive">Streameři</a>.</p>`;
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
   }
   // ---------- Ranní přehled (AI) ----------
@@ -599,39 +599,6 @@
         radky: [[sada.nazev, new Date(d.den + "T12:00:00Z").toLocaleDateString("cs-CZ")], [stav.odpovedi.map((x) => (x ? "✓" : "✗")).join(" "), "moje odpovědi"]] });
     };
     vykresli();
-  }
-
-  // ---------- Rádce pro streamery ----------
-  async function strankaRadce() {
-    nastavTitulek("Rádce pro streamery – kde mají české streamy nejvíc diváků");
-    if (!state.radce) app.innerHTML = `${hubHlava("radce")}${kostra(5)}`;
-    if (!state.radce || Date.now() - state.radce._cas > 10 * 60e3) {
-      try { state.radce = { ...(await nacti("radce")), _cas: Date.now() }; } catch { state.radce = null; }
-    }
-    const d = state.radce || { hry: [] };
-    if (!location.pathname.startsWith("/radce")) return;
-    const razeni = new URLSearchParams(location.search).get("r") || "pomer";
-    const q = (state.hledatRadce || "").toLowerCase();
-    let hry = d.hry.filter((h) => !q || h.hra.toLowerCase().includes(q));
-    if (razeni === "pomer") hry = hry.filter((h) => (h.streameru || 0) >= 2).sort((a, b) => b.divaku_na_stream - a.divaku_na_stream);
-    else if (razeni === "volno") hry = hry.filter((h) => h.hodin_sledovani >= 20).sort((a, b) => (a.soubeznych || 0) - (b.soubeznych || 0) || b.divaku_na_stream - a.divaku_na_stream);
-    else hry = hry.sort((a, b) => b.hodin_sledovani - a.hodin_sledovani);
-    const max = Math.max(1, ...hry.map((h) => h.divaku_na_stream));
-    app.innerHTML = `${hubHlava("radce")}
-      <div class="cesko-head"><h2>Rádce pro streamery</h2><p>Kolik diváků v průměru sleduje jeden český stream dané hry. Vysoké číslo = diváci hru chtějí a streamerů na ni není moc.</p></div>
-      <div class="mini-seg">${[["pomer", "Nejvíc diváků na stream"], ["volno", "Nejmenší konkurence"], ["sledovani", "Nejsledovanější"]].map(([k, t]) => `<a class="ms-b${k === razeni ? " on" : ""}" href="/radce${k === "pomer" ? "" : `?r=${k}`}">${t}</a>`).join("")}</div>
-      <input class="search" id="q-radce" type="search" placeholder="Najít hru" value="${esc(state.hledatRadce || "")}">
-      ${hry.length ? `<div class="slist radce">${hry.slice(0, 30).map((h, i) => `<a class="srow" href="/hra/${esc(slug(h.hra))}">
-          <span class="rank">${i + 1}</span>
-          <div class="info"><h3>${esc(h.hra)}</h3>
-            <div class="bar"><i data-w="${Math.round(h.divaku_na_stream / max * 100)}"></i></div>
-            <div class="sub">${h.soubeznych != null ? `průměrně ${esc(String(h.soubeznych).replace(".", ","))} streamů najednou · ` : ""}${h.streameru ? `${pl(h.streameru, "streamer", "streameři", "streamerů")} · ` : ""}${esc(num(h.hodin_sledovani))} h sledování</div></div>
-          <div class="num"><b>${esc(String(h.divaku_na_stream).replace(".", ","))}</b>diváků na stream</div></a>`).join("")}</div>`
-        : `<p class="empty">${d.hry.length ? "Nic neodpovídá." : "Data se teprve sbírají – rádce potřebuje aspoň pár dní měření."}</p>`}
-      <p class="source-note">Z našeho měření českých streamů na Twitchi a Kicku každých 15 minut za posledních 7 dní${d.mereni_hodin ? ` (${pl(d.mereni_hodin, "hodina", "hodiny", "hodin")} měření)` : ""}.
-        Jen hry, které se streamovaly aspoň 5 hodin. „Diváků na stream“ = průměrný počet diváků jednoho živého streamu té hry. Je to pomůcka, ne záruka – rozhoduje i obsah a čas vysílání.</p>`;
-    const inp = document.getElementById("q-radce");
-    inp.oninput = () => { state.hledatRadce = inp.value; const pos = inp.selectionStart; strankaRadce().then(() => { obarvi(app); const n = document.getElementById("q-radce"); n.focus(); n.setSelectionRange(pos, pos); }); };
   }
 
   // Odpočet: „12 d 4 h“, pod 1 den „4 h 03 min“, pod 1 h „12 min 05 s“.
@@ -1020,7 +987,7 @@
   function hubHlava(aktivni) {
     const { streamy } = state.zive;
     const divaku = streamy.reduce((a, s) => a + (s.divaci || 0), 0);
-    const pod = [["zive", "/zive", "Živě"], ["zebricek", "/streameri", "Žebříček"], ["hry", "/hry", "Co hraje Česko"], ["report", "/report", "Týden na scéně"], ["radce", "/radce", "Rádce pro streamery"], ["prehled", "/prehled", "Přehled"]];
+    const pod = [["zive", "/zive", "Živě"], ["zebricek", "/streameri", "Žebříček"], ["hry", "/hry", "Co hraje Česko"], ["report", "/report", "Týden na scéně"], ["prehled", "/prehled", "Přehled"]];
     const obl = new Set(oblibeni());
     const mojiZive = streamy.filter((s) => obl.has(klicS(s)));
     return `<div class="live-head"><h1>Čeští streameři</h1>
@@ -1660,7 +1627,7 @@
     ["/co-hrat", "Co dnes hrát?", "Pár ťuknutí a máš tip na hru.", "#ffc04d"],
     ["/rozjede-se", "Rozjede se mi to?", "Porovnej svůj počítač s hrou.", "#5cc8ff"],
     ["/vyssi-nizsi", "Vyšší, nebo nižší?", "Denní minihra se skutečnými čísly.", "#b47cff"],
-    ["/radce", "Rádce pro streamery", "Kde mají české streamy nejvíc diváků.", "#ff7a9c"],
+    ["/ceska-scena", "Česká herní scéna", "Co je nového u českých studií.", "#ff7a9c"],
   ];
   async function strankaDomu() {
     nastavTitulek("");
@@ -1826,7 +1793,7 @@
   function route() {
     const casti = location.pathname.replace(/\/+$/, "").split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
     const sekce = casti[1] || "";
-    const tab = ["zive", "streameri", "streamer", "hry", "prehled", "porovnat", "report", "radce"].includes(sekce) ? "streameri"
+    const tab = ["zive", "streameri", "streamer", "hry", "prehled", "porovnat", "report"].includes(sekce) ? "streameri"
       : ["pruvodce", "vydani", "akce", "studia", "studio", "cestina", "hlidac", "hra", "obchody", "co-hrat", "rozjede-se", "vyssi-nizsi", "aktualizace", "ceska-scena"].includes(sekce) ? "hry"
       : ["", "stav"].includes(sekce) ? "domu" : ["novinky", "clanek", "ranni"].includes(sekce) ? "novinky" : "";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
@@ -1856,7 +1823,6 @@
     else if (sekce === "co-hrat") p = strankaCoHrat();
     else if (sekce === "rozjede-se") p = strankaRozjede();
     else if (sekce === "vyssi-nizsi") p = strankaVyssiNizsi();
-    else if (sekce === "radce") p = strankaRadce();
     else if (sekce === "") p = strankaDomu();
     else stranka404();
     Promise.resolve(p).then(() => obarvi(app));

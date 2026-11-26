@@ -10,7 +10,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
-  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia|pruvodce|obchody|ranni|aktualizace|ceska-scena|co-hrat|rozjede-se|vyssi-nizsi|radce)\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
+  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia|pruvodce|obchody|ranni|aktualizace|ceska-scena|co-hrat|rozjede-se|vyssi-nizsi)\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
     /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/hra\/steam\/\d{1,10}\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
@@ -21,7 +21,7 @@ async function metaProStranku(url, env) {
   const og = (n) => `${url.origin}/og/${n}.png`;
   const OG = { "/": "domu", "/novinky": "novinky", "/zive": "streameri", "/streameri": "streameri", "/prehled": "streameri", "/porovnat": "streameri",
     "/hry": "cesko", "/cestina": "cestina", "/hlidac": "hlidac", "/vydani": "domu", "/akce": "domu", "/studia": "domu",
-    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky", "/radce": "streameri" };
+    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky" };
   let m = { title: `${NAZEV} – herní novinky a čeští streameři`, popis: POPIS, obrazek: og(OG[p] || (p.startsWith("/report") ? "report" : p.startsWith("/hra/") ? "hra" : "domu")),
     velky: true, index: true, status: 200, typ: "website" };
   try {
@@ -44,7 +44,6 @@ async function metaProStranku(url, env) {
     else if (p === "/co-hrat") m = { ...m, title: `Co dnes hrát? Doporučení her podle tebe | ${NAZEV}`, popis: "Vyber, s kým hraješ, kolik chceš dát, jestli chceš češtinu a žánr – doporučíme hry, které hráči na Steamu nejvíc chválí." };
     else if (p === "/rozjede-se") m = { ...m, title: `Rozjede se mi to? Porovnání PC s požadavky hry | ${NAZEV}`, popis: "Zadej grafiku, procesor a paměť a porovnej je s minimálními a doporučenými požadavky hry ze Steamu." };
     else if (p === "/vyssi-nizsi") m = { ...m, title: `Vyšší, nebo nižší? Denní herní minihra | ${NAZEV}`, popis: "Tipni, která hra má víc hráčů. Skutečná čísla ze Steamu a českých streamů, každý den nové kolo." };
-    else if (p === "/radce") m = { ...m, title: `Rádce pro streamery – kde mají české streamy nejvíc diváků | ${NAZEV}`, popis: "Kolik diváků připadá na jeden český stream u každé hry. Z měření českých streamů na Twitchi a Kicku za 7 dní." };
     else if (p.startsWith("/studio/")) {
       const st = STUDIA.find((x) => x.slug === p.slice(8));
       m = st ? { ...m, title: `${st.nazev} – novinky, trailery a hry | ${NAZEV}`, popis: zkrat(`${st.popis} Oficiální novinky, trailery a oznámení na jednom místě.`, 160) }
@@ -150,7 +149,7 @@ export async function sitemap(request, env) {
   const ted = new Date().toISOString().slice(0, 10);
   const adresy = [["/", ted, "hourly"], ["/novinky", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/report", ted, "weekly"], ["/cestina", ted, "daily"], ["/vydani", ted, "daily"], ["/akce", ted, "daily"], ["/studia", ted, "daily"], ...STUDIA.map((x) => [`/studio/${x.slug}`, ted, "daily"]), ["/hlidac", ted, "monthly"], ["/prehled", ted, "daily"],
     ["/pruvodce", ted, "weekly"], ["/obchody", ted, "hourly"], ["/ranni", ted, "daily"], ["/aktualizace", ted, "daily"], ["/ceska-scena", ted, "daily"],
-    ["/co-hrat", ted, "daily"], ["/rozjede-se", ted, "monthly"], ["/vyssi-nizsi", ted, "daily"], ["/radce", ted, "daily"], ["/o-webu", ted, "monthly"]];
+    ["/co-hrat", ted, "daily"], ["/rozjede-se", ted, "monthly"], ["/vyssi-nizsi", ted, "daily"], ["/o-webu", ted, "monthly"]];
   try {
     const [st, hry, cl] = await env.DB.batch([
       env.DB.prepare("SELECT platforma, login, posledni_zive FROM streameri WHERE skryty = 0 ORDER BY posledni_zive DESC LIMIT 5000"),

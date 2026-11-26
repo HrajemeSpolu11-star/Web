@@ -24,7 +24,7 @@ import { apiVydani, sberVydani } from "./vydani.js";
 import { apiRanni, generujRanni } from "./ranni.js";
 import { apiAktualizace, sberPatchu, shrnPatch } from "./patche.js";
 import { apiVyroci, sberVyroci } from "./vyroci.js";
-import { apiCoHrat, apiRadce, apiVyssiNizsi } from "./nastroje.js";
+import { apiCoHrat, apiVyssiNizsi } from "./nastroje.js";
 import { apiCeskaScena } from "./studia.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
@@ -385,7 +385,6 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/aktualizace") odpoved = json(await apiAktualizace(env), 200, 900);
     else if (url.pathname === "/api/vyroci") odpoved = json(await apiVyroci(env), 200, 1800);
     else if (url.pathname === "/api/co-hrat") odpoved = json(await apiCoHrat(env, url.searchParams), 200, 1800);
-    else if (url.pathname === "/api/radce") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiRadce(env), 200, 1800); }
     else if (url.pathname === "/api/vyssi-nizsi") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiVyssiNizsi(env), 200, 1800); }
     else if (url.pathname === "/api/ceska-scena") odpoved = json(await apiCeskaScena(env), 200, 900);
     else if (url.pathname === "/api/stav-systemu") odpoved = json(await apiStavSystemu(env), 200, 60);

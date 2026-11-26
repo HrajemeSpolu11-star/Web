@@ -16,7 +16,7 @@
       "/porovnat", "/porovnat/", "/report", "/report/*", "/cestina", "/cestina/", "/hlidac", "/hlidac/", "/stav", "/stav/",
       "/vydani", "/vydani/", "/akce", "/akce/", "/studia", "/studia/", "/studio/*", "/clanek/*", "/hra/*", "/streamer/*",
       "/pruvodce", "/pruvodce/", "/obchody", "/obchody/", "/ranni", "/ranni/", "/aktualizace", "/aktualizace/", "/ceska-scena", "/ceska-scena/",
-      "/co-hrat", "/co-hrat/", "/rozjede-se", "/rozjede-se/", "/vyssi-nizsi", "/vyssi-nizsi/", "/radce", "/radce/"],
+      "/co-hrat", "/co-hrat/", "/rozjede-se", "/rozjede-se/", "/vyssi-nizsi", "/vyssi-nizsi/"],
     // Neexistující adresa → public/404.html se stavem 404.
     "not_found_handling": "404-page"
   },

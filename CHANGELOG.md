@@ -6,6 +6,10 @@
 
 ---
 
+## 2026-11-26 (večer, 22) – Vráceno: Rádce pro streamery odstraněn
+- Na přání majitele úplně pryč: stránka `/radce`, `/api/radce`, záložka u Streamerů, dlaždice na Domů (nahrazena odkazem
+  na Českou herní scénu), SEO, sitemap, `run_worker_first`, překlady. Data `hry_den` zůstávají (používá je Týden na scéně a minihra).
+
 ## 2026-11-26 (večer, 21) – Web už není jen katalog obchodů: nový Domů, rozcestník Hry a 8 nových částí
 - **Domů přestavěn**: ranní přehled → právě živě → zprávy → 4 nástroje → jedna hra týdne + odkaz na slevy → týden na české
   scéně → „dnes před lety vyšlo“. Všechny obchodní sekce (slevy, žebříčky, novinky v obchodech) jsou na nové stránce
