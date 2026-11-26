@@ -6,6 +6,12 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 5) – Nové logo „AI jádro“
+- Logo EKG nahradila animovaná ikona umělé inteligence: šestiúhelníková neuronová síť. Uzly se postupně rozsvítí,
+  signál doběhne do středu a jádro tepe („přemýšlí“). Po najetí myší tepe rychleji. Při omezení animací stojí.
+- Stejné logo je na `/`, `/o-webu` a `/soukromi.html`; ikona webu (`ikona.svg`) má jeho statickou verzi.
+- Staré EKG styly v CSS zůstaly, nic se nemazalo.
+
 ## 2026-11-26 (odpoledne, 4) – Hlavní stránka s herním katalogem
 - **Nová hlavní stránka „Domů“ (`/`)**: hry zdarma (Epic Games, případně Steam) s odpočtem, kolik zbývá; příští hra zdarma
   na Epicu; největší slevy (přepínač Steam/GOG, ceny v Kč); nejhranější hry na Steamu (počet hráčů současně);

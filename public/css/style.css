@@ -279,6 +279,22 @@ a.termin{color:inherit}
 .por-tab td.vyhra{color:var(--accent)}
 @media(max-width:520px){.por{grid-template-columns:1fr 1fr}.por-vs{display:none}.por-slot{padding:12px 8px}.por-slot .av-l{width:60px;height:60px}}
 /* ---------- Herní prvky a animace ---------- */
+/* Logo (od 2026-11-26): „AI jádro“ – neuronová síť, signály běží z uzlů do středu a jádro „přemýšlí“.
+   Staré EKG styly níže zůstávají kvůli zpětné kompatibilitě, logo je už nepoužívá. */
+.logo-ai{width:30px;height:30px;flex:none;overflow:visible}
+.li-kruh{fill:none;stroke:rgba(155,92,255,.35);stroke-width:1.2;stroke-linejoin:round;}
+.li-paprsek{stroke:rgba(155,92,255,.3);stroke-width:1.1}
+.li-signal{stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:3 14;stroke-dashoffset:17;opacity:0;animation:li-signal 3s ease-in infinite}
+.li-uzel{fill:var(--accent2);animation:li-uzel 3s ease-in-out infinite}
+.li-jadro{fill:var(--accent);animation:li-jadro 1.5s ease-in-out infinite;transform-origin:16px 16px}
+.li-jadro-zar{fill:rgba(255,192,77,.25);animation:li-zar 1.5s ease-in-out infinite;transform-origin:16px 16px}
+.s2,.u2{animation-delay:.5s}.s3,.u3{animation-delay:1s}.s4,.u4{animation-delay:1.5s}.s5,.u5{animation-delay:2s}.s6,.u6{animation-delay:2.5s}
+@keyframes li-signal{0%{stroke-dashoffset:17;opacity:0}10%{opacity:1}45%{stroke-dashoffset:3;opacity:1}55%,100%{stroke-dashoffset:3;opacity:0}}
+@keyframes li-uzel{0%,100%{fill:var(--accent2)}8%{fill:#fff}25%{fill:var(--accent2)}}
+@keyframes li-jadro{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+@keyframes li-zar{0%,100%{transform:scale(.9);opacity:.5}50%{transform:scale(1.5);opacity:1}}
+.logo:hover .li-jadro{animation-duration:.5s}
+@media(prefers-reduced-motion:reduce){.li-kruh,.li-signal,.li-uzel,.li-jadro,.li-jadro-zar{animation:none}.li-signal{opacity:0}}
 /* Logo: EKG „puls“, který se kreslí dokola */
 .logo-puls{width:34px;height:20px;flex:none;overflow:visible}
 .logo-puls path{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
