@@ -8,7 +8,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
-  return pathname === "/" || /^\/(zive|streameri|hry)\/?$/.test(pathname) ||
+  return pathname === "/" || /^\/(zive|streameri|hry|prehled|porovnat)\/?$/.test(pathname) ||
     /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
@@ -19,6 +19,8 @@ async function metaProStranku(url, env) {
   try {
     if (p === "/zive") m = { ...m, title: `Právě živě – čeští streameři na Twitchi a Kicku | ${NAZEV}`, popis: "Kdo z českých streamerů právě vysílá, co hraje a kolik má diváků. Aktualizováno každých 15 minut." };
     else if (p === "/streameri") m = { ...m, title: `Čeští streameři – žebříček | ${NAZEV}`, popis: "Žebříček českých streamerů z Twitche a Kicku podle sledujících, rekordu diváků, odvysílaných hodin a růstu." };
+    else if (p === "/prehled") m = { ...m, title: `Přehled české streamovací scény – týden v číslech | ${NAZEV}`, popis: "Kolik Čechů je živě během dne, kdo tento týden nejvíc rostl, rekordy, milníky a kalendář plánovaných streamů." };
+    else if (p === "/porovnat") m = { ...m, title: `Porovnat streamery | ${NAZEV}`, popis: "Porovnej dva české streamery vedle sebe: sledující, diváci, odvysílané hodiny a hry.", index: false };
     else if (p === "/hry") m = { ...m, title: `Hry, které hrají čeští streameři | ${NAZEV}`, popis: "Které hry teď streamují čeští streameři a kdo je hraje nejvíc." };
     else if (p.startsWith("/streamer/")) {
       const [, , plat, login] = p.split("/");
@@ -80,7 +82,7 @@ export async function vykresliStranku(request, env) {
 export async function sitemap(request, env) {
   const o = new URL(request.url).origin;
   const ted = new Date().toISOString().slice(0, 10);
-  const adresy = [["/", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"]];
+  const adresy = [["/", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/prehled", ted, "daily"], ["/o-webu", ted, "monthly"]];
   try {
     const [st, hry, cl] = await env.DB.batch([
       env.DB.prepare("SELECT platforma, login, posledni_zive FROM streameri WHERE skryty = 0 ORDER BY posledni_zive DESC LIMIT 5000"),

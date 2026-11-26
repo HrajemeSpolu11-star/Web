@@ -240,3 +240,41 @@ a.hra{display:block}
 .seg-b.seg-twitch.on{background:var(--twitch);color:#fff}
 .seg-b.seg-kick.on{background:var(--kick);color:#0d2000}
 @media(max-width:520px){.seg{width:100%}.seg-b{flex:1}}
+/* ---------- Oblíbení, upozornění, události, přehled, porovnání, sítě ---------- */
+.oblibeni-pruh{background:var(--card);border-radius:var(--r);padding:10px 14px;margin:0 0 12px;font-size:14px}
+.oblibeni-pruh a{color:var(--accent);font-weight:600}
+.story.fav .ring{background:conic-gradient(var(--accent),#fff3c4,var(--accent))}
+.profil-akce{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 2px}
+.pa-b{flex:1 1 auto;min-height:44px;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);font-weight:600;font-size:14px;cursor:pointer;text-align:center;display:inline-flex;align-items:center;justify-content:center}
+.pa-b.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pa-b:disabled{opacity:.6}
+.pa-zprava{font-size:13.5px;color:var(--muted);margin:6px 2px 0;min-height:1em}
+.site{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.sit{padding:7px 13px;border-radius:999px;background:var(--card2);font-size:13px;font-weight:600}
+.udalosti{display:flex;gap:10px;overflow-x:auto;margin:0 0 14px;scrollbar-width:none}
+.udalost{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-width:200px;padding:12px 14px;border-radius:var(--r);
+  border:1px solid #6a3f2a;background:linear-gradient(135deg,#4a2330,#2a1d42);color:var(--text);cursor:pointer;font:inherit}
+.udalost.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.u-zive{font-size:11px;font-weight:800;color:#fff;background:var(--live);padding:2px 8px;border-radius:999px;margin-bottom:4px}
+.udalost b{font-size:15px}
+.udalost .dim{font-size:12.5px}
+.prehled-grid{display:grid;gap:4px 20px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g-grid{stroke:var(--line);stroke-width:1}
+.milniky{display:flex;flex-direction:column;gap:8px}
+.milnik{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:var(--r);padding:10px 14px;font-size:14.5px}
+a.termin{color:inherit}
+.por{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:start;margin:8px 0 18px}
+.por-vs{align-self:center;font-weight:900;color:var(--muted);font-size:18px}
+.por-slot{background:var(--card);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;min-height:150px}
+.por-slot .av-l{width:72px;height:72px}
+.por-prazdny{align-items:stretch;justify-content:flex-start}
+.por-prazdny .search{margin:0;font-size:15px;padding:11px 14px}
+.por-vysledky{display:flex;flex-direction:column;gap:6px}
+.por-vyber{display:flex;align-items:center;gap:8px;background:var(--card2);border:0;border-radius:12px;padding:6px 10px;color:var(--text);font:inherit;font-size:14px;cursor:pointer;text-align:left}
+.por-vyber .av{width:32px;height:32px}
+.por-tab{width:100%;border-collapse:separate;border-spacing:0 6px}
+.por-tab th{font-size:12.5px;color:var(--muted);font-weight:600;padding:0 6px;text-align:center}
+.por-tab td{background:var(--card);padding:12px;text-align:center;font-weight:700;font-size:16px}
+.por-tab td:first-child{border-radius:var(--r) 0 0 var(--r)}.por-tab td:last-child{border-radius:0 var(--r) var(--r) 0}
+.por-tab td.vyhra{color:var(--accent)}
+@media(max-width:520px){.por{grid-template-columns:1fr 1fr}.por-vs{display:none}.por-slot{padding:12px 8px}.por-slot .av-l{width:60px;height:60px}}

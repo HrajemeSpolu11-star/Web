@@ -2,6 +2,8 @@
 // Zapne se sám, jakmile je nastaven KICK_CLIENT_ID (wrangler.jsonc) a Secret KICK_CLIENT_SECRET.
 import { denPraha } from "./psani.js";
 import { zajistiSchemaTwitch, slugHry } from "./twitch.js";
+import { prikazScena, vyhodnotZmeny, nactiPredchozi } from "./prehled.js";
+import { zaradUpozorneni } from "./push.js";
 
 const API = "https://api.kick.com/public/v1";
 const JAZYK = "cs";
@@ -76,7 +78,9 @@ export async function sberKick(env) {
       ON CONFLICT(user_id, hra) DO UPDATE SET minut = hry_streamera.minut + excluded.minut, posledni = excluded.posledni`);
     const hraSeznam = db.prepare(`INSERT INTO hry (slug, nazev, posledni) VALUES (?, ?, ?) ON CONFLICT(slug) DO UPDATE SET posledni = excluded.posledni`);
 
-    const prikazy = [];
+    const predchozi = await nactiPredchozi(db, "kick", ted, 25 * 60e3);
+    const zmeny = vyhodnotZmeny(db, ted, predchozi, streamy, (s) => "k" + s.broadcaster_user_id, "kick");
+    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "kick", streamy)];
     const videneHry = new Set();
     for (const s of streamy) {
       const id = "k" + s.broadcaster_user_id;
@@ -93,6 +97,7 @@ export async function sberKick(env) {
       }
     }
     if (prikazy.length) await db.batch(prikazy);
+    await zaradUpozorneni(env, zmeny.noveZive);
 
     // 2) Profily (popis, banner) – nové a starší než 24 h.
     const { results: kProfilu } = await db.prepare(

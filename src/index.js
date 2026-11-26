@@ -8,6 +8,8 @@ import { sberTwitch, sberTwitchPokudStary, zajistiSchemaTwitch, slugHry } from "
 import { sberKick, kickNastaven } from "./kick.js";
 import { extraTwitch } from "./extra.js";
 import { jeStranka, vykresliStranku, sitemap, robots } from "./seo.js";
+import { pushApi } from "./push.js";
+import { apiPrehled } from "./prehled.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -104,6 +106,7 @@ function naStreamera(r, ted) {
     zive, divaci: zive ? r.zive_divaci : null, hra: zive ? r.zive_hra : null, titulek: zive ? r.zive_titulek : null,
     zacatek: zive ? r.zive_zacatek : null, nahled: zive && r.zive_nahled ? `${r.zive_nahled}?t=${Math.floor(r.zive_cas / 60e3)}` : "",
     minut30: r.minut30 ?? undefined, rust30: r.rust30 ?? undefined,
+    odkazy: parse(r.odkazy, undefined),
   };
 }
 
@@ -268,6 +271,7 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/zive") odpoved = await apiZive(env);
     else if (url.pathname === "/api/streameri") odpoved = await apiStreameri(url, env);
     else if (url.pathname === "/api/hry") odpoved = await apiHry(env);
+    else if (url.pathname === "/api/prehled") odpoved = json(await apiPrehled(env, naStreamera), 200, 300);
     else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(decodeURIComponent(url.pathname.slice(9)), env);
     else if (url.pathname.startsWith("/api/streamer-extra/")) {
       const [plat, login] = url.pathname.slice(20).split("/").map(decodeURIComponent);
@@ -318,6 +322,10 @@ export default {
       return new Response(r.body, { status: r.status, headers: h });
     }
 
+    if (url.pathname.startsWith("/api/push/")) {
+      try { await zajistiSchemaTwitch(env.DB); return await pushApi(request, env); }
+      catch (e) { console.error("push api:", e); return json({ chyba: "Interní chyba" }, 500); }
+    }
     if (url.pathname.startsWith("/api/")) return verejneApi(request, env, ctx, url);
     if (url.pathname === "/robots.txt") return robots(request);
     if (url.pathname === "/sitemap.xml") return sitemap(request, env);

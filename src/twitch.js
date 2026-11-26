@@ -1,12 +1,17 @@
 // Sběr českých streamerů z oficiálního Twitch API (Helix).
 // Všechna čísla pocházejí přímo z Twitche – nic se neodhaduje ani negeneruje.
 import { denPraha } from "./psani.js";
+import { SCHEMA_PREHLED, prikazScena, prikazMilnik, vyhodnotZmeny, nactiPredchozi } from "./prehled.js";
+import { SCHEMA_PUSH, zaradUpozorneni, odesliFrontu } from "./push.js";
 
 const API = "https://api.twitch.tv/helix";
 const JAZYK = "cs";
 const MAX_STRAN = 6;              // max. 600 živých streamů na jeden běh
 const PROFILU_NA_BEH = 100;       // obnova profilů (1 požadavek)
-const SLEDUJICICH_NA_BEH = 20;    // obnova počtu sledujících (1 požadavek na kanál)
+const SLEDUJICICH_NA_BEH = 15;    // obnova počtu sledujících (1 požadavek na kanál)
+const ROZVRHU_NA_BEH = 5;         // obnova rozvrhů pro kalendář (1 požadavek na kanál)
+const PUSH_NA_BEH = 10;           // max. odeslaných upozornění za běh (limit 50 požadavků na běh)
+const ZIVE_PLATNOST = 25 * 60e3;
 const INTERVAL_MIN = 15;
 const MIN_STATISTIKY = 3;         // statistiky (snímky, hry) jen od 3 diváků – šetří denní limit zápisů D1
 
@@ -33,7 +38,7 @@ export const SCHEMA_TWITCH = [
 let migraceHotova = false;
 export async function zajistiSchemaTwitch(db) {
   if (migraceHotova) return;
-  await db.batch(SCHEMA_TWITCH.map((s) => db.prepare(s)));
+  await db.batch([...SCHEMA_TWITCH, ...SCHEMA_PREHLED, ...SCHEMA_PUSH].map((s) => db.prepare(s)));
   // Migrace: sloupec platforma (twitch/kick). Index na login není unikátní – přejmenování účtů nesmí shodit zápis.
   const { results } = await db.prepare("PRAGMA table_info(streameri)").all();
   if (!results.some((c) => c.name === "platforma")) {
@@ -42,6 +47,12 @@ export async function zajistiSchemaTwitch(db) {
       db.prepare("DROP INDEX IF EXISTS idx_streameri_login"),
     ]);
   }
+  // Migrace: odkazy na sítě (ručně z adminu) a čas poslední obnovy rozvrhu.
+  const sloupce = new Set(results.map((c) => c.name));
+  const pridat = [];
+  if (!sloupce.has("odkazy")) pridat.push(db.prepare("ALTER TABLE streameri ADD COLUMN odkazy TEXT"));
+  if (!sloupce.has("rozvrh_cas")) pridat.push(db.prepare("ALTER TABLE streameri ADD COLUMN rozvrh_cas INTEGER DEFAULT 0"));
+  if (pridat.length) await db.batch(pridat);
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_streameri_plogin ON streameri(platforma, login)").run();
   migraceHotova = true;
 }
@@ -127,7 +138,10 @@ export async function sberTwitch(env) {
       if (!kurzor || (d.data || []).length < 100) break;
     }
 
-    const prikazy = [];
+    // Předchozí stav (kdo byl živě, rekordy) – pro upozornění a milníky.
+    const predchozi = await nactiPredchozi(db, "twitch", ted, ZIVE_PLATNOST);
+    const zmeny = vyhodnotZmeny(db, ted, predchozi, streamy, (s) => s.user_id, "twitch");
+    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "twitch", streamy)];
     const upsert = db.prepare(`
       INSERT INTO streameri (id, login, jmeno, prvni_videno, posledni_zive, posledni_stream, pocet_streamu, max_divaku, posledni_hra,
         zive_cas, zive_hra, zive_titulek, zive_divaci, zive_zacatek, zive_nahled)
@@ -161,6 +175,7 @@ export async function sberTwitch(env) {
       }
     }
     if (prikazy.length) await db.batch(prikazy);
+    await zaradUpozorneni(env, zmeny.noveZive);
 
     // 2) Obnova profilů (popis, profilovka, banner, typ účtu) – nové a starší než 24 h.
     const { results: kProfilu } = await db.prepare(
@@ -181,7 +196,7 @@ export async function sberTwitch(env) {
 
     // 3) Počet sledujících – nejdéle neaktualizované kanály, které splňují filtr kvality.
     const { results: kSled } = await db.prepare(
-      `SELECT id FROM streameri WHERE platforma = 'twitch' AND skryty = 0 AND max_divaku >= 5 AND (sledujici_cas IS NULL OR sledujici_cas < ?)
+      `SELECT id, sledujici FROM streameri WHERE platforma = 'twitch' AND skryty = 0 AND max_divaku >= 5 AND (sledujici_cas IS NULL OR sledujici_cas < ?)
        ORDER BY sledujici_cas IS NOT NULL, sledujici_cas LIMIT ?`).bind(ted - 86400e3, SLEDUJICICH_NA_BEH).all();
     let sledujiciChyba = null;
     const sledPrikazy = [];
@@ -189,6 +204,8 @@ export async function sberTwitch(env) {
       try {
         const d = await volej(`/channels/followers?broadcaster_id=${encodeURIComponent(r.id)}&first=1`);
         if (typeof d.total === "number") {
+          const milnik = prikazMilnik(db, ted, r.id, r.sledujici, d.total);
+          if (milnik) sledPrikazy.push(milnik);
           sledPrikazy.push(
             db.prepare("UPDATE streameri SET sledujici = ?, sledujici_cas = ? WHERE id = ?").bind(d.total, ted, r.id),
             db.prepare(`INSERT INTO snimky (user_id, den, sledujici) VALUES (?, ?, ?)
@@ -197,6 +214,28 @@ export async function sberTwitch(env) {
       } catch (e) { sledujiciChyba = String(e.message || e); break; }
     }
     if (sledPrikazy.length) await db.batch(sledPrikazy);
+
+    // 4) Rozvrhy pro kalendář – největší kanály, obnova po 12 h.
+    const { results: kRozvrhu } = await db.prepare(
+      `SELECT id FROM streameri WHERE platforma = 'twitch' AND skryty = 0 AND sledujici IS NOT NULL AND COALESCE(rozvrh_cas, 0) < ?
+       ORDER BY sledujici DESC LIMIT ?`).bind(ted - 12 * 3600e3, ROZVRHU_NA_BEH).all();
+    const rozPrikazy = [];
+    for (const r of kRozvrhu) {
+      rozPrikazy.push(db.prepare("UPDATE streameri SET rozvrh_cas = ? WHERE id = ?").bind(ted, r.id),
+        db.prepare("DELETE FROM rozvrh WHERE user_id = ? AND zacatek > ?").bind(r.id, ted));
+      try {
+        const d = await volej(`/schedule?broadcaster_id=${encodeURIComponent(r.id)}&first=20`);
+        for (const seg of d.data?.segments || []) {
+          const z = Date.parse(seg.start_time);
+          if (seg.canceled_until || !Number.isFinite(z) || z < ted || z > ted + 7 * 86400e3) continue;
+          rozPrikazy.push(db.prepare("INSERT OR REPLACE INTO rozvrh (user_id, zacatek, konec, nazev, hra) VALUES (?,?,?,?,?)")
+            .bind(r.id, z, Date.parse(seg.end_time) || null, String(seg.title || "").slice(0, 140), seg.category?.name || ""));
+        }
+      } catch { /* bez rozvrhu (Twitch vrací 404) – nic */ }
+    }
+    if (rozPrikazy.length) await db.batch(rozPrikazy);
+    await db.prepare("DELETE FROM scena WHERE cas < ?").bind(ted - 35 * 86400e3).run();
+    try { await odesliFrontu(env, PUSH_NA_BEH); } catch (e) { console.warn("push fronta:", e); }
 
     await zaznamenejStav(db, { ok: true, zivych: streamy.length, profilu: kProfilu.length, sledujicich: sledPrikazy.length / 2, chyba_sledujici: sledujiciChyba });
   } catch (e) {

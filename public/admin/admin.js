@@ -148,13 +148,47 @@
     zprava("Text je rozdělený do polí. Zkontroluj ho a ulož.");
   });
 
+  // --- správa streamerů ---
+  const SITE = [["web", "Web"], ["youtube", "YouTube"], ["instagram", "Instagram"], ["tiktok", "TikTok"], ["x", "X"], ["discord", "Discord"]];
+  let sTimer;
+  async function nactiStreamery() {
+    const q = $("s-hledat").value.trim();
+    let list;
+    try { list = await api("/streameri?q=" + encodeURIComponent(q)); }
+    catch (e) { $("s-seznam").innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+    $("s-seznam").innerHTML = list.length ? list.map((s) => `
+      <form class="adm-polozka" data-id="${esc(s.id)}">
+        <h3>${esc(s.jmeno || s.login)} <span class="adm-autor">${esc(s.platforma)}</span></h3>
+        <div class="adm-checks">
+          <label><input type="checkbox" name="skryty" ${s.skryty ? "checked" : ""}> Skrýt z webu</label>
+          <label><input type="checkbox" name="overeno" ${s.overeno ? "checked" : ""}> Ověřený</label>
+        </div>
+        <div class="adm-odkazy">${SITE.map(([k, n]) => `<label>${n}<input name="${k}" inputmode="url" placeholder="https://…" value="${esc(s.odkazy?.[k] || "")}"></label>`).join("")}</div>
+        <div class="tlacitka"><button class="adm-btn adm-btn-primary" type="submit">Uložit</button></div>
+      </form>`).join("") : `<p class="empty">Nikoho jsme nenašli.</p>`;
+  }
+  $("s-hledat").addEventListener("input", () => { clearTimeout(sTimer); sTimer = setTimeout(nactiStreamery, 300); });
+  $("s-seznam").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const odkazy = Object.fromEntries(SITE.map(([k]) => [k, f.elements[k].value.trim()]).filter(([, v]) => v));
+    const spatne = Object.entries(odkazy).find(([, v]) => !/^https:\/\//.test(v));
+    if (spatne) { zprava(`Odkaz ${spatne[0]} musí začínat https://`, "chyba"); return; }
+    try {
+      await api("/streamer/" + encodeURIComponent(f.dataset.id), { skryty: f.elements.skryty.checked, overeno: f.elements.overeno.checked, odkazy });
+      zprava("Uloženo.");
+    } catch (err) { zprava(err.message, "chyba"); }
+  });
+
   // --- navigace ---
   function route() {
-    const tab = ["koncept", "publikovano", "novy"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "koncept";
+    const tab = ["koncept", "publikovano", "novy", "streameri"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "koncept";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
-    $("seznam-sekce").hidden = tab === "novy";
+    $("seznam-sekce").hidden = tab === "novy" || tab === "streameri";
     $("editor-sekce").hidden = tab !== "novy";
-    if (tab !== "novy") nactiSeznam(tab);
+    $("streameri-sekce").hidden = tab !== "streameri";
+    if (tab === "streameri") nactiStreamery();
+    else if (tab !== "novy") nactiSeznam(tab);
   }
   addEventListener("hashchange", route);
   document.querySelector('.tabs a[data-tab="novy"]').addEventListener("click", () => otevriEditor());

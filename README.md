@@ -1,44 +1,34 @@
-# Herní puls (pracovní název)
+# Herní puls
 
-Automatický web s herními novinkami a přehledem českých a slovenských streamerů.
+Český web s **herními novinkami** a **přehledem českých streamerů** z Twitche a Kicku.
+Web je otevřeně **postavený a provozovaný umělou inteligencí** (viz stránka `/o-webu`).
 
-**Stav:** testovací verze – všechna data jsou smyšlená ukázka.
+- Web: https://web.hrajemespolu11.workers.dev
+- Běží na Cloudflare Workers + D1, zdarma, bez build kroku a bez GitHub Actions.
+
+## Co umí
+- **Novinky** – automatický sběr z RSS (české i zahraniční weby), kategorie, platformy, hledání; připravené AI psaní článků.
+- **Streameři** – kdo je právě živě, žebříčky, hry, přehled scény (graf, týden, milníky, kalendář), profily se statistikami,
+  rozvrhem a klipy, oblíbení, upozornění „je živě“, porovnání dvou streamerů.
+- **Admin** – editor článků a správa streamerů (zamčený, dokud není nastavený Cloudflare Access).
+
+## Dokumentace
+| Soubor | Obsah |
+|---|---|
+| [`docs/PRO-NOVY-CHAT.md`](docs/PRO-NOVY-CHAT.md) | **Začni tady** – předání projektu novému chatu s AI |
+| [`docs/ARCHITEKTURA.md`](docs/ARCHITEKTURA.md) | Jak to celé funguje, sběr dat, limity |
+| [`docs/API.md`](docs/API.md) | Všechny adresy API |
+| [`docs/DATABAZE.md`](docs/DATABAZE.md) | Tabulky v D1 |
+| [`docs/NASTAVENI.md`](docs/NASTAVENI.md) | Klíče, proměnné, Twitch/Kick/Discord/Access |
+| [`docs/PROVOZ.md`](docs/PROVOZ.md) | Kontrola stavu a řešení problémů |
+| [`docs/NAPADY.md`](docs/NAPADY.md) | Nápady do budoucna |
+| [`CHANGELOG.md`](CHANGELOG.md) | Seznam všech úprav (nic se z něj nemaže) |
+| [`CLAUDE.md`](CLAUDE.md) | Pravidla pro AI asistenta |
 
 ## Struktura
-
-- `public/` – statický web (HTML, CSS, JS), `public/_headers` = bezpečnostní hlavičky
-- `src/index.js` – Cloudflare Worker: API (`/api/clanky`, `/api/clanek/:id`, `/api/stav`)
-- `src/sber.js` – sběrač novinek (Cron každých 15 min, jen zprávy mladší 12 h)
-- `src/rss.js` – parser RSS/Atom
-- `src/zdroje.js` – seznam RSS zdrojů
-- `src/twitch.js`, `src/kick.js` – sběr českých streamerů z Twitche a Kicku (každých 15 min)
-- `src/extra.js` – rozvrh a klipy z Twitche
-- `src/seo.js` – skutečné adresy s meta tagy, `sitemap.xml`, `robots.txt`
-- `src/discord.js` – oznámení nových článků na Discord
-- `src/psani.js` – AI psaní článků (výběr tématu, kontrola faktů, 5 článků denně)
-- `src/ai.js` – volání AI (Groq, záloha Workers AI)
-- `src/admin.js`, `src/access.js` – admin API a ověření přihlášení přes Cloudflare Access
-- `public/admin/` – administrace s editorem (`/admin`)
-- `wrangler.jsonc` – nastavení Workeru, databáze D1 a Cronu
-
-## Plán
-
-1. ✅ Testovací web (tento krok)
-2. ✅ Sběrač RSS + filtr čerstvosti (Cloudflare Worker + D1)
-3. ✅ Automatické psaní článků AI + admin s editorem
-4. ✅ Čeští streameři z Twitch API (živě, žebříčky, profily) · YouTube později
-5. Vlastní doména, automatické sdílení na sítě
-
-## Spuštění
-
-Cloudflare nasazuje automaticky po každém pushi do `main`. Build se neprovádí,
-Worker nemá žádné npm závislosti. Stav sběru: `/api/stav`.
-
-## Nastavení v Cloudflare (jednorázově)
-
-- **Secret `KICK_CLIENT_SECRET`** – Kick aplikace (Client ID je ve `wrangler.jsonc`)
-- **Secret `DISCORD_WEBHOOK_URL`** (nepovinné) – oznámení nových článků
-- **Secret `TWITCH_CLIENT_SECRET`** – Twitch aplikace (Client ID je ve `wrangler.jsonc`)
-- **Secret `GROQ_API_KEY`** – Worker → Settings → Variables and Secrets (nikdy ne do repozitáře)
-- **Cloudflare Access** pro `/admin` a `/api/admin/*` – pak doplnit `ACCESS_TEAM_DOMAIN` a `ACCESS_AUD` do `wrangler.jsonc`
-- Bez Access je admin zamčený pro všechny.
+```
+src/            Cloudflare Worker (API, sběr RSS/Twitch/Kick, AI, push, SEO, admin)
+public/         web (index.html, js/app.js, css/style.css, admin/, sw.js, fonts/)
+docs/           dokumentace
+wrangler.jsonc  nastavení Workeru, databáze, cronů a proměnných
+```

@@ -58,6 +58,9 @@ function platformy(text, zdroj) {
 }
 function typ(text) {
   if (/\b(review|recenze)\b/i.test(text)) return "Recenze";
+  if (/\b(esports?|tournament|turnaj|major|championship|liga|league finals?|grand final)\b/i.test(text)) return "Esport";
+  if (/\b(twitch|kick\.com|streamer|streamerka|youtuber|stream)\b/i.test(text)) return "Streamování";
+  if (/\b(gpu|nvidia|geforce|radeon|amd|intel|ps5 pro|steam deck|handheld|monitor|headset|hardware|rtx)\b/i.test(text)) return "Hardware";
   if (/\btrailer\b/i.test(text)) return "Trailer";
   if (/\b(sale|deal|discount|free|sleva|zdarma)\b/i.test(text)) return "Sleva";
   if (/\b(patch|update|aktualizace)\b/i.test(text)) return "Aktualizace";

@@ -16,6 +16,7 @@
     <a href="#koncept" data-tab="koncept">Ke schválení</a>
     <a href="#publikovano" data-tab="publikovano">Zveřejněné</a>
     <a href="#novy" data-tab="novy">+ Nový článek</a>
+    <a href="#streameri" data-tab="streameri">Streameři</a>
   </nav>
 </header>
 
@@ -26,6 +27,12 @@
   <section id="seznam-sekce">
     <button id="napis-ted" class="adm-btn adm-btn-ai" type="button">Nechat AI napsat článek teď</button>
     <div id="seznam" class="adm-seznam"><p class="empty">Načítám…</p></div>
+  </section>
+
+  <section id="streameri-sekce" hidden>
+    <input id="s-hledat" class="search" type="search" placeholder="Hledat streamera" autocomplete="off">
+    <p class="adm-help">Skrytý streamer zmizí z webu. Ověřený se ukáže v žebříčku vždy. Odkazy musí začínat https://.</p>
+    <div id="s-seznam" class="adm-seznam"></div>
   </section>
 
   <section id="editor-sekce" hidden>

@@ -2,6 +2,9 @@
 import { napisClanek, PLATFORMY, TYPY, noveId, denPraha } from "./psani.js";
 import { zajistiSchema } from "./sber.js";
 import { oznamClanek } from "./discord.js";
+import { zajistiSchemaTwitch } from "./twitch.js";
+
+const SITE = ["web", "youtube", "instagram", "tiktok", "x", "discord"];
 
 const STAVY = new Set(["koncept", "publikovano", "zamitnuto"]);
 
@@ -55,6 +58,32 @@ export async function adminApi(request, env, ctx, uzivatel) {
   await zajistiSchema(db);
 
   if (request.method === "GET" && cesta === "/ja") return json({ email: uzivatel.email, publikovat: env.PUBLIKOVAT || "auto", groq: !!env.GROQ_API_KEY });
+
+  // ---------- Správa streamerů ----------
+  if (request.method === "GET" && cesta === "/streameri") {
+    await zajistiSchemaTwitch(db);
+    const q = (url.searchParams.get("q") || "").slice(0, 40).trim();
+    const { results } = await db.prepare(`SELECT id, platforma, login, jmeno, profilovka, skryty, overeno, odkazy, max_divaku FROM streameri
+      ${q ? "WHERE jmeno LIKE ? OR login LIKE ?" : ""} ORDER BY max_divaku DESC LIMIT 50`).bind(...(q ? [`%${q}%`, `%${q}%`] : [])).all();
+    return json(results.map((r) => ({ ...r, odkazy: (() => { try { return JSON.parse(r.odkazy || "{}"); } catch { return {}; } })() })));
+  }
+  const ms = cesta.match(/^\/streamer\/(k?\d{1,20})$/);
+  if (request.method === "POST" && ms) {
+    await zajistiSchemaTwitch(db);
+    let b;
+    try { b = await request.json(); } catch { return json({ chyba: "Neplatná data" }, 400); }
+    const odkazy = {};
+    for (const k of SITE) {
+      const v = String(b?.odkazy?.[k] || "").trim();
+      if (!v) continue;
+      const u = https(v);
+      if (!u) return json({ chyba: `Odkaz „${k}“ musí začínat https://` }, 400);
+      odkazy[k] = u.slice(0, 300);
+    }
+    const r = await db.prepare("UPDATE streameri SET skryty = ?, overeno = ?, odkazy = ? WHERE id = ?")
+      .bind(b.skryty ? 1 : 0, b.overeno ? 1 : 0, JSON.stringify(odkazy), ms[1]).run();
+    return r.meta?.changes ? json({ ok: true }) : json({ chyba: "Nenalezeno" }, 404);
+  }
 
   if (request.method === "GET" && cesta === "/prispevky") {
     const stav = STAVY.has(url.searchParams.get("stav")) ? url.searchParams.get("stav") : "koncept";
