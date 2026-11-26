@@ -4,7 +4,7 @@
   const state = {
     clanky: [], zive: { streamy: [], hry: [] }, adresar: {}, hry: null,
     razeni: "sledujici", platforma: "", hledatS: "", hraZive: "", filtr: "Vše", hledat: "",
-    kategorie: "", mali: false, udalost: null, prehled: null, zdrojNov: "", katNov: "",
+    kategorie: "", mali: false, udalost: null, prehled: null, zdrojNov: null, katNov: "",
     katalog: null, obsah: null, slevyObchod: "steam", topObchod: "steam", noveBrzy: "nove",
   };
 
@@ -226,7 +226,7 @@
 
   function radekHry(h, { hlidac = false } = {}) {
     const cenaTxt = h.cena == null ? (h.vychazi ? "zatím se neprodává" : "") : h.cena === 0 ? "Zdarma"
-      : `${h.sleva ? `<s>${esc(cena(h.puvodni, h.mena))}</s> <em>−${h.sleva} %</em> ` : ""}<strong>${esc(cena(h.cena, h.mena))}</strong>`;
+      : `${h.sleva ? `<s>${esc(cena(h.puvodni, h.mena))}</s> <em>−${Number(h.sleva) || 0} %</em> ` : ""}<strong>${esc(cena(h.cena, h.mena))}</strong>`;
     const minTxt = h.min90 != null && h.cena != null && h.cena > 0
       ? (h.cena <= h.min90 ? `<span class="min90 min-ok">nejnižší cena za 90 dní</span>` : `<span class="min90">nejníž za 90 dní: ${esc(cena(h.min90, h.mena))}</span>`) : "";
     return `<div class="hrad">
@@ -341,9 +341,12 @@
     let d;
     try { d = await nacti("vydani"); } catch { d = { hry: [] }; }
     if (!location.pathname.startsWith("/vydani")) return;
-    let hry = d.hry || [];
+    const vsechny = d.hry || [];
+    // Výchozí pohled = jen opravdu nové hry. Porty starších her a plné verze po předběžném přístupu mají vlastní záložku.
+    let hry = f === "porty" ? vsechny.filter((h) => h.uz_vyslo) : vsechny.filter((h) => !h.uz_vyslo);
     if (f === "cz") hry = hry.filter((h) => h.cestina > 0);
     if (f === "presne") hry = hry.filter((h) => h.presne);
+    const pocetPortu = vsechny.filter((h) => h.uz_vyslo).length;
     const mesice = new Map();
     for (const h of hry) {
       const k = h.presne || /^[A-Za-z]{3} \d{4}$/.test(h.human) ? new Date(h.datum).toLocaleDateString("cs-CZ", { month: "long", year: "numeric" }) : (h.human || "Termín neznámý");
@@ -352,19 +355,20 @@
     const czTxt = (h) => h.cestina === 2 ? `<span class="cz cz-dabing">CZ dabing</span>` : h.cestina === 1 ? `<span class="cz">CZ texty</span>`
       : h.cestina === 0 ? `<span class="cz cz-ne">bez češtiny</span>` : `<span class="cz cz-nevim">čeština zatím neoznámena</span>`;
     app.innerHTML = `${hubHry("vydani", "Kalendář vydání her", "Co vychází, kdy a na čem – a jestli bude hra v češtině.")}
-      <div class="mini-seg cz-filtry" role="group">${[["vse", "Všechny"], ["cz", "Jen s češtinou"], ["presne", "Jen s přesným datem"]].map(([k, v]) =>
+      <div class="mini-seg cz-filtry" role="group">${[["vse", "Nové hry"], ["cz", "Jen s češtinou"], ["presne", "Jen s přesným datem"], ["porty", `Nové platformy a plné verze${pocetPortu ? ` (${pocetPortu})` : ""}`]].map(([k, v]) =>
         `<a class="ms-b${k === f ? " on" : ""}" href="/vydani${k === "vse" ? "" : `?f=${k}`}">${v}</a>`).join("")}</div>
       ${hry.length ? [...mesice].map(([m, list]) => `<div class="section-title">${esc(m.charAt(0).toUpperCase() + m.slice(1))}</div>
         <div class="vydani">${list.map((h) => `<div class="vyd">
           ${https(h.obrazek) ? `<img class="vyd-obr" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyd-obr"></div>`}
           <div class="vyd-t">${h.steam_id ? `<a href="/hra/steam/${esc(h.steam_id)}"><b>${esc(h.nazev)}</b></a>` : `<b>${esc(h.nazev)}</b>`}
-            <span class="vyd-datum">${h.presne ? esc(new Date(h.datum).toLocaleDateString("cs-CZ")) : esc(h.human)}${h.presne && Date.parse(h.datum) > Date.now() ? ` · za <span data-odpocet="${esc(h.datum)}"></span>` : ""}</span>
+            <span class="vyd-datum">${h.presne ? esc(new Date(h.datum).toLocaleDateString("cs-CZ")) : esc(h.human)}${h.presne && Date.parse(h.datum) > Date.now() ? ` · za <span data-odpocet="${esc(h.datum)}"></span>` : h.presne ? " · právě vychází" : ""}</span>
+            ${h.uz_vyslo ? `<p class="vyd-uz">${h.prvni ? `Hra už vyšla ${esc(new Date(h.prvni).toLocaleDateString("cs-CZ"))}` : "Hra už je k dispozici na Steamu"}${h.prvni && h.na_steamu ? " a je k dispozici na Steamu" : ""}. Tady jde o vydání ${(h.platformy || []).length ? `pro ${esc((h.platformy || []).join(", "))}` : "pro další platformu"}${/early|předběž/i.test(h.stav) ? "" : " nebo plnou verzi"}.</p>` : ""}
             <div class="hrad-meta">${czTxt(h)}${h.cestina_zdroj ? `<span class="dim vyd-zdroj">${esc(h.cestina_zdroj)}</span>` : ""}${(h.platformy || []).map((p) => `<span class="plat">${esc(p)}</span>`).join("")}</div>
             <div class="vyd-akce">${h.steam ? `<a class="btn-maly" href="${esc(bezpecnaUrl(h.steam))}" target="_blank" rel="noopener noreferrer">Steam</a>` : ""}
               ${h.igdb ? `<a class="btn-maly" href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer">IGDB</a>` : ""}
               ${h.steam_id ? tlacitkoHlidat({ id: h.steam_id, nazev: h.nazev }) : ""}</div></div></div>`).join("")}</div>`).join("")
         : `<p class="empty">${d.cas ? "Žádná hra neodpovídá filtru." : "Kalendář se načítá z databáze IGDB – zkus to za chvíli."}</p>`}
-      <p class="source-note">Termíny a platformy: databáze <a href="https://www.igdb.com/" target="_blank" rel="noopener noreferrer">IGDB.com</a> (Twitch), jen hry, na které se hráči těší. Čeština podle seznamu jazyků na Steamu, jinak podle IGDB. Termíny se můžou změnit – vývojáři hry často odkládají.${d.cas ? ` Aktualizováno ${esc(kdy(new Date(d.cas)))}.` : ""}</p>`;
+      <p class="source-note">Termíny a platformy: databáze <a href="https://www.igdb.com/" target="_blank" rel="noopener noreferrer">IGDB.com</a> (Twitch), jen hry, na které se hráči těší. Hry, které už dřív vyšly jinde nebo v předběžném přístupu (podle IGDB nebo Steamu), jsou v záložce „Nové platformy a plné verze“. Čeština podle seznamu jazyků na Steamu, jinak podle IGDB. Termíny se můžou změnit – vývojáři hry často odkládají.${d.cas ? ` Aktualizováno ${esc(kdy(new Date(d.cas)))}.` : ""}</p>`;
     obarvi(app); spustOdpocty();
   }
 
@@ -468,7 +472,7 @@
       <div class="stav-ulohy">${d.ulohy.map((u) => { const [t, c] = STAV_TXT[u.stav] || STAV_TXT.neznamy; return `<div class="stav-u">
           <div class="stav-u-h"><b>${esc(u.nazev)}</b><span class="stav-st ${c}">${t}</span></div>
           <p>${esc(u.text || (u.interval == null ? "Běží jen v nastavené hodiny." : "Zatím bez záznamu."))}</p>
-          <span class="dim">${u.posledni ? `naposledy ${esc(kdy(new Date(u.posledni)))}` : ""}${u.interval ? ` · každých ${u.interval} min` : ""}${u.chyb24 ? ` · ${pl(u.chyb24, "chyba", "chyby", "chyb")} za 24 h` : ""}</span></div>`; }).join("")}</div>
+          <span class="dim">${u.posledni ? `naposledy ${esc(kdy(new Date(u.posledni)))}` : ""}${u.interval ? ` · každých ${Number(u.interval) || 0} min` : ""}${u.chyb24 ? ` · ${pl(u.chyb24, "chyba", "chyby", "chyb")} za 24 h` : ""}</span></div>`; }).join("")}</div>
       <div class="section-title">Deník AI</div>
       ${d.denik.length ? `<ol class="denik">${d.denik.map((z) => `<li class="${z.ok ? "" : "dn-chyba"}"><time>${esc(hhmm(z.cas))}</time>
           <div><b>${esc(z.nazev)}</b><span>${esc(z.text)}</span></div></li>`).join("")}</ol>` : `<p class="dim">Deník se začne plnit s prvním během úloh (do 15 minut).</p>`}
@@ -737,14 +741,22 @@
   ];
   const katClanku = (c) => KAT_NOV.filter(([, , re]) => re.test(`${c.typ || ""} ${c.nadpis} ${c.perex || ""}`)).map(([k]) => k);
   const ceskyClanek = (c) => c.vlastni || c.jazyk === "cs";
+  // Jazyk návštěvníka: čeština a slovenština → nejdřív české weby, angličtina → zahraniční.
+  const domaciJazyk = () => (window.HP_JAZYK === "en" ? "en" : "cs");
+  const vJazyku = (c) => (domaciJazyk() === "cs" ? ceskyClanek(c) : !ceskyClanek(c));
+  function zdrojNovinek() {
+    if (state.zdrojNov !== null) return state.zdrojNov;
+    return state.clanky.some(vJazyku) ? domaciJazyk() : "";
+  }
 
   // ---------- Stránky ----------
   function strankaNovinky() {
     nastavTitulek("");
     const platformy = ["Vše", "PC", "PlayStation", "Xbox", "Switch"];
     const q = state.hledat.toLowerCase();
+    const zdroj = zdrojNovinek();
     const list = state.clanky
-      .filter((c) => !state.zdrojNov || (state.zdrojNov === "cs" ? ceskyClanek(c) : !ceskyClanek(c)))
+      .filter((c) => !zdroj || (zdroj === "cs" ? ceskyClanek(c) : !ceskyClanek(c)))
       .filter((c) => !state.katNov || katClanku(c).includes(state.katNov))
       .filter((c) => state.filtr === "Vše" || (c.platformy || []).some((x) => x === state.filtr || (state.filtr === "PlayStation" && /^(PS4|PS5)$/.test(x))))
       .filter((c) => !q || (c.nadpis + " " + c.perex).toLowerCase().includes(q))
@@ -759,12 +771,12 @@
       <div class="filtry">
         <input class="search" id="q" type="search" placeholder="Hledat ve zprávách" value="${esc(state.hledat)}">
         <div class="seg" role="group" aria-label="Odkud">${[["", "Vše"], ["cs", "České weby"], ["en", "Ze zahraničí"]].map(([k, v]) =>
-          `<button type="button" class="seg-b${k === state.zdrojNov ? " on" : ""}" data-z="${k}" aria-pressed="${k === state.zdrojNov}">${v}</button>`).join("")}</div>
+          `<button type="button" class="seg-b${k === zdroj ? " on" : ""}" data-z="${k}" aria-pressed="${k === zdroj}">${v}</button>`).join("")}</div>
       </div>
-      ${state.zdrojNov === "cs" && !pocetCz ? `<p class="dim">České herní weby zatím nedodávají zprávy – ověřujeme jejich RSS kanály. Do té doby tu najdeš jen články Herního pulsu.</p>` : ""}
-      <div class="chips"><button class="chip${state.katNov ? "" : " on"}" data-kn="">Všechny kategorie</button>${kat.map(([k, n]) =>
-        `<button class="chip${k === state.katNov ? " on" : ""}" data-kn="${k}">${n}</button>`).join("")}</div>
-      <div class="chips">${platformy.map((p) => `<button class="chip${p === state.filtr ? " on" : ""}" data-f="${p}">${p === "Vše" ? "Všechny platformy" : p}</button>`).join("")}</div>
+      ${zdroj === "cs" && !pocetCz ? `<p class="dim">České herní weby zatím nedodávají zprávy – ověřujeme jejich RSS kanály. Do té doby tu najdeš jen články Herního pulsu.</p>` : ""}
+      <div class="chips chips-barvy" role="group" aria-label="Kategorie"><button type="button" class="chip chip-vse${state.katNov ? "" : " on"}" data-kn="" aria-pressed="${!state.katNov}">Všechny kategorie</button>${kat.map(([k, n]) =>
+        `<button type="button" class="chip chip-${k}${k === state.katNov ? " on" : ""}" data-kn="${k}" aria-pressed="${k === state.katNov}">${n}</button>`).join("")}</div>
+      <div class="chips chips-barvy" role="group" aria-label="Platforma">${platformy.map((p) => `<button type="button" class="chip chip-${p === "Vše" ? "vse" : p.toLowerCase()}${p === state.filtr ? " on" : ""}" data-f="${p}" aria-pressed="${p === state.filtr}">${p === "Vše" ? "Všechny platformy" : p}</button>`).join("")}</div>
       ${list.length ? `<div class="grid">${list.map(kartaClanku).join("")}</div>`
         : `<p class="empty">${state.clanky.length ? "Nic jsme nenašli." : "Sběr novinek právě běží. První zprávy se objeví do 15 minut."}</p>`}
       ${zive.length ? `<div class="section-title">Právě živě · <a href="/zive">všichni</a></div><div class="live-grid">${zive.map(kartaZive).join("")}</div>` : ""}`;
@@ -957,7 +969,7 @@
         `<div class="termin"><b>${esc(den(r.zacatek))}</b><span>${esc(r.nazev || r.hra || "Stream")}</span>${r.hra ? `<span class="dim">${esc(r.hra)}</span>` : ""}</div>`).join("")}</div>` : ""}
       ${(x.klipy || []).length ? `<div class="section-title">Nejlepší klipy za 30 dní</div><div class="klipy">${x.klipy.map((k) =>
         `<a class="klip" href="${esc(bezpecnaUrl(k.url))}" target="_blank" rel="noopener noreferrer">
-          <div class="klip-thumb">${https(k.nahled) ? `<img src="${esc(k.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="live-time">${k.delka}s</span></div>
+          <div class="klip-thumb">${https(k.nahled) ? `<img src="${esc(k.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="live-time">${Math.round(Number(k.delka) || 0)}s</span></div>
           <div class="klip-t">${esc(k.nazev)}</div><div class="sub">${num(k.zhlednuti)} zhlédnutí</div></a>`).join("")}</div>` : ""}`;
   }
 
@@ -1033,7 +1045,7 @@
           <p class="dim">${esc(datumCz(r.od))} – ${esc(datumCz(r.do))}${r.probiha ? " · týden ještě běží, čísla se průběžně mění" : ""}</p>
           ${r.tydny.length > 1 ? `<div class="rep-tydny">${r.tydny.slice(0, 8).map((t) => `<a class="ms-b${t.id === r.tyden ? " on" : ""}" href="/report/${esc(t.probiha ? "aktualni" : t.id)}">${t.probiha ? "Tento týden" : esc(datumCz(t.od).replace(/\s?\d{4}$/, ""))}</a>`).join("")}</div>` : ""}
         </header>
-        ${s.pokryti < 90 ? `<p class="info-box">Za tento týden máme ${s.pokryti} % měření${r.data_od ? ` – statistiky sbíráme od ${esc(datumCz(r.data_od))}` : ""}. Čísla jsou proto nižší, než by byla za celý týden.</p>` : ""}
+        ${s.pokryti < 90 ? `<p class="info-box">Za tento týden máme ${Number(s.pokryti) || 0} % měření${r.data_od ? ` – statistiky sbíráme od ${esc(datumCz(r.data_od))}` : ""}. Čísla jsou proto nižší, než by byla za celý týden.</p>` : ""}
         ${r.vety.length ? `<p class="rep-vety">${r.vety.map(esc).join(" ")}</p>` : `<p class="dim">Za tento týden zatím nemáme dost dat.</p>`}
         <div class="rep-dlazdice">
           <div><b>${esc(num(s.hodin))}</b><span>hodin sledování${s.zmena != null && s.hodin_pred ? ` <i class="${s.zmena >= 0 ? "zm-nahoru" : "zm-dolu"}">${s.zmena >= 0 ? "+" : ""}${s.zmena} %</i>` : ""}</span></div>
@@ -1079,7 +1091,7 @@
     const maxDen = Math.max(1, ...stat.dny.map((d) => d.hodin));
     const obchod = (nazev, cls, url, radek) => `<a class="obchod-r ${cls}" href="${esc(bezpecnaUrl(url))}" target="_blank" rel="noopener noreferrer"><b>${nazev}</b><span>${radek}</span></a>`;
     const cenaTxt = (o) => o.zdarma || o.cena === 0 ? "Zdarma" : o.cena == null ? "Cena neuvedena"
-      : `${o.sleva ? `<s>${esc(cena(o.puvodni, o.mena))}</s> <em>−${o.sleva} %</em> ` : ""}<strong>${esc(cena(o.cena, o.mena))}</strong>`;
+      : `${o.sleva ? `<s>${esc(cena(o.puvodni, o.mena))}</s> <em>−${Number(o.sleva) || 0} %</em> ` : ""}<strong>${esc(cena(o.cena, o.mena))}</strong>`;
     const obchody = [
       st && obchod("Steam", "ob-steam", st.url, cenaTxt(st) + (st.min90 != null && st.cena > 0 ? `<br><small>${st.cena <= st.min90 ? "nejnižší cena za 90 dní" : `nejníž za 90 dní ${esc(cena(st.min90, st.mena))}`}</small>` : "")),
       gog && obchod("GOG", "ob-gog", gog.url, cenaTxt(gog)),
@@ -1128,7 +1140,7 @@
     if (gc) graf(gc, st.historie.map((x) => ({ v: x.cena, d: new Date(x.den + "T12:00:00").toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) })), "Vývoj ceny na Steamu");
     const ho = document.getElementById("hra-obr");
     if (ho) ho.onclick = () => sdilejObrazek({ stitek: "Hra", nadpis: h.nazev, odkaz: location.pathname,
-      radky: [st?.cena != null && [st.zdarma || st.cena === 0 ? "Zdarma" : cena(st.cena, st.mena), st.sleva ? `na Steamu, sleva −${st.sleva} %` : "na Steamu"],
+      radky: [st?.cena != null && [st.zdarma || st.cena === 0 ? "Zdarma" : cena(st.cena, st.mena), st.sleva ? `na Steamu, sleva −${Number(st.sleva) || 0} %` : "na Steamu"],
         cz && [cz.dabing ? "CZ dabing" : cz.rozhrani ? "CZ texty" : "Bez češtiny", "čeština podle Steamu"],
         st?.hodnoceni && [`${st.hodnoceni.kladne} %`, `kladných recenzí z ${num(st.hodnoceni.recenzi)}`],
         stat.hodin7 && [`${num(stat.hodin7)} h`, "sledování na českých streamech za 7 dní"]].filter(Boolean) });
@@ -1252,7 +1264,7 @@
   function kartaHry(h, { velka = false, odpocet = null, poradi = null } = {}) {
     return `<a class="hk${velka ? " hk-velka" : ""}" ${odkazHry(h)}>
       <div class="hk-obr">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
-        ${obchodStitek(h.obchod)}${h.sleva > 0 ? `<span class="hk-sleva">−${h.sleva} %</span>` : ""}${poradi ? `<span class="hk-poradi">${poradi}</span>` : ""}</div>
+        ${obchodStitek(h.obchod)}${h.sleva > 0 ? `<span class="hk-sleva">−${Number(h.sleva) || 0} %</span>` : ""}${poradi ? `<span class="hk-poradi">${poradi}</span>` : ""}</div>
       <div class="hk-t"><b>${esc(h.nazev)}</b>${czStitek(h)}
         ${odpocet ? `<span class="hk-odpocet">${esc(odpocet)}</span>` : ""}
         ${h.cena != null ? `<span class="hk-cena">${h.puvodni && h.puvodni > h.cena ? `<s>${esc(cena(h.puvodni, h.mena))}</s> ` : ""}<b>${esc(cena(h.cena, h.mena))}</b></span>` : ""}
@@ -1264,7 +1276,7 @@
   function kartaVidea(v, klip = false) {
     return `<a class="hk vk" href="${esc(bezpecnaUrl(v.url))}" target="_blank" rel="noopener noreferrer">
       <div class="hk-obr vk-obr">${https(v.nahled) ? `<img src="${esc(v.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
-        <span class="obchod ${klip ? "ob-twitch" : "ob-yt"}">${klip ? "Klip" : "YouTube"}</span>${klip && v.delka ? `<span class="hk-sleva vk-delka">${v.delka} s</span>` : ""}</div>
+        <span class="obchod ${klip ? "ob-twitch" : "ob-yt"}">${klip ? "Klip" : "YouTube"}</span>${klip && v.delka ? `<span class="hk-sleva vk-delka">${Math.round(Number(v.delka) || 0)} s</span>` : ""}</div>
       <div class="hk-t"><b>${esc(v.nazev)}</b>
         <span class="vk-autor">${av(v.streamer)}${esc(v.streamer.jmeno)}</span>
         <span class="hk-hraci">${klip ? `${esc(num(v.zhlednuti || 0))} zhlédnutí · ` : ""}${esc(kdy(new Date(v.cas)))}</span></div></a>`;
@@ -1277,7 +1289,7 @@
     const hod = h.hodnoceni || vsechnyHry.find((x) => x.hodnoceni && normNazev(x.nazev) === n)?.hodnoceni;
     const hrajou = n.length > 3 ? state.zive.streamy.filter((s) => s.hra && normNazev(s.hra) === n) : [];
     const pise = n.length > 3 ? state.clanky.filter((c) => normNazev(c.nadpis).includes(n)).slice(0, 3) : [];
-    const proc = h.cena === 0 || h.do ? `Zdarma na ${OBCHOD[h.obchod] || h.obchod}${h.do ? ` – ${zbyva(h.do)}` : ""}` : `Sleva −${h.sleva} % na ${OBCHOD[h.obchod] || h.obchod}`;
+    const proc = h.cena === 0 || h.do ? `Zdarma na ${OBCHOD[h.obchod] || h.obchod}${h.do ? ` – ${zbyva(h.do)}` : ""}` : `Sleva −${Number(h.sleva) || 0} % na ${OBCHOD[h.obchod] || h.obchod}`;
     return `<section id="hra-tydne" class="sekce hra-tydne">
       <a class="ht-obr" ${odkazHry(h)}>${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}</a>
       <div class="ht-t"><span class="ht-stitek">Hra týdne</span>
@@ -1317,7 +1329,8 @@
     const noveBrzy = state.noveBrzy === "brzy" ? (k.steam_brzy || []) : (k.steam_nove || []);
     const hrane = k.steam_hrane || [];
     const maxSleva = Math.max(0, ...(k.steam_slevy || []).map((h) => h.sleva), ...(k.gog_slevy || []).map((h) => h.sleva));
-    const zpravy = [...state.clanky].sort((a, b) => datum(b) - datum(a)).slice(0, 4);
+    const prednost = (c) => (vJazyku(c) && Date.now() - datum(c) < 2 * 864e5 ? 1 : 0); // čerstvé zprávy v jazyce návštěvníka první
+    const zpravy = [...state.clanky].sort((a, b) => (prednost(b) - prednost(a)) || (datum(b) - datum(a))).slice(0, 4);
     app.innerHTML = `
       <div class="home-head"><h1>Všechno o hrách na jednom místě</h1>
         <p class="home-perex">AI za tebe sbírá ceny, hry zdarma, zprávy a streamy z celého internetu.</p>

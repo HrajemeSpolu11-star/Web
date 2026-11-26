@@ -136,6 +136,8 @@ function json(data, status = 200) {
 }
 
 // /api/push/klic (GET), /api/push/odber, /zrusit, /zpravy, /hlidat, /nehlidat (POST)
+const MAX_ODBERU = 20000;
+
 export async function pushApi(request, env) {
   const url = new URL(request.url);
   const cesta = url.pathname.slice(9);
@@ -151,6 +153,11 @@ export async function pushApi(request, env) {
   const endpoint = String(b?.endpoint || "");
   if (!platnyEndpoint(endpoint)) return json({ chyba: "Neplatný odběr" }, 400);
   const id = await otisk(endpoint);
+  // Pojistka proti zahlcení databáze vymyšlenými odběry: nové odběry jen do pevného stropu.
+  if (cesta === "/odber" || cesta === "/hlidat") {
+    const [ex, poc] = await db.batch([db.prepare("SELECT 1 AS x FROM push_odbery WHERE id = ?").bind(id), db.prepare("SELECT COUNT(*) AS n FROM push_odbery")]);
+    if (!ex.results.length && (poc.results[0]?.n || 0) >= MAX_ODBERU) return json({ chyba: "Upozornění jsou teď přeplněná, zkus to později." }, 503);
+  }
 
   if (cesta === "/odber") {
     const obl = (Array.isArray(b.oblibeni) ? b.oblibeni : []).map(String).filter((k) => KLIC_OBLIBENEHO.test(k)).slice(0, MAX_OBLIBENYCH);

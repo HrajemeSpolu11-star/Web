@@ -50,6 +50,7 @@ Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?
 ## Frontend
 - SPA bez frameworku: `public/js/app.js`. Routování přes `history.pushState`, skutečné adresy.
 - Staré odkazy `/#/…` se přesměrují.
+- **Nová stránka = přidat ji do tří míst**: `route()` v `app.js`, `jeStranka()` v `src/seo.js` a `assets.run_worker_first` ve `wrangler.jsonc`. Bez posledního vrátí obnovení stránky 404 (Cloudflare při navigaci servíruje `404.html` bez Workeru).
 - Žádné inline skripty/styly (CSP) – barvy přes `data-a`/`data-b` a `obarvi()`.
 - Lokální úložiště prohlížeče: `hp_uvitani` (zavřené uvítání), `hp_oblibeni` (oblíbení), `hp_push` (upozornění zapnutá).
 
@@ -57,7 +58,9 @@ Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?
 - `public/_headers`: CSP (`default-src 'none'`, `script-src 'self'`, `img-src 'self' data: https:`, `worker-src 'self'`…), HSTS, X-Frame-Options DENY aj.
 - API: jen GET (kromě push a adminu), SQL přes `bind()`, validace vstupů, mezipaměť.
 - Admin: JWT z Cloudflare Access ověřené ve Workeru (podpis RS256, aud, iss, exp) + kontrola Origin a hlavičky `X-Admin` proti CSRF.
-- Push: povolené jen endpointy známých push služeb (ochrana proti SSRF), max. 100 oblíbených na odběr.
+- Push: povolené jen endpointy známých push služeb (ochrana proti SSRF), max. 100 oblíbených na odběr, strop 20 000 odběrů.
+- Mezipaměť API: klíč jen ze známých parametrů (`POVOLENE` v `verejneApi`). Nový parametr API = doplnit tam.
+- Kalendář vydání (`src/vydani.js`): IGDB `release_dates` + `game.first_release_date`; porty a plné verze po předběžném přístupu se označí `uz_vyslo` (i podle Steamu). Až 3 dotazy na IGDB (zjednodušení při chybě 400) + 1–2 na token.
 
 ## Souběžné běhy a přesnost statistik (od 2026-11-26)
 - Sběr Twitch/Kick běží z Cronu (`5,20,35,50`) i na vyžádání (`sberTwitchPokudStary`, když je poslední sběr starší než 10 min).

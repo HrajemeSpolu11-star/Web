@@ -6,6 +6,26 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 20) – Oprava 404 po obnovení stránky, kalendář vydání bez starých her, barevné filtry, audit
+- **Oprava: obnovení stránky vracelo 404** (např. `/porovnat?a=…`, ale týkalo se všech podstránek). Cloudflare při navigaci
+  servíroval rovnou `404.html` a Worker nespustil. Všechny stránky webu jsou teď ve `run_worker_first` (`wrangler.jsonc`) –
+  seznam musí odpovídat funkci `jeStranka()` v `src/seo.js`.
+- **Kalendář vydání**: IGDB vrací každé vydání zvlášť (port na novou konzoli, plná verze po předběžném přístupu, jiný region),
+  takže se staré hry ukazovaly jako novinky. Nově se bere `game.first_release_date` a stav na Steamu (`steam_hry.vychazi`);
+  hry, které už vyšly, jsou v záložce „Nové platformy a plné verze“ s textem, kdy vyšly. Vyřazené jsou zrušené termíny a balíčky,
+  aktualizace a módy (`game_type`). Když IGDB některé pole nezná, dotaz se sám zjednoduší (3 úrovně). Stará data se přepočítají
+  při nejbližším běhu katalogu. Výchozí záložka se jmenuje „Nové hry“; u dnešních vydání „právě vychází“.
+- **Novinky podle jazyka**: CZ/SK → výchozí „České weby“, EN → „Ze zahraničí“ (jen když nějaké zprávy jsou; jinak „Vše“).
+  Na Domů jsou čerstvé zprávy (do 48 h) v jazyce návštěvníka nahoře.
+- **Barevné filtry** v Novinkách: každá kategorie a platforma má svou barvu (PlayStation modrá, Xbox zelená, Switch červená…),
+  při najetí myší se zvednou a rozsvítí, na mobilu se při ťuknutí zmáčknou. Respektuje „omezit pohyb“.
+- Audit – bezpečnost a stabilita:
+  - Klíč mezipaměti API jen ze známých parametrů (náhodné `?x=` ji obcházely a zatěžovaly D1).
+  - Rozbité kódování v adrese API (`%E0`) už nevrací chybu 500.
+  - Prázdný kalendář stahuje z IGDB na žádost návštěvy nejvýš jednou za 10 minut (zámek `vydani_pokus`).
+  - Strop 20 000 push odběrů proti zahlcení databáze vymyšlenými odběry.
+  - Čísla ze serveru (sleva, délka klipu, interval) se do HTML vkládají jako čísla.
+
 ## 2026-11-26 (odpoledne, 19) – Poctivé statistiky streamerů a historie vysílání z Twitche
 - „Odvysíláno za 30 dní“ bylo zavádějící: počítáme ho sami a měření teprve začalo. Profil teď ukazuje
   „odvysíláno od <datum>“ a „nejvíc diváků najednou od <datum>, kdy měříme“, dokud neuplyne 30 dní (`mereno_od` v API).

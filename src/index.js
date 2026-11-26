@@ -315,6 +315,19 @@ async function apiStav(env) {
   }, 200, 30);
 }
 
+// decodeURIComponent vyhodí chybu u rozbité adresy (např. „%E0“) – pak vracíme prázdný text místo chyby 500.
+const dekoduj = (x) => { try { return decodeURIComponent(x); } catch { return ""; } };
+
+// Jednoduchý zámek v tabulce nastaveni: true = smíme (a zámek je teď náš), false = někdo to dělal nedávno.
+async function zamekNa(db, klic, ms) {
+  const ted = Date.now();
+  try {
+    const r = await db.prepare(`INSERT INTO nastaveni (klic, hodnota, plati_do) VALUES (?, '1', ?)
+      ON CONFLICT(klic) DO UPDATE SET plati_do = excluded.plati_do WHERE nastaveni.plati_do < ?`).bind(klic, ted + ms, ted).run();
+    return (r.meta?.changes || 0) > 0;
+  } catch { return false; }
+}
+
 async function verejneApi(request, env, ctx, url) {
   if (request.method !== "GET" && request.method !== "HEAD") return json({ chyba: "Metoda není povolena" }, 405);
 
@@ -325,7 +338,11 @@ async function verejneApi(request, env, ctx, url) {
 
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
-  const klic = new Request(url.toString(), { method: "GET" });
+  // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
+  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids"];
+  const ciste = new URL(url.origin + url.pathname);
+  for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, 200)); }
+  const klic = new Request(ciste.toString(), { method: "GET" });
   const ulozeno = await cache.match(klic);
   if (ulozeno) return ulozeno;
 
@@ -351,12 +368,13 @@ async function verejneApi(request, env, ctx, url) {
     }
     else if (url.pathname === "/api/steam-hry") odpoved = json(await apiSteamHry(env, url.searchParams.get("ids")), 200, 300);
     else if (url.pathname === "/api/studia") odpoved = json(await apiStudia(env), 200, 600);
-    else if (url.pathname.startsWith("/api/studio/")) { const s = await apiStudio(env, decodeURIComponent(url.pathname.slice(12))); odpoved = s ? json(s, 200, 600) : json({ chyba: "Nenalezeno" }, 404); }
+    else if (url.pathname.startsWith("/api/studio/")) { const s = await apiStudio(env, dekoduj(url.pathname.slice(12))); odpoved = s ? json(s, 200, 600) : json({ chyba: "Nenalezeno" }, 404); }
     else if (url.pathname === "/api/akce") odpoved = json(await apiAkce(env), 200, 600);
     else if (url.pathname === "/api/vydani") {
       let v = await apiVydani(env);
-      if (!v.cas) { await sberVydani(env).catch((e) => console.error("vydání:", e)); v = await apiVydani(env); }
-      odpoved = json(v, 200, 1800);
+      // Prázdný kalendář (první spuštění): stáhnout z IGDB nejvýš jednou za 10 minut, ať návštěvy nezahltí IGDB.
+      if (!v.cas && await zamekNa(env.DB, "vydani_pokus", 600e3)) { await sberVydani(env).catch((e) => console.error("vydání:", e)); v = await apiVydani(env); }
+      odpoved = json(v, 200, v.cas ? 1800 : 60);
     }
     else if (url.pathname === "/api/stav-systemu") odpoved = json(await apiStavSystemu(env), 200, 60);
     else if (url.pathname === "/api/obsah") odpoved = json(await apiObsah(env), 200, 600);
@@ -368,12 +386,12 @@ async function verejneApi(request, env, ctx, url) {
       odpoved = json(k, 200, k.cas ? 600 : 0);
     }
     else if (url.pathname.startsWith("/api/hra-steam/")) odpoved = await apiHraSteam(url.pathname.slice(15), env, ctx);
-    else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(decodeURIComponent(url.pathname.slice(9)), env, ctx);
+    else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(dekoduj(url.pathname.slice(9)), env, ctx);
     else if (url.pathname.startsWith("/api/streamer-extra/")) {
-      const [plat, login] = url.pathname.slice(20).split("/").map(decodeURIComponent);
+      const [plat, login] = url.pathname.slice(20).split("/").map(dekoduj);
       odpoved = await apiExtra(plat, login || "", env);
     } else if (url.pathname.startsWith("/api/streamer/")) {
-      const casti = url.pathname.slice(14).split("/").map(decodeURIComponent);
+      const casti = url.pathname.slice(14).split("/").map(dekoduj);
       // Staré adresy /api/streamer/:login = Twitch.
       odpoved = casti.length === 1 ? await apiStreamer("twitch", casti[0], env) : await apiStreamer(casti[0], casti[1], env);
     }

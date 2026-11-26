@@ -9,7 +9,12 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/", "/admin", "/admin/*", "/api/*"],
+    // Všechny stránky webu (SPA) musí jít přes Worker, jinak Cloudflare při obnovení stránky vrátí 404.html.
+    // Seznam musí odpovídat funkci jeStranka() v src/seo.js.
+    "run_worker_first": ["/", "/admin", "/admin/*", "/api/*", "/robots.txt", "/sitemap.xml",
+      "/novinky", "/novinky/", "/zive", "/zive/", "/streameri", "/streameri/", "/hry", "/hry/", "/prehled", "/prehled/",
+      "/porovnat", "/porovnat/", "/report", "/report/*", "/cestina", "/cestina/", "/hlidac", "/hlidac/", "/stav", "/stav/",
+      "/vydani", "/vydani/", "/akce", "/akce/", "/studia", "/studia/", "/studio/*", "/clanek/*", "/hra/*", "/streamer/*"],
     // Neexistující adresa → public/404.html se stavem 404.
     "not_found_handling": "404-page"
   },

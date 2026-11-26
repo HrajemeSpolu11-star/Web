@@ -227,6 +227,8 @@
     "Hry": ["Hry", "Games"], "Kalendář vydání": ["Kalendár vydaní", "Release calendar"], "Akce a odpočty": ["Akcie a odpočty", "Events & countdowns"],
     "Studia": ["Štúdiá", "Studios"], "Kalendář vydání her": ["Kalendár vydaní hier", "Game release calendar"],
     "Co vychází, kdy a na čem – a jestli bude hra v češtině.": ["Čo vychádza, kedy a na čom – a či bude hra v češtine.", "What's coming out, when, on which platforms – and whether it will have Czech."],
+    "Nové hry": ["Nové hry", "New games"], "Nové platformy a plné verze": ["Nové platformy a plné verzie", "New platforms and full releases"],
+    "Kategorie": ["Kategórie", "Categories"], "Upozornění jsou teď přeplněná, zkus to později.": ["Upozornenia sú teraz preplnené, skús to neskôr.", "Notifications are full right now, try again later."],
     "Všechny": ["Všetky", "All"], "Jen s češtinou": ["Len s češtinou", "Czech only"], "Jen s přesným datem": ["Len s presným dátumom", "Exact date only"],
     "čeština zatím neoznámena": ["čeština zatiaľ neoznámená", "Czech not announced"], "IGDB": ["IGDB", "IGDB"],
     "Žádná hra neodpovídá filtru.": ["Žiadna hra nezodpovedá filtru.", "No game matches the filter."],
@@ -276,6 +278,14 @@
 
   // ---------- Věty s čísly a proměnnými částmi: [vzor, slovensky, anglicky] ----------
   const FRAZE = [
+    [/^Nové platformy a plné verze \((\d+)\)$/, "Nové platformy a plné verzie ($1)", "New platforms and full releases ($1)"],
+    [/^(.+) · právě vychází$/, "$1 · práve vychádza", "$1 · out now"],
+    [/^Hra už vyšla (.+?)( a je k dispozici na Steamu)?\. Tady jde o vydání pro (.+?)( nebo plnou verzi)?\.$/,
+      (m) => `Hra už vyšla ${m[1]}${m[2] ? " a je dostupná na Steame" : ""}. Tu ide o vydanie pre ${m[3] === "další platformu" ? "ďalšiu platformu" : m[3]}${m[4] ? " alebo plnú verziu" : ""}.`,
+      (m) => `Already released on ${m[1]}${m[2] ? " and available on Steam" : ""}. This is the release for ${m[3] === "další platformu" ? "another platform" : m[3]}${m[4] ? " or the full version" : ""}.`],
+    [/^Hra už je k dispozici na Steamu\. Tady jde o vydání pro (.+?)( nebo plnou verzi)?\.$/,
+      (m) => `Hra je už dostupná na Steame. Tu ide o vydanie pre ${m[1] === "další platformu" ? "ďalšiu platformu" : m[1]}${m[2] ? " alebo plnú verziu" : ""}.`,
+      (m) => `Already available on Steam. This is the release for ${m[1] === "další platformu" ? "another platform" : m[1]}${m[2] ? " or the full version" : ""}.`],
     [/^Zdarma na (.+?) – ještě (.+)$/, "Zadarmo na $1 – ešte $2", "Free on $1 – $2 left"],
     [/^ještě (\d+) d (\d+) h$/, "ešte $1 d $2 h", "$1 d $2 h left"], [/^ještě (\d+) h (\d+) min$/, "ešte $1 h $2 min", "$1 h $2 min left"],
     [/^Sleva −(\d+) % na (.+)$/, "Zľava −$1 % na $2", "−$1 % off on $2"],

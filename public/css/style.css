@@ -649,3 +649,24 @@ a.ai-stav u{text-decoration-color:var(--line)}
 .rec>div,.vyd-t,.hrad-t,.studio-h>div,.akce-k,.studio-k p,.hk-t{min-width:0;overflow-wrap:anywhere}
 .hub-tabs{max-width:100%}
 .stat span small{display:block;font-size:11.5px;opacity:.8;margin-top:2px;line-height:1.3}
+
+/* Barevné filtry (Novinky): každá kategorie a platforma má svou barvu, ať se v nich člověk hned vyzná. */
+.chips-barvy{padding:4px 2px 8px}
+.chips-barvy .chip{--c:#a9a3d1;position:relative;display:inline-flex;align-items:center;gap:8px;color:var(--text);
+  border-color:color-mix(in srgb,var(--c) 45%,transparent);background:color-mix(in srgb,var(--c) 10%,transparent);
+  transition:transform .18s ease,background-color .18s ease,box-shadow .18s ease,border-color .18s ease;-webkit-tap-highlight-color:transparent}
+.chips-barvy .chip::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c);flex:none;transition:transform .25s ease}
+.chips-barvy .chip:hover{transform:translateY(-2px);background:color-mix(in srgb,var(--c) 24%,transparent);border-color:var(--c);
+  box-shadow:0 6px 18px -6px color-mix(in srgb,var(--c) 70%,transparent)}
+.chips-barvy .chip:hover::before{transform:scale(1.35)}
+.chips-barvy .chip:active{transform:scale(.94);background:color-mix(in srgb,var(--c) 34%,transparent)}
+.chips-barvy .chip.on{background:var(--c);border-color:var(--c);color:#16132e;box-shadow:0 4px 16px -4px color-mix(in srgb,var(--c) 80%,transparent)}
+.chips-barvy .chip.on::before{background:#16132e}
+.chips-barvy .chip-vse{--c:#f4f2ff}
+.chips-barvy .chip-oznameni{--c:#ffc04d}.chips-barvy .chip-recenze{--c:#ff7a9c}.chips-barvy .chip-trailery{--c:#ff5b5b}.chips-barvy .chip-slevy{--c:#4fd88f}
+.chips-barvy .chip-aktualizace{--c:#5cc8ff}.chips-barvy .chip-esport{--c:#ff9a3d}.chips-barvy .chip-streamovani{--c:#b47cff}.chips-barvy .chip-hardware{--c:#9fb4c9}
+.chips-barvy .chip-pc{--c:#c9d2e3}.chips-barvy .chip-playstation{--c:#4d8dff}.chips-barvy .chip-xbox{--c:#52c75a}.chips-barvy .chip-switch{--c:#ff4f5e}
+@media (hover:none){.chips-barvy .chip:hover{transform:none;box-shadow:none;background:color-mix(in srgb,var(--c) 10%,transparent)}
+  .chips-barvy .chip.on:hover{background:var(--c)}}
+@media (prefers-reduced-motion:reduce){.chips-barvy .chip,.chips-barvy .chip::before{transition:none}.chips-barvy .chip:hover,.chips-barvy .chip:active{transform:none}}
+.vyd-uz{margin:6px 0 2px;font-size:13px;line-height:1.4;color:var(--muted);border-left:3px solid #5cc8ff;padding-left:8px}
