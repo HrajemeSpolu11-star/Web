@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Herní puls – novinky a streameři</title>
+<meta name="description" content="Automatické herní novinky a přehled českých streamerů.">
+<meta name="theme-color" content="#0d0f14">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <a href="#/" class="logo"><span class="pulse"></span><span id="site-name">Herní puls</span></a>
+  <nav class="tabs">
+    <a href="#/" data-tab="novinky">Novinky</a>
+    <a href="#/zive" data-tab="zive">Živě <span class="dot" id="live-count"></span></a>
+    <a href="#/streameri" data-tab="streameri">Streameři</a>
+  </nav>
+</header>
+
+<div class="demo-banner">Testovací verze – všechny články i streameři jsou smyšlená ukázková data.</div>
+
+<main id="app"><p class="loading">Načítám…</p></main>
+
+<footer class="foot">
+  <p>Články píše automaticky AI na základě veřejných zdrojů, které jsou vždy uvedené pod článkem.</p>
+  <p>© <span id="year"></span> <span class="site-name-foot">Herní puls</span></p>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

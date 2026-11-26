@@ -1,0 +1,90 @@
+[
+  {
+    "id": "ashfall-odyssey-datum-vydani",
+    "nadpis": "Ashfall Odyssey má datum vydání, vyjde už v březnu",
+    "perex": "Studio oznámilo, že postapokalyptické RPG dorazí na PC a konzole o dva měsíce dřív, než se čekalo.",
+    "text": [
+      "Vývojáři ze studia Emberline potvrdili, že Ashfall Odyssey vyjde 12. března. Původně se mluvilo o květnu, ale podle studia šel vývoj rychleji, než plánovali.",
+      "Hra slibuje otevřený svět pokrytý popelem, ve kterém se mění počasí a s ním i to, kam se dá dojít. Hráči budou stavět vlastní karavanu a najímat do ní společníky s vlastními příběhy.",
+      "Pro hráče je to dobrá zpráva hlavně proto, že březen zatím nemá žádný velký RPG titul. Ashfall Odyssey tak bude mít prostor vyniknout."
+    ],
+    "platformy": ["PC", "PS5", "Xbox"],
+    "typ": "Oznámení",
+    "pred_hodinami": 1,
+    "zdroje": [{"nazev": "Ukázkový zdroj A", "url": "#"}, {"nazev": "Ukázkový zdroj B", "url": "#"}],
+    "barva": ["#ff7a3d", "#5a1a0a"],
+    "hlavni": true
+  },
+  {
+    "id": "neon-courier-2-trailer",
+    "nadpis": "Neon Courier 2 ukázal nový trailer plný honiček po střechách",
+    "perex": "Pokračování kyberpunkové doručovací hry přidává kooperaci pro dva hráče.",
+    "text": [
+      "Nový trailer ukazuje noční město, ve kterém kurýři přeskakují mezi střechami a uhýbají dronům.",
+      "Největší novinkou je kooperace: jeden hráč řídí, druhý naviguje a hackuje semafory.",
+      "Datum vydání zatím chybí, studio mluví jen o příštím roce."
+    ],
+    "platformy": ["PC", "PS5"],
+    "typ": "Trailer",
+    "pred_hodinami": 3,
+    "zdroje": [{"nazev": "Ukázkový zdroj C", "url": "#"}],
+    "barva": ["#7c5cff", "#0c0a2a"]
+  },
+  {
+    "id": "kingdom-of-moss-recenze",
+    "nadpis": "Kingdom of Moss: malá budovatelská hra, od které se nedá odtrhnout",
+    "perex": "Kritici chválí poklidnou atmosféru a chytré propojení zahradničení se stavbou měst.",
+    "text": [
+      "První recenze Kingdom of Moss jsou velmi pozitivní. Hra spojuje budování malé vesnice s pěstováním mechu, který postupně mění krajinu.",
+      "Recenzenti oceňují hlavně klidné tempo a ručně malovanou grafiku. Výtky míří na krátkou délku hlavní kampaně.",
+      "Hra je dostupná na Switchi a PC."
+    ],
+    "platformy": ["Switch", "PC"],
+    "typ": "Recenze",
+    "pred_hodinami": 5,
+    "zdroje": [{"nazev": "Ukázkový zdroj A", "url": "#"}, {"nazev": "Ukázkový zdroj D", "url": "#"}],
+    "barva": ["#3fbf7f", "#0a2a1a"]
+  },
+  {
+    "id": "starforge-tactics-sleva",
+    "nadpis": "Starforge Tactics je tento víkend zdarma k vyzkoušení",
+    "perex": "Taktická vesmírná strategie nabízí plnou hru na tři dny a k tomu slevu 60 %.",
+    "text": [
+      "Do neděle si můžeš Starforge Tactics zahrát zdarma bez omezení. Postup se ti uloží, pokud si hru potom koupíš.",
+      "Sleva 60 % platí do pondělí."
+    ],
+    "platformy": ["PC", "Xbox"],
+    "typ": "Sleva",
+    "pred_hodinami": 7,
+    "zdroje": [{"nazev": "Ukázkový zdroj B", "url": "#"}],
+    "barva": ["#2fa8ff", "#06182e"]
+  },
+  {
+    "id": "hollow-tides-odklad",
+    "nadpis": "Hollow Tides se odkládá, studio potřebuje víc času na ladění",
+    "perex": "Podmořský horor nevyjde letos, nový termín je zatím neznámý.",
+    "text": [
+      "Autoři Hollow Tides oznámili odklad. Podle nich hra potřebuje víc času hlavně kvůli výkonu na konzolích.",
+      "Nový termín slíbili oznámit během zimy."
+    ],
+    "platformy": ["PS5", "Xbox", "PC"],
+    "typ": "Oznámení",
+    "pred_hodinami": 9,
+    "zdroje": [{"nazev": "Ukázkový zdroj C", "url": "#"}],
+    "barva": ["#1ec8c8", "#031c22"]
+  },
+  {
+    "id": "velvet-rally-aktualizace",
+    "nadpis": "Velvet Rally dostala velkou aktualizaci se zimními tratěmi",
+    "perex": "Závodní hra přidává sníh, led a nový režim ve dvou na jedné obrazovce.",
+    "text": [
+      "Aktualizace přidává šest zimních tratí a dynamické počasí.",
+      "Nový režim na rozdělené obrazovce potěší hlavně hráče na Switchi."
+    ],
+    "platformy": ["Switch", "PS5"],
+    "typ": "Aktualizace",
+    "pred_hodinami": 12,
+    "zdroje": [{"nazev": "Ukázkový zdroj D", "url": "#"}],
+    "barva": ["#ff4d9a", "#2a0618"]
+  }
+]
