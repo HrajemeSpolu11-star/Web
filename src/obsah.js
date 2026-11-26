@@ -37,7 +37,7 @@ const dekoduj = (s) => String(s || "").replace(/<!\[CDATA\[|\]\]>/g, "").replace
   .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).trim();
 
 // Z adresy kanálu získá ID „UC…“. Odkazy /channel/UC… přímo, jinak (/@jmeno, /c/…, /user/…) přečte stránku kanálu.
-async function idKanalu(url) {
+export async function idKanalu(url) {
   const u = new URL(url);
   if (!/(^|\.)youtube\.com$/.test(u.hostname)) throw new Error("není odkaz na youtube.com");
   const m = u.pathname.match(/^\/channel\/(UC[\w-]{22})/);
@@ -65,7 +65,7 @@ async function idKanalu(url) {
   return id;
 }
 
-function parsujYoutube(xml) {
+export function parsujYoutube(xml) {
   const out = [];
   for (const blok of xml.split("<entry>").slice(1, 16)) {
     const id = (blok.match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/) || [])[1];

@@ -29,6 +29,13 @@ function cestina(jazyky) {
   return { rozhrani: !!m, dabing: !!(m && m[2]) };
 }
 
+// Systémové požadavky (PC) ze Steamu: HTML seznam → řádky textu (max 12 na úroveň).
+function pozadavky(html) {
+  const radky = String(html || "").replace(/<br\s*\/?>|<\/li>|<\/p>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+    .split("\n").map((r) => r.replace(/\s+/g, " ").trim()).filter((r) => r && !/^(minimum|recommended|minimální|doporučené)[^:]*:?$/i.test(r));
+  return radky.slice(0, 12).map((r) => r.slice(0, 140));
+}
+
 async function steam(nazev) {
   const hledani = await json(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(nazev)}&l=czech&cc=CZ`);
   const cil = normNazev(nazev);
@@ -55,6 +62,8 @@ async function steam(nazev) {
     platformy: d?.platforms ? Object.entries(d.platforms).filter(([, v]) => v).map(([k]) => k) : [],
     hodnoceni: q && q.total_reviews > 0 ? { kladne: Math.round((q.total_positive / q.total_reviews) * 100), recenzi: q.total_reviews } : null,
     hraci_ted: hraci.status === "fulfilled" && hraci.value?.response?.result === 1 ? hraci.value.response.player_count : null,
+    pozadavky: d?.pc_requirements && !Array.isArray(d.pc_requirements)
+      ? { min: pozadavky(d.pc_requirements.minimum), dop: pozadavky(d.pc_requirements.recommended) } : null,
   };
 }
 

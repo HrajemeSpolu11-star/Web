@@ -19,6 +19,7 @@ export const ULOHY = {
   twitch: { nazev: "Streameři na Twitchi", interval: 15 },
   kick: { nazev: "Streameři na Kicku", interval: 15 },
   katalog: { nazev: "Obchody Steam, Epic a GOG", interval: 60 },
+  studia: { nazev: "Studia a platformy (novinky, trailery)", interval: 15 },
   obsah: { nazev: "Videa, klipy, ceny a čeština", interval: 60 },
   psani: { nazev: "Psaní článků (AI)", interval: null }, // běží jen v nastavené hodiny a jen s AI klíčem
 };

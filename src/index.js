@@ -18,6 +18,9 @@ import { apiCestina, apiSteamHry, doplnSteamUdaje, prikazyUlozHry, zajistiSchema
 import { zajistiSchemaObsah } from "./obsah.js";
 import { denPraha } from "./psani.js";
 import { behUlohy, uklidDeniku, apiStavSystemu } from "./denik.js";
+import { apiStudia, apiStudio, sberStudii } from "./studia.js";
+import { apiAkce } from "./akce.js";
+import { apiVydani, sberVydani } from "./vydani.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -222,6 +225,8 @@ async function apiHra(slug, env, ctx) {
       ctx.waitUntil(env.DB.batch(prikazyUlozHry(env.DB, [info.steam], ted)).catch(() => {}));
       const u = (await doplnSteamUdaje(env.DB, [info.steam.id])).get(String(info.steam.id));
       if (u) info.steam.min90 = u.min90;
+      const { results } = await env.DB.prepare("SELECT den, cena FROM ceny_historie WHERE id = ? AND den >= ? ORDER BY den").bind(String(info.steam.id), new Date(ted - 90 * 86400e3).toISOString().slice(0, 10)).all();
+      info.steam.historie = results;
     } catch { /* nepovinné */ }
   }
   return json({
@@ -320,6 +325,14 @@ async function verejneApi(request, env, ctx, url) {
       odpoved = json(await apiCestina(env, q, ["sleva", "zdarma", "dabing", "vse"].includes(f) ? f : ""), 200, q ? 3600 : 900);
     }
     else if (url.pathname === "/api/steam-hry") odpoved = json(await apiSteamHry(env, url.searchParams.get("ids")), 200, 300);
+    else if (url.pathname === "/api/studia") odpoved = json(await apiStudia(env), 200, 600);
+    else if (url.pathname.startsWith("/api/studio/")) { const s = await apiStudio(env, decodeURIComponent(url.pathname.slice(12))); odpoved = s ? json(s, 200, 600) : json({ chyba: "Nenalezeno" }, 404); }
+    else if (url.pathname === "/api/akce") odpoved = json(await apiAkce(env), 200, 600);
+    else if (url.pathname === "/api/vydani") {
+      let v = await apiVydani(env);
+      if (!v.cas) { await sberVydani(env).catch((e) => console.error("vydání:", e)); v = await apiVydani(env); }
+      odpoved = json(v, 200, 1800);
+    }
     else if (url.pathname === "/api/stav-systemu") odpoved = json(await apiStavSystemu(env), 200, 60);
     else if (url.pathname === "/api/obsah") odpoved = json(await apiObsah(env), 200, 600);
     else if (url.pathname === "/api/katalog") {
@@ -397,8 +410,12 @@ export default {
     // Každá úloha zapíše do deníku AI jednu větu (stránka /stav).
     const pl = (n, a, b, c) => `${n} ${n === 1 ? a : n >= 2 && n <= 4 ? b : c}`;
     if (event.cron === CRON_KATALOG) {
-      ctx.waitUntil(behUlohy(env, "katalog", () => sberKatalogu(env), (v) =>
-        `Zkontrolovala obchody Steam, Epic a GOG – hry zdarma, slevy, žebříčky a hodnocení hráčů.${v.chyby.length ? ` Nedostupné: ${v.chyby.join("; ")}.` : ""}`));
+      ctx.waitUntil(behUlohy(env, "katalog", async () => {
+        const v = await sberKatalogu(env);
+        try { v.vydani = await sberVydani(env); } catch (e) { v.chyby.push(`IGDB: ${String(e.message || e).slice(0, 100)}`); }
+        return v;
+      }, (v) => `Zkontrolovala obchody Steam, Epic a GOG – hry zdarma, slevy, žebříčky a hodnocení hráčů.` +
+        `${v.vydani?.her ? ` Aktualizovala kalendář vydání (${pl(v.vydani.her, "hra", "hry", "her")}).` : ""}${v.chyby.length ? ` Nedostupné: ${v.chyby.join("; ")}.` : ""}`));
     } else if (event.cron === CRON_OBSAH) {
       ctx.waitUntil(behUlohy(env, "obsah", () => sberObsahu(env), (v) => {
         const h = typeof v.hlidac === "object" ? v.hlidac : {};
@@ -421,6 +438,8 @@ export default {
     } else if (event.cron === CRON_PSANI) {
       ctx.waitUntil(behUlohy(env, "psani", () => napisClanek(env), (v) => v?.id || v?.nadpis ? `Napsala článek: ${v.nadpis || v.id}.` : null));
     } else {
+      ctx.waitUntil(behUlohy(env, "studia", () => sberStudii(env), (v) =>
+        `Zkontrolovala oficiální kanály: ${v.studia.join(", ")} – ${pl(v.polozek, "položka", "položky", "položek")}.${v.chyby.length ? ` Problém: ${v.chyby.join("; ")}.` : ""}`));
       ctx.waitUntil(behUlohy(env, "rss", async () => { const v = await sber(env); await uklidDeniku(env.DB); return v; }, (v) =>
         `Prošla ${pl(v.zdroju.length, "herní web", "herní weby", "herních webů")} (${v.zdroju.join(", ")}), našla ${pl(v.cerstvych, "čerstvou zprávu", "čerstvé zprávy", "čerstvých zpráv")}.` +
         `${v.chybne.length ? ` Nedostupné: ${v.chybne.join(", ")}.` : ""}`));

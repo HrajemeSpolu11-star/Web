@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 16) – Sekce Hry: kalendář vydání, akce s odpočtem, studia, předplatné, graf ceny
+- **Nová záložka „Hry“** v hlavním menu (Domů · Novinky · Hry · Streameři) s podzáložkami Kalendář vydání · Akce a odpočty ·
+  Studia · Má to češtinu? · Hlídač cen.
+- **Kalendář vydání** (`/vydani`, `src/vydani.js`): chystané hry z IGDB (oficiální API, přihlášení Twitch klíči), termín,
+  platformy, odpočet, čeština (Steam, jinak IGDB, jinak „zatím neoznámena“), odkazy Steam/IGDB, tlačítko Hlídat cenu.
+  Filtry: jen s češtinou, jen s přesným datem. Obnova každých 6 h v Cronu katalogu (1–2 požadavky); hry ze Steamu jdou do databáze her.
+- **Akce a odpočty** (`/akce`, `src/akce.js`): živý odpočet do The Game Awards 2026, Steam zimního výprodeje 2026, Next Festu
+  (únor a červen 2027), jarního a letního výprodeje 2027 a gamescomu 2027 – jen oficiálně potvrzené termíny s odkazem na zdroj.
+  Odpočet do další hry zdarma na Epicu, **ohlášené přenosy** (State of Play, Nintendo Direct, Showcase) a **předplatné**
+  (PS Plus, Game Pass) z oficiálních blogů PlayStation a Xbox. Nejbližší akce s odpočtem i na Domů.
+- **Studia a platformy** (`/studia`, `/studio/:slug`, `src/studia.js`): 23 studií a platforem (PlayStation, Xbox, Nintendo, Valve,
+  Blizzard, Rockstar, CD PROJEKT RED, Ubisoft, EA, Bethesda, Riot, Larian, FromSoftware, Capcom, Paradox, KRAFTON, Facepunch
+  a česká Warhorse, Bohemia Interactive, SCS Software, Hangar 13, Amanita Design, Keen Software House). Jen oficiální zdroje:
+  YouTube kanál (ověřený podle jména autora v RSS – nesedí-li, nepoužije se), oficiální blog (PS Blog, Xbox Wire, blog SCS),
+  oznámení vývojářů na Steamu (ISteamNews). Sběr v RSS Cronu, 2 studia na běh (≈ každé studio jednou za 3 h, ≤ 12 požadavků).
+  Na Domů sekce **Nové trailery**. Deník AI má novou úlohu „Studia a platformy“.
+- **Stránka hry**: graf vývoje ceny na Steamu (90 dní) a systémové požadavky PC ze Steamu.
+- SEO: nové stránky v sitemap, vlastní titulky pro každé studio. Překlady SK/EN pro všechny nové texty.
+
 ## 2026-11-26 (odpoledne, 15) – Videa: YouTube kanály z popisů streamerů
 - Videa se neukazovala, protože YouTube kanál šel zadat jen v adminu (zamčený). Nově se kanál bere i z popisu, který si
   streamer sám napsal na Twitchi/Kicku (odkaz `youtube.com/@…`, `/channel/…`, `/c/…`, `/user/…`; odkazy na videa ne).

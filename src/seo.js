@@ -1,4 +1,6 @@
 // SEO: skutečné adresy stránek s meta tagy z databáze, sitemap.xml a robots.txt.
+import { STUDIA } from "./studia.js";
+
 const NAZEV = "Herní puls";
 const POPIS = "Herní novinky a přehled českých streamerů z Twitche a Kicku – kdo je právě živě, žebříčky a profily.";
 const PLATFORMA = { twitch: "Twitch", kick: "Kick" };
@@ -8,7 +10,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
-  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav)\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
+  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia)\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
     /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
@@ -18,7 +20,7 @@ async function metaProStranku(url, env) {
   // Obrázky pro sdílení (1200×630) z public/og – vyrábí je tools/og-obrazky.py.
   const og = (n) => `${url.origin}/og/${n}.png`;
   const OG = { "/": "domu", "/novinky": "novinky", "/zive": "streameri", "/streameri": "streameri", "/prehled": "streameri", "/porovnat": "streameri",
-    "/hry": "cesko", "/cestina": "cestina", "/hlidac": "hlidac" };
+    "/hry": "cesko", "/cestina": "cestina", "/hlidac": "hlidac", "/vydani": "domu", "/akce": "domu", "/studia": "domu" };
   let m = { title: `${NAZEV} – herní novinky a čeští streameři`, popis: POPIS, obrazek: og(OG[p] || (p.startsWith("/report") ? "report" : p.startsWith("/hra/") ? "hra" : "domu")),
     velky: true, index: true, status: 200, typ: "website" };
   try {
@@ -30,6 +32,14 @@ async function metaProStranku(url, env) {
     else if (p === "/porovnat") m = { ...m, title: `Porovnat streamery | ${NAZEV}`, popis: "Porovnej dva české streamery vedle sebe: sledující, diváci, odvysílané hodiny a hry.", index: false };
     else if (p === "/hry") m = { ...m, title: `Co hraje Česko – nejsledovanější hry českých streamů | ${NAZEV}`, popis: "Žebříček her podle hodin sledování na českých streamech Twitch a Kick za posledních 7 dní. Co roste, co je nového a kdo co hraje." };
     else if (p === "/cestina") m = { ...m, title: `Má to češtinu? Hry s češtinou ve slevě a zdarma | ${NAZEV}`, popis: "Zjisti, jestli hra má české titulky nebo dabing, kolik stojí a jestli je ve slevě. Hry s češtinou ve slevě a zdarma na jednom místě." };
+    else if (p === "/vydani") m = { ...m, title: `Kalendář vydání her – co vychází a jestli bude česky | ${NAZEV}`, popis: "Přehled chystaných her: kdy vycházejí, na jakých platformách a jestli budou mít české titulky nebo dabing." };
+    else if (p === "/akce") m = { ...m, title: `Herní akce s odpočtem – Steam výprodeje, The Game Awards, gamescom | ${NAZEV}`, popis: "Odpočet do Steam výprodejů, Next Festu, The Game Awards a gamescomu podle oficiálních termínů. Ohlášené přenosy a novinky PS Plus a Game Pass." };
+    else if (p === "/studia") m = { ...m, title: `Herní studia a platformy – oficiální novinky a trailery | ${NAZEV}`, popis: "Novinky, trailery a oznámení přímo od PlayStation, Xboxu, Nintenda, Blizzardu, Rockstaru, CD PROJEKT RED i českých studií Warhorse, Bohemia a SCS Software." };
+    else if (p.startsWith("/studio/")) {
+      const st = STUDIA.find((x) => x.slug === p.slice(8));
+      m = st ? { ...m, title: `${st.nazev} – novinky, trailery a hry | ${NAZEV}`, popis: zkrat(`${st.popis} Oficiální novinky, trailery a oznámení na jednom místě.`, 160) }
+        : { ...m, title: `Studio nenalezeno | ${NAZEV}`, index: false, status: 404 };
+    }
     else if (p === "/stav") m = { ...m, title: `Stav systému a deník AI | ${NAZEV}`, popis: "Co AI, která provozuje Herní puls, právě dělá: přehled automatických úloh, jestli běží, a deník posledních akcí včetně chyb." };
     else if (p === "/hlidac") m = { ...m, title: `Hlídač cen her – upozornění na slevy | ${NAZEV}`, popis: "Vyber si hry a dostaneš upozornění, až budou na Steamu ve slevě nebo pod tvou cenou. Bez registrace a bez e-mailu." };
     else if (p.startsWith("/report")) {
@@ -119,7 +129,7 @@ export async function vykresliStranku(request, env) {
 export async function sitemap(request, env) {
   const o = new URL(request.url).origin;
   const ted = new Date().toISOString().slice(0, 10);
-  const adresy = [["/", ted, "hourly"], ["/novinky", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/report", ted, "weekly"], ["/cestina", ted, "daily"], ["/hlidac", ted, "monthly"], ["/prehled", ted, "daily"], ["/o-webu", ted, "monthly"]];
+  const adresy = [["/", ted, "hourly"], ["/novinky", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/report", ted, "weekly"], ["/cestina", ted, "daily"], ["/vydani", ted, "daily"], ["/akce", ted, "daily"], ["/studia", ted, "daily"], ...STUDIA.map((x) => [`/studio/${x.slug}`, ted, "daily"]), ["/hlidac", ted, "monthly"], ["/prehled", ted, "daily"], ["/o-webu", ted, "monthly"]];
   try {
     const [st, hry, cl] = await env.DB.batch([
       env.DB.prepare("SELECT platforma, login, posledni_zive FROM streameri WHERE skryty = 0 ORDER BY posledni_zive DESC LIMIT 5000"),
