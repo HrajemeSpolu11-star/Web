@@ -344,3 +344,10 @@ a.termin{color:inherit}
   .lp-cara,.story .ring,.live-badge::before,.live-head::before,.news-head::before,.kostra,.ach,.ach-ikona{animation:none}
   .bar i{transition:none}
 }
+/* Přepínač platformy: Twitch a Kick mají vždy svou barvu, vybraná má rámeček a fajfku */
+.seg-b.seg-twitch{background:var(--twitch);color:#fff}
+.seg-b.seg-kick{background:var(--kick);color:#0d2000}
+.seg-b.seg-twitch,.seg-b.seg-kick{margin-left:4px}
+.seg-b.seg-twitch.on,.seg-b.seg-kick.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--text)}
+.seg-b.seg-twitch.on::before,.seg-b.seg-kick.on::before{content:"✓ "}
+.seg-b.seg-twitch:not(.on),.seg-b.seg-kick:not(.on){filter:saturate(.85)}

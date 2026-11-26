@@ -6,6 +6,9 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 3) – Barvy platforem
+- Přepínač platformy: Twitch je vždy fialový, Kick vždy zelený; vybraná platforma má bílý rámeček a fajfku.
+
 ## 2026-11-26 (odpoledne, 2) – Herní animace a české RSS zdroje
 
 - **České RSS zdroje ověřené** (vracely aktuální zprávy 26. 11. 2026): Games.cz (`games.tiscali.cz/rss2.xml`),
