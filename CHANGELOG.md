@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-11-26 (večer, 25) – EKG monitor kreslený živě, všichni živí streameři
+- **EKG jako skutečný monitor** (canvas): svítící bod kreslí křivku zleva doprava, před sebou maže starou stopu, mřížka
+  v pozadí. Tvar úderu = vlny P, Q, R, S, T (model ECGSYN). **Každý úder je jiný**: rozestup ±12 %, výška/síla hrotu ±18 %,
+  vlny P a T se mění, linka se vlní, drobný šum. Animují se jen monitory, které jsou vidět (IntersectionObserver),
+  jedna společná smyčka requestAnimationFrame. „Omezit pohyb“ = statický záznam.
+- **Živě: všichni streameři.** `/api/zive` vracelo jen 120 nejsledovanějších (proto seznam končil u 10 diváků) –
+  teď až 600 (= vše, co sběr najde).
+
 ## 2026-11-26 (večer, 24) – Opravdové EKG, streameři pryč z Domů
 - **Tep jako skutečné EKG**: rovná linka, vlna P, ostrý komplex QRS, vlna T (`uderEkg()`). Papír jede stálou rychlostí,
   při vyšším tepu jsou údery hustěji – jako na monitoru. Tempo uvěřitelné: 60–130 tepů/min

@@ -861,37 +861,84 @@
     return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
   }
 
-  // ---------- Tep (EKG křivka) – hlavní motiv webu Herní puls ----------
-  // Tvar jako na skutečném EKG: rovná linka, malá vlna P, ostrý komplex QRS, širší vlna T.
-  // Tempo jako skutečný tep v klidu až při vzrušení – čím víc diváků, tím rychleji, ale pořád uvěřitelně:
-  // 0–1 divák ≈ 60 tepů/min, 10 ≈ 75, 100 ≈ 90, 1 000 ≈ 105, 10 000 ≈ 120 (strop 130).
+  // ---------- Tep (EKG monitor) – hlavní motiv webu Herní puls ----------
+  // Kreslí se živě jako na skutečném monitoru: svítící bod jde zleva doprava, za sebou nechává stopu
+  // a před sebou maže starou. Tvar úderu = součet vln P, Q, R, S, T (model ECGSYN). Každý úder je jiný:
+  // proměnlivý rozestup (±12 %), výška a síla hrotu (±18 %), vlnění linky a drobný šum – srdce není metronom.
+  // Tempo podle diváků: 0–1 ≈ 60/min, 10 ≈ 75, 100 ≈ 90, 1 000 ≈ 105, 10 000 ≈ 120 (strop 130).
   const tepZDivaku = (d) => Math.min(130, Math.round(60 + 15 * Math.log10((Number(d) || 0) + 1)));
-  const ekg = (divaci, velka = false) => `<div class="ekg${velka ? " ekg-velka" : ""}" data-divaci="${Number(divaci) || 0}" aria-hidden="true"></div>`;
-  // Jeden úder široký P px (na monitoru jde papír stálou rychlostí – rychlejší tep = údery blíž u sebe).
-  function uderEkg(x, P, m, a) {
-    const k = (t) => x + P * t; // pozice v rámci úderu (0–1)
-    return `L${k(0.12)},${m} Q${k(0.17)},${m - a * 0.16} ${k(0.22)},${m}` +                      // vlna P
-      ` L${k(0.3)},${m} L${k(0.325)},${m + a * 0.12} L${k(0.36)},${m - a} L${k(0.395)},${m + a * 0.32} L${k(0.42)},${m}` + // QRS
-      ` L${k(0.52)},${m} Q${k(0.6)},${m - a * 0.3} ${k(0.68)},${m} L${k(1)},${m}`;                  // vlna T a klid
+  const ekg = (divaci, velka = false) => `<div class="ekg${velka ? " ekg-velka" : ""}" data-divaci="${Number(divaci) || 0}" aria-hidden="true"><canvas></canvas><canvas class="ekg-hlava"></canvas></div>`;
+  const VLNY_EKG = [[0.12, 0.17, 0.028], [-0.14, 0.335, 0.009], [1, 0.36, 0.011], [-0.26, 0.385, 0.011], [0.32, 0.62, 0.05]];
+  const monitory = new Set();
+  let smycka = 0, viditelne = null;
+  function novyUder(m) {
+    m.od += m.rr;
+    m.rr = (60 / m.tep) * (1 + (Math.random() - 0.5) * 0.24);           // nepravidelný rozestup
+    m.sila = 1 + (Math.random() - 0.5) * 0.36;                           // výška a síla hrotu
+    m.tvar = [1 + (Math.random() - 0.5) * 0.4, 1 + (Math.random() - 0.5) * 0.3]; // vlna P a T
   }
-  // Nakreslí křivky do všech .ekg v kořeni (volá se z obarvi). Papír jede stálou rychlostí (px/s);
-  // šířka úderu = rychlost × 60 / tep, takže při vyšším tepu jsou údery hustěji – přesně jako na monitoru.
+  function hodnotaEkg(m, t) {
+    while (t - m.od > m.rr) novyUder(m);
+    const f = (t - m.od) / m.rr;
+    let v = 0;
+    VLNY_EKG.forEach(([a, mu, sg], i) => { v += a * (i === 0 ? m.tvar[0] : i === 4 ? m.tvar[1] : m.sila) * Math.exp(-((f - mu) ** 2) / (2 * sg * sg)); });
+    return v + 0.03 * Math.sin(t * 1.3 + m.faze) + 0.015 * Math.sin(t * 0.4) + (Math.random() - 0.5) * 0.014;
+  }
+  function snimekEkg(ts) {
+    smycka = 0;
+    for (const m of monitory) {
+      if (!m.el.isConnected) { monitory.delete(m); viditelne?.unobserve(m.el); continue; }
+      if (!m.vidim) continue;
+      const t = ts / 1000;
+      if (m.cas == null) { m.cas = t; m.od = t; m.lastX = (t * m.rych) % m.W; m.lastY = m.Y(0); }
+      const g = m.g, krok = 1 / m.rych;
+      g.lineWidth = m.velka ? 2.4 : 1.8; g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = "#ff3d7f";
+      g.shadowColor = "rgba(255,61,127,.8)"; g.shadowBlur = m.velka ? 8 : 4;
+      g.beginPath(); g.moveTo(m.lastX, m.lastY);
+      let tt = m.cas;
+      if (t - tt > 1) tt = t - 1; // po návratu na kartu nedokreslovat dlouhou pauzu
+      while (tt < t) {
+        tt += krok;
+        const x = (tt * m.rych) % m.W, y = m.Y(hodnotaEkg(m, tt));
+        if (x < m.lastX) { g.stroke(); g.beginPath(); g.moveTo(x, y); } else g.lineTo(x, y);
+        m.lastX = x; m.lastY = y;
+      }
+      g.stroke(); m.cas = t;
+      g.shadowBlur = 0;
+      const mez = m.velka ? 16 : 9;
+      g.clearRect(m.lastX + 1.5, 0, mez, m.H);
+      if (m.lastX + mez > m.W) g.clearRect(0, 0, m.lastX + mez - m.W, m.H);
+      const h = m.h;
+      h.clearRect(0, 0, m.W, m.H); h.fillStyle = "#ffe3ec"; h.shadowColor = "#ff3d7f"; h.shadowBlur = 14;
+      h.beginPath(); h.arc(m.lastX, m.lastY, m.velka ? 3.2 : 2.3, 0, 7); h.fill();
+    }
+    if (monitory.size) smycka = requestAnimationFrame(snimekEkg);
+  }
+  // Připraví monitory ve všech .ekg v kořeni (volá se z obarvi). Animují se jen ty, které jsou vidět.
   function nakresliEkg(root) {
+    viditelne ||= new IntersectionObserver((z) => z.forEach((e) => { const m = e.target._ekg; if (m) { m.vidim = e.isIntersecting; if (!m.vidim) m.cas = null; } }));
     root.querySelectorAll(".ekg[data-divaci]:not([data-hotovo])").forEach((el) => {
-      const w = el.clientWidth, h = el.clientHeight;
-      if (!w || !h) return;
-      const velka = el.classList.contains("ekg-velka");
-      const tep = tepZDivaku(el.dataset.divaci), rychlost = velka ? 140 : 60; // px za sekundu
-      const P = Math.round((rychlost * 60) / tep), a = h * (velka ? 0.42 : 0.4), m = h * 0.58;
-      const n = Math.ceil(w / P) + 2;
-      let d = `M0,${m}`;
-      for (let i = 0; i < n; i++) d += " " + uderEkg(i * P, P, m, a);
-      el.innerHTML = `<svg width="${n * P}" height="${h}" viewBox="0 0 ${n * P} ${h}"><g><path d="${d}"/></g></svg>`;
-      const g = el.querySelector("g");
-      g.style.setProperty("--p", P + "px");
-      g.style.animationDuration = (60 / tep).toFixed(3) + "s";
+      const W = el.clientWidth, H = el.clientHeight;
+      if (!W || !H) return;
+      const [c, ch] = el.querySelectorAll("canvas");
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      for (const x of [c, ch]) { x.width = W * dpr; x.height = H * dpr; }
+      const g = c.getContext("2d"), h = ch.getContext("2d");
+      g.scale(dpr, dpr); h.scale(dpr, dpr);
+      const velka = el.classList.contains("ekg-velka"), tep = tepZDivaku(el.dataset.divaci);
+      const m = { el, g, h, W, H, velka, tep, rr: 60 / tep, sila: 1, tvar: [1, 1], faze: Math.random() * 6,
+        rych: W / (velka ? 4.2 : 3), Y: (v) => H * 0.64 - v * H * (velka ? 0.42 : 0.46), vidim: false };
+      if (malyPohyb()) { // klidný statický záznam bez pohybu
+        g.strokeStyle = "#ff3d7f"; g.lineWidth = 1.8; g.beginPath();
+        m.od = 0;
+        for (let x = 0; x <= W; x++) { const y = m.Y(hodnotaEkg(m, x / m.rych)); x ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.stroke();
+      } else {
+        el._ekg = m; monitory.add(m); viditelne.observe(el);
+      }
       el.dataset.hotovo = "1";
     });
+    if (monitory.size && !smycka) smycka = requestAnimationFrame(snimekEkg);
   }
   // Řádek „tep“ streamera: avatar, jméno, hra, křivka, diváci a tepy za minutu.
   const radekTepu = (s) => `<a class="tep${s.platforma === "kick" ? " kick" : ""}" href="${esc(profilUrl(s))}">${av(s)}

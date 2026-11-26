@@ -128,10 +128,11 @@ function naStreamera(r, ted) {
   };
 }
 
+// Všichni živí čeští streameři (sběr bere až 600 streamů z Twitche + Kick) – žádné omezení na „velké“.
 async function apiZive(env) {
   const ted = Date.now();
   const [st, hry] = await env.DB.batch([
-    env.DB.prepare(`SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? ORDER BY s.zive_divaci DESC LIMIT 120`).bind(ted - ZIVE_PLATNOST),
+    env.DB.prepare(`SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? ORDER BY s.zive_divaci DESC LIMIT 600`).bind(ted - ZIVE_PLATNOST),
     env.DB.prepare(`SELECT zive_hra AS hra, SUM(zive_divaci) AS divaci, COUNT(*) AS streamu FROM streameri
                     WHERE skryty = 0 AND zive_cas > ? AND zive_hra <> '' GROUP BY zive_hra ORDER BY divaci DESC LIMIT 12`).bind(ted - ZIVE_PLATNOST),
   ]);

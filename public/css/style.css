@@ -971,3 +971,11 @@ h1{letter-spacing:-.03em}
 /* EKG: tenčí čára jako na monitoru */
 .ekg path{stroke-width:2}
 .ekg-velka path{stroke-width:2.6}
+/* EKG monitor (canvas): mřížka jako na nemocničním monitoru, kreslí se živě */
+.ekg{-webkit-mask-image:none;mask-image:none;height:40px;border-radius:10px;background-color:#0b0820;
+  background-image:linear-gradient(rgba(255,61,127,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,61,127,.08) 1px,transparent 1px),
+    linear-gradient(rgba(255,61,127,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,61,127,.035) 1px,transparent 1px);
+  background-size:20px 20px,20px 20px,4px 4px,4px 4px}
+.ekg canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ekg-velka{height:150px;border-radius:var(--r-l);border:1px solid var(--line);margin:16px 0 8px;background-size:40px 40px,40px 40px,8px 8px,8px 8px}
+@media (min-width:900px){.ekg-velka{height:170px}}
