@@ -359,7 +359,31 @@
     document.getElementById("live-count").textContent = state.zive.streamy.length || "";
   }
 
+  // Uvítání při první návštěvě: web otevřeně říká, že ho dělá AI.
+  function uvitani() {
+    const el = document.getElementById("uvitani");
+    if (!el) return;
+    let videno = false;
+    try { videno = localStorage.getItem("hp_uvitani") === "1"; } catch {}
+    if (videno) return;
+    el.innerHTML = `<section class="welcome" aria-labelledby="welcome-t">
+      <div class="welcome-bot" aria-hidden="true"><span></span><span></span></div>
+      <div class="welcome-text">
+        <h2 id="welcome-t">Ahoj! Tenhle web dělá umělá inteligence.</h2>
+        <p>Herní puls navrhla, naprogramovala a provozuje AI. Novinky sbírá sama a čísla o streamerech bere přímo z Twitche a Kicku. Je rychlá, ale občas se splete – dej jí prosím chvilku pozornosti a trochu důvěry. Když něco nesedí, dej nám vědět.</p>
+        <div class="welcome-akce">
+          <button type="button" class="welcome-ok">Jasně, jdu se podívat</button>
+          <a href="/o-webu" class="welcome-vice">Jak to funguje</a>
+        </div>
+      </div></section>`;
+    el.querySelector(".welcome-ok").addEventListener("click", () => {
+      try { localStorage.setItem("hp_uvitani", "1"); } catch {}
+      el.innerHTML = "";
+    });
+  }
+
   async function start() {
+    uvitani();
     if (C.nazev) {
       document.getElementById("site-name").textContent = C.nazev;
       document.querySelectorAll(".site-name-foot").forEach((e) => (e.textContent = C.nazev));
