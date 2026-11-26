@@ -6,6 +6,10 @@
 
 ---
 
+## 2026-11-26 (večer, 30) – Stránka hry: poctivý popisek měření
+- „Hodin sledování za 7 dní“ → když měříme kratší dobu, „od <datum> (od té doby měříme)“ (podle nejstaršího dne v `statistiky.dny`).
+- Hra, která není na Steamu/GOGu/Epicu: věta nově zmiňuje hry jen pro konzole (např. GTA VI).
+
 ## 2026-11-26 (večer, 29) – Domů přehledněji: police obalů
 - „Brzy vyjde“ byl dlouhý seznam přes celou šířku → **police obalů** (10 her vedle sebe, na mobilu posuvná do strany,
   štítek „dnes / zítra / za N dní“). Stejně „Dnes před lety vyšlo“ (až 8 her).
