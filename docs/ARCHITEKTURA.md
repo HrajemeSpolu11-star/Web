@@ -18,9 +18,10 @@ návštěvník →│ statické soubory (public/)   ← servíruje Cloudflare As
 ## Plánované úlohy (Cron, UTC) – `wrangler.jsonc`
 | Cron | Co dělá | Kód |
 |---|---|---|
-| `*/15 * * * *` | RSS novinky (4 zdroje na běh, střídají se) | `sber()` v `src/sber.js` |
+| `*/15 * * * *` | RSS novinky (6 zdrojů na běh, střídají se) | `sber()` v `src/sber.js` |
 | `7 * * * *` | AI psaní (jen v hodinách `HODINY`, max `CLANKU_DENNE`) | `napisClanek()` v `src/psani.js` |
 | `5,20,35,50 * * * *` | Twitch + Kick streameři, rekordy, milníky, rozvrhy, push | `sberTwitch()`, `sberKick()` |
+| `25 * * * *` | Herní katalog: Steam (slevy, top, nové, brzy, nejhranější), Epic (zdarma), GOG (trendy, slevy) – 15 požadavků | `sberKatalogu()` v `src/katalog.js` |
 
 Navíc: když návštěvník otevře `/api/zive`, `/api/streameri` nebo `/api/hry` a poslední sběr je starší než 10 min,
 spustí se sběr hned na pozadí (`sberTwitchPokudStary`, zámek `nastaveni.twitch_zamek`).

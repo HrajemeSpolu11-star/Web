@@ -10,6 +10,7 @@ import { extraTwitch } from "./extra.js";
 import { jeStranka, vykresliStranku, sitemap, robots } from "./seo.js";
 import { pushApi } from "./push.js";
 import { apiPrehled } from "./prehled.js";
+import { apiKatalog, sberKatalogu, sberKataloguPokudStary } from "./katalog.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -17,6 +18,7 @@ const BARVY = [["#ff7a3d", "#5a1a0a"], ["#7c5cff", "#0c0a2a"], ["#3fbf7f", "#0a2
   ["#1ec8c8", "#031c22"], ["#ff4d9a", "#2a0618"], ["#f2b631", "#2e2104"], ["#e2554b", "#2b0806"]];
 const CRON_PSANI = "7 * * * *";
 const CRON_TWITCH = "5,20,35,50 * * * *";
+const CRON_KATALOG = "25 * * * *";
 const ZIVE_PLATNOST = 25 * 60e3; // stream je „živě“, pokud ho Twitch vrátil v posledních 25 min
 // Adresář ukazuje každého streamera, který se objevil živě (kromě ručně skrytých).
 const KVALITA = "s.skryty = 0";
@@ -272,6 +274,13 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/streameri") odpoved = await apiStreameri(url, env);
     else if (url.pathname === "/api/hry") odpoved = await apiHry(env);
     else if (url.pathname === "/api/prehled") odpoved = json(await apiPrehled(env, naStreamera), 200, 300);
+    else if (url.pathname === "/api/katalog") {
+      await zajistiSchemaTwitch(env.DB);
+      let k = await apiKatalog(env);
+      if (!k.cas) { await sberKataloguPokudStary(env).catch((e) => console.error("katalog:", e)); k = await apiKatalog(env); }
+      else ctx.waitUntil(sberKataloguPokudStary(env).catch((e) => console.error("katalog:", e)));
+      odpoved = json(k, 200, k.cas ? 600 : 0);
+    }
     else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(decodeURIComponent(url.pathname.slice(9)), env);
     else if (url.pathname.startsWith("/api/streamer-extra/")) {
       const [plat, login] = url.pathname.slice(20).split("/").map(decodeURIComponent);
@@ -337,7 +346,9 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    if (event.cron === CRON_TWITCH) {
+    if (event.cron === CRON_KATALOG) {
+      ctx.waitUntil(sberKatalogu(env).then((v) => console.log("katalog:", JSON.stringify(v))).catch((e) => console.error("katalog:", e)));
+    } else if (event.cron === CRON_TWITCH) {
       ctx.waitUntil(Promise.allSettled([sberTwitch(env), sberKick(env)]));
     } else if (event.cron === CRON_PSANI) {
       ctx.waitUntil(napisClanek(env).then((v) => console.log("psaní:", JSON.stringify(v))).catch((e) => console.error("psaní:", e)));

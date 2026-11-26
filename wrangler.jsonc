@@ -9,7 +9,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/admin", "/admin/*", "/api/*"]
+    "run_worker_first": ["/", "/admin", "/admin/*", "/api/*"]
   },
 
   "d1_databases": [
@@ -23,9 +23,9 @@
   // Záložní AI model (Cloudflare Workers AI).
   "ai": { "binding": "AI" },
 
-  // */15 = sběr novinek, "7 * * * *" = psaní článků (jen v HODINY), "5,20,35,50" = streameři z Twitche.
+  // */15 = novinky, "7" = psaní článků (jen v HODINY), "5,20,35,50" = streameři, "25" = herní katalog (Steam, Epic, GOG).
   "triggers": {
-    "crons": ["*/15 * * * *", "7 * * * *", "5,20,35,50 * * * *"]
+    "crons": ["*/15 * * * *", "7 * * * *", "5,20,35,50 * * * *", "25 * * * *"]
   },
 
   // Nastavení. Tajné klíče (GROQ_API_KEY) sem NEPATŘÍ – ty jsou v Cloudflare jako Secret.

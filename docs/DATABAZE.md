@@ -24,3 +24,10 @@ Ruční SQL není potřeba. Data si můžeš prohlédnout v Cloudflare → D1 �
 
 ## Systémové
 - **`nastaveni`** – klíč/hodnota: `twitch_token`, `kick_token`, `twitch_stav`, `kick_stav`, `twitch_zamek`, `vapid` (klíče pro push – **neměnit**, jinak přestanou fungovat existující odběry).
+
+## `katalog` (src/katalog.js)
+| sloupec | význam |
+|---|---|
+| `klic` | např. `steam_slevy`, `epic_zdarma`, `stav` |
+| `data` | JSON pole her (u `stav` objekt s chybami) |
+| `cas` | čas uložení (ms) |

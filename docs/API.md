@@ -42,3 +42,8 @@ Veřejné API je jen pro čtení (GET), odpovědi JSON, krátce cachované. Výj
 
 ## Ostatní
 - `GET /sitemap.xml`, `GET /robots.txt` – generuje Worker.
+
+## `GET /api/katalog`
+Herní katalog pro hlavní stránku. Klíče: `epic_zdarma`, `epic_brzy`, `steam_zdarma`, `steam_slevy`, `steam_top`,
+`steam_nove`, `steam_brzy`, `steam_hrane`, `gog_trend`, `gog_slevy` (pole her: `nazev`, `url`, `obrazek`, `obchod`,
+`cena`, `puvodni`, `mena`, `sleva`, `od`/`do`, `hracu`), `stav.chyby`, `cas`. Cache 10 min. Když data chybí, sběr se spustí hned.

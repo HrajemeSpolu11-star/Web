@@ -61,6 +61,10 @@ navázat bez čtení celé historie. **Aktualizuj ho, když se změní stav nebo
 
 Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NASTAVENI.md`, `docs/PROVOZ.md`.
 
+## Hlavní stránka (od 2026-11-26)
+- `/` = Domů: herní katalog ze Steamu, Epicu a GOGu (`src/katalog.js`, Cron `25 * * * *`, `/api/katalog`). Novinky jsou na `/novinky`.
+- Menu: Domů · Novinky · Streameři. Uživatel chtěl na hlavní stránce obsah o hrách a herní scéně, ne o streamerech.
+
 ## Rozpracované / další možné kroky
 - Vlastní doména → Cloudflare Access pro admin (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ve `wrangler.jsonc`).
 - Konzolista.cz a BonusWeb – RSS se nepodařilo ověřit (Konzolista vrací chybu, BonusWeb blokuje).

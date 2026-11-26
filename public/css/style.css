@@ -351,3 +351,36 @@ a.termin{color:inherit}
 .seg-b.seg-twitch.on,.seg-b.seg-kick.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--text)}
 .seg-b.seg-twitch.on::before,.seg-b.seg-kick.on::before{content:"✓ "}
 .seg-b.seg-twitch:not(.on),.seg-b.seg-kick:not(.on){filter:saturate(.85)}
+
+/* ---------- Domů: herní katalog (regály obchodů) ---------- */
+.home-head h1{font-size:clamp(26px,6vw,38px);line-height:1.15;margin:8px 0 6px;font-weight:800;letter-spacing:-.01em}
+.home-shrnuti{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px}
+.home-shrnuti a{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:14px;color:var(--muted)}
+.home-shrnuti a b{color:var(--text)}
+.sekce{scroll-margin-top:110px}
+.regal{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px;margin:0 -2px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.hk{flex:0 0 min(66vw,230px);scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s,transform .2s}
+.hk:hover{border-color:var(--accent2)}
+.hk:active{transform:scale(.98)}
+.hk-velka{flex-basis:min(84vw,340px)}
+.hk-obr{position:relative;aspect-ratio:460/215;background:var(--card2)}
+.hk-velka .hk-obr{aspect-ratio:16/9}
+.hk-obr img{width:100%;height:100%;object-fit:cover;display:block}
+.obchod{position:absolute;left:8px;top:8px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(22,19,46,.85);color:#fff}
+.ob-steam{box-shadow:inset 0 0 0 1px #66c0f4}.ob-epic{box-shadow:inset 0 0 0 1px #e8e8e8}.ob-gog{box-shadow:inset 0 0 0 1px #b46cff}
+.hk-sleva{position:absolute;right:8px;bottom:8px;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:14px;padding:2px 8px;border-radius:8px}
+.hk-poradi{position:absolute;right:8px;top:8px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-weight:800;font-size:14px}
+.hk-t{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px;font-size:14px}
+.hk-t>b{font-size:15px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hk-cena{color:var(--muted)}.hk-cena b{color:var(--text)}.hk-cena s{opacity:.7}
+.hk-hraci{color:var(--muted)}
+.hk-odpocet{color:var(--accent);font-weight:700}
+/* Hry zdarma: jediné výrazné místo stránky – „dárek“ s teplým okrajem. */
+.sekce-zdarma .hk{border-color:rgba(255,192,77,.55);box-shadow:0 0 0 1px rgba(255,192,77,.15),0 10px 30px -14px rgba(255,192,77,.55)}
+.dalsi-zdarma{font-size:14px;color:var(--muted);margin:2px 0 0}
+.dalsi-zdarma b{color:var(--text)}
+.mini-seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.ms-b{border:0;background:transparent;color:var(--muted);font-size:13px;font-weight:600;padding:4px 11px;border-radius:999px;cursor:pointer}
+.ms-b.on{background:var(--card2);color:var(--text)}
+.hra-cap{width:74px;height:35px;border-radius:8px;object-fit:cover;background:var(--card2);flex:none}
+@media(prefers-reduced-motion:reduce){.hk,.hk:active{transition:none;transform:none}}

@@ -8,7 +8,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
-  return pathname === "/" || /^\/(zive|streameri|hry|prehled|porovnat)\/?$/.test(pathname) ||
+  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat)\/?$/.test(pathname) ||
     /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
@@ -17,7 +17,9 @@ async function metaProStranku(url, env) {
   const db = env.DB;
   let m = { title: `${NAZEV} – herní novinky a čeští streameři`, popis: POPIS, obrazek: "", index: true, status: 200, typ: "website" };
   try {
-    if (p === "/zive") m = { ...m, title: `Právě živě – čeští streameři na Twitchi a Kicku | ${NAZEV}`, popis: "Kdo z českých streamerů právě vysílá, co hraje a kolik má diváků. Aktualizováno každých 15 minut." };
+    if (p === "/") m = { ...m, title: `${NAZEV} – hry zdarma, slevy, žebříčky a herní novinky`, popis: "Hry zdarma na Epicu a Steamu, největší slevy na Steamu a GOGu, nejhranější hry, novinky v obchodech a herní zprávy – na jednom místě a česky." };
+    else if (p === "/novinky") m = { ...m, title: `Herní novinky z Česka i ze světa | ${NAZEV}`, popis: "Nejčerstvější herní zprávy z českých i zahraničních webů na jednom místě. Obnovuje se automaticky." };
+    else if (p === "/zive") m = { ...m, title: `Právě živě – čeští streameři na Twitchi a Kicku | ${NAZEV}`, popis: "Kdo z českých streamerů právě vysílá, co hraje a kolik má diváků. Aktualizováno každých 15 minut." };
     else if (p === "/streameri") m = { ...m, title: `Čeští streameři – žebříček | ${NAZEV}`, popis: "Žebříček českých streamerů z Twitche a Kicku podle sledujících, rekordu diváků, odvysílaných hodin a růstu." };
     else if (p === "/prehled") m = { ...m, title: `Přehled české streamovací scény – týden v číslech | ${NAZEV}`, popis: "Kolik Čechů je živě během dne, kdo tento týden nejvíc rostl, rekordy, milníky a kalendář plánovaných streamů." };
     else if (p === "/porovnat") m = { ...m, title: `Porovnat streamery | ${NAZEV}`, popis: "Porovnej dva české streamery vedle sebe: sledující, diváci, odvysílané hodiny a hry.", index: false };
@@ -82,7 +84,7 @@ export async function vykresliStranku(request, env) {
 export async function sitemap(request, env) {
   const o = new URL(request.url).origin;
   const ted = new Date().toISOString().slice(0, 10);
-  const adresy = [["/", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/prehled", ted, "daily"], ["/o-webu", ted, "monthly"]];
+  const adresy = [["/", ted, "hourly"], ["/novinky", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/prehled", ted, "daily"], ["/o-webu", ted, "monthly"]];
   try {
     const [st, hry, cl] = await env.DB.batch([
       env.DB.prepare("SELECT platforma, login, posledni_zive FROM streameri WHERE skryty = 0 ORDER BY posledni_zive DESC LIMIT 5000"),

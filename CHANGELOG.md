@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 4) – Hlavní stránka s herním katalogem
+- **Nová hlavní stránka „Domů“ (`/`)**: hry zdarma (Epic Games, případně Steam) s odpočtem, kolik zbývá; příští hra zdarma
+  na Epicu; největší slevy (přepínač Steam/GOG, ceny v Kč); nejhranější hry na Steamu (počet hráčů současně);
+  nejprodávanější na Steamu / trendy na GOGu; nově vydané a brzy vyjde; 4 nejnovější zprávy.
+- **Novinky se přesunuly na `/novinky`**. Horní menu: Domů · Novinky · Streameři.
+- Nový soubor `src/katalog.js`, tabulka `katalog`, endpoint `/api/katalog`, nový Cron `25 * * * *` (4. z 5 povolených).
+  Jeden běh = 15 požadavků (Steam 1 + žebříček 1 + 10 detailů her + Epic 1 + GOG 2) a ~10 zápisů řádků → ~240 zápisů denně.
+  Výpadek jednoho obchodu nesmaže data ostatních ani starší data.
+- Zdroje jsou veřejné, ale neoficiální endpointy obchodů. Pokud některý obchod formát změní, jeho sekce zůstane prázdná a chyba je v `katalog` → klíč `stav`.
+
 ## 2026-11-26 (odpoledne, 3) – Barvy platforem
 - Přepínač platformy: Twitch je vždy fialový, Kick vždy zelený; vybraná platforma má bílý rámeček a fajfku.
 

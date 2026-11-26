@@ -5,6 +5,7 @@
     clanky: [], zive: { streamy: [], hry: [] }, adresar: {}, hry: null,
     razeni: "sledujici", platforma: "", hledatS: "", hraZive: "", filtr: "Vše", hledat: "",
     kategorie: "", mali: false, udalost: null, prehled: null, zdrojNov: "", katNov: "",
+    katalog: null, slevyObchod: "steam", topObchod: "steam", noveBrzy: "nove",
   };
 
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -352,13 +353,13 @@
   async function strankaClanek(id) {
     let c = state.clanky.find((x) => x.id === id);
     if (!c) { try { c = await nacti("clanek/" + enc(id)); } catch {} }
-    if (!c || !c.nadpis) { nastavTitulek("Článek nenalezen"); app.innerHTML = `<p class="empty">Článek nenalezen. <a href="/">Zpět na novinky</a></p>`; return; }
+    if (!c || !c.nadpis) { nastavTitulek("Článek nenalezen"); app.innerHTML = `<p class="empty">Článek nenalezen. <a href="/novinky">Zpět na novinky</a></p>`; return; }
     nastavTitulek(c.nadpis);
     const nadpis = c.nadpis.toLowerCase();
     const streameri = state.zive.streamy.filter((s) => s.hra && s.hra.length > 3 && nadpis.includes(s.hra.toLowerCase())).slice(0, 4);
     const hra = streameri[0]?.hra;
     app.innerHTML = `<article class="article">
-      <a class="back" href="/">← Zpět na novinky</a>
+      <a class="back" href="/novinky">← Zpět na novinky</a>
       <div class="article-cover">${cover(c, c.nadpis[0])}</div>
       <h1>${esc(c.nadpis)}</h1>
       <div class="meta">${pfs(c.platformy)}<span>· ${kdy(datum(c))}</span></div>
@@ -642,11 +643,100 @@
     });
   }
 
+  // ---------- Domů: herní katalog (Steam, Epic, GOG) ----------
+  const OBCHOD = { steam: "Steam", epic: "Epic Games", gog: "GOG" };
+  function cena(c, mena) {
+    if (c == null) return "";
+    if (c === 0) return "Zdarma";
+    try { return new Intl.NumberFormat("cs-CZ", { style: "currency", currency: mena || "CZK", maximumFractionDigits: c % 1 ? 2 : 0 }).format(c); }
+    catch { return `${c} ${mena || ""}`; }
+  }
+  function zbyva(iso) {
+    const ms = new Date(iso) - Date.now();
+    if (!(ms > 0)) return "";
+    const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5);
+    return d ? `ještě ${d} d ${h} h` : `ještě ${h} h ${Math.floor((ms % 36e5) / 6e4)} min`;
+  }
+  const obchodStitek = (o) => `<span class="obchod ob-${esc(o)}">${esc(OBCHOD[o] || o)}</span>`;
+  function kartaHry(h, { velka = false, odpocet = null, poradi = null } = {}) {
+    return `<a class="hk${velka ? " hk-velka" : ""}" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
+      <div class="hk-obr">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+        ${obchodStitek(h.obchod)}${h.sleva > 0 ? `<span class="hk-sleva">−${h.sleva} %</span>` : ""}${poradi ? `<span class="hk-poradi">${poradi}</span>` : ""}</div>
+      <div class="hk-t"><b>${esc(h.nazev)}</b>
+        ${odpocet ? `<span class="hk-odpocet">${esc(odpocet)}</span>` : ""}
+        ${h.cena != null ? `<span class="hk-cena">${h.puvodni && h.puvodni > h.cena ? `<s>${esc(cena(h.puvodni, h.mena))}</s> ` : ""}<b>${esc(cena(h.cena, h.mena))}</b></span>` : ""}
+        ${h.hracu ? `<span class="hk-hraci">${esc(num(h.hracu))} hráčů</span>` : ""}</div></a>`;
+  }
+  const regal = (list, opt) => list.length ? `<div class="regal">${list.map((h, i) => kartaHry(h, typeof opt === "function" ? opt(h, i) : opt)).join("")}</div>` : `<p class="dim">Teď tu nic není – obchody se načítají, zkus to za chvíli.</p>`;
+  const prepinac = (id, volby, akt) => `<div class="mini-seg" role="group">${volby.map(([k, v]) => `<button type="button" class="ms-b${k === akt ? " on" : ""}" data-${id}="${k}">${v}</button>`).join("")}</div>`;
+
+  async function strankaDomu() {
+    nastavTitulek("");
+    if (!state.katalog) {
+      app.innerHTML = `<div class="home-head"><h1>Co je nového ve hrách</h1></div><div class="kostra kostra-banner"></div>${kostra(3)}`;
+      try { state.katalog = await nacti("katalog"); } catch { state.katalog = {}; }
+    }
+    if (location.pathname !== "/" && location.pathname !== "") return;
+    const k = state.katalog;
+    const zdarma = [...(k.epic_zdarma || []), ...(k.steam_zdarma || [])];
+    const slevy = state.slevyObchod === "gog" ? (k.gog_slevy || []) : (k.steam_slevy || []);
+    const top = state.topObchod === "gog" ? (k.gog_trend || []) : (k.steam_top || []);
+    const noveBrzy = state.noveBrzy === "brzy" ? (k.steam_brzy || []) : (k.steam_nove || []);
+    const hrane = k.steam_hrane || [];
+    const maxSleva = Math.max(0, ...(k.steam_slevy || []).map((h) => h.sleva), ...(k.gog_slevy || []).map((h) => h.sleva));
+    const zpravy = [...state.clanky].sort((a, b) => datum(b) - datum(a)).slice(0, 4);
+    app.innerHTML = `
+      <div class="home-head"><h1>Co je nového ve hrách</h1>
+        <p class="home-shrnuti">${zdarma.length ? `<a href="#zdarma"><b>${pl(zdarma.length, "hra", "hry", "her")} zdarma</b></a>` : ""}
+          ${maxSleva ? `<a href="#slevy">slevy až <b>−${maxSleva} %</b></a>` : ""}
+          ${hrane[0] ? `<a href="#hrane">nejhranější: <b>${esc(hrane[0].nazev)}</b></a>` : ""}</p></div>
+
+      <section id="zdarma" class="sekce sekce-zdarma">
+        <div class="section-title">Hry zdarma</div>
+        ${zdarma.length ? `<div class="regal regal-velky">${zdarma.map((h) => kartaHry(h, { velka: true, odpocet: h.do ? zbyva(h.do) : "trvale" })).join("")}</div>` : `<p class="dim">Teď žádná hra zdarma – podívej se na slevy.</p>`}
+        ${(k.epic_brzy || []).length ? `<p class="dalsi-zdarma">Příští týden na Epicu: ${k.epic_brzy.map((h) => `<b>${esc(h.nazev)}</b>`).join(", ")}</p>` : ""}
+      </section>
+
+      <section id="slevy" class="sekce">
+        <div class="section-title">Největší slevy ${prepinac("so", [["steam", "Steam"], ["gog", "GOG"]], state.slevyObchod)}</div>
+        ${regal(slevy, {})}
+      </section>
+
+      <section id="hrane" class="sekce">
+        <div class="section-title">Nejhranější na Steamu</div>
+        ${hrane.length ? `<div class="slist">${hrane.slice(0, 10).map((h, i) => `<a class="srow" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
+            <span class="rank">${i + 1}</span>${https(h.obrazek) ? `<img class="hra-cap" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="hra-cap"></div>`}
+            <div class="info"><h3>${esc(h.nazev)}</h3><div class="bar"><i data-w="${Math.round((h.hracu || 0) / Math.max(1, hrane[0].hracu || 1) * 100)}"></i></div></div>
+            <div class="num"><b>${esc(num(h.hracu || 0))}</b>hráčů</div></a>`).join("")}</div>
+          <p class="source-note">Nejvyšší počet hráčů současně za poslední týden podle Steamu.</p>` : `<p class="dim">Žebříček se načítá.</p>`}
+      </section>
+
+      <section class="sekce">
+        <div class="section-title">${state.topObchod === "gog" ? "Trendy na GOGu" : "Nejprodávanější na Steamu"} ${prepinac("to", [["steam", "Steam"], ["gog", "GOG"]], state.topObchod)}</div>
+        ${regal(top, (h, i) => ({ poradi: i + 1 }))}
+      </section>
+
+      <section class="sekce">
+        <div class="section-title">${state.noveBrzy === "brzy" ? "Brzy vyjde" : "Nově vydané"} ${prepinac("nb", [["nove", "Nové"], ["brzy", "Brzy"]], state.noveBrzy)}</div>
+        ${regal(noveBrzy, {})}
+      </section>
+
+      <section class="sekce">
+        <div class="section-title">Nejnovější zprávy · <a href="/novinky">všechny novinky</a></div>
+        ${zpravy.length ? `<div class="grid">${zpravy.map((c) => kartaClanku(c, 1)).join("")}</div>` : `<p class="dim">Zprávy se načítají.</p>`}
+      </section>
+      <p class="source-note">Ceny a nabídky jsou z veřejných stránek obchodů Steam, Epic Games Store a GOG${k.cas ? `, aktualizováno ${esc(kdy(new Date(k.cas)))}` : ""}. Ceny se můžou lišit – vždy platí cena v obchodě. Kliknutím přejdeš do obchodu.</p>`;
+    const prekresli = () => { strankaDomu().then(() => obarvi(app)); };
+    app.querySelectorAll("[data-so]").forEach((b) => b.onclick = () => { state.slevyObchod = b.dataset.so; prekresli(); });
+    app.querySelectorAll("[data-to]").forEach((b) => b.onclick = () => { state.topObchod = b.dataset.to; prekresli(); });
+    app.querySelectorAll("[data-nb]").forEach((b) => b.onclick = () => { state.noveBrzy = b.dataset.nb; prekresli(); });
+  }
+
   // ---------- Navigace (skutečné adresy, bez # v URL) ----------
   function route() {
     const casti = location.pathname.replace(/\/+$/, "").split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
     const sekce = casti[1] || "";
-    const tab = ["zive", "streameri", "streamer", "hry", "hra", "prehled", "porovnat"].includes(sekce) ? "streameri" : "novinky";
+    const tab = ["zive", "streameri", "streamer", "hry", "hra", "prehled", "porovnat"].includes(sekce) ? "streameri" : sekce === "" ? "domu" : "novinky";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
     let p;
     if (sekce === "clanek") p = strankaClanek(casti[2] || "");
@@ -657,7 +747,8 @@
     else if (sekce === "hra") p = strankaHra(casti[2] || "");
     else if (sekce === "prehled") p = strankaPrehled();
     else if (sekce === "porovnat") p = strankaPorovnat();
-    else strankaNovinky();
+    else if (sekce === "novinky") strankaNovinky();
+    else p = strankaDomu();
     Promise.resolve(p).then(() => obarvi(app));
   }
   function jdi(href) {
@@ -671,6 +762,7 @@
     if (!a || a.target || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
     const url = new URL(a.href, location.href);
     if (url.origin !== location.origin || /^\/(api|admin)(\/|$)/.test(url.pathname) || /\.[a-z0-9]+$/i.test(url.pathname)) return;
+    if (url.hash && url.pathname === location.pathname) return; // kotva na stejné stránce
     e.preventDefault();
     if (url.pathname + url.search !== location.pathname + location.search) jdi(url.pathname + url.search);
   });
@@ -736,7 +828,7 @@
     setInterval(async () => {
       if (document.hidden) return;
       try { const c = await nacti("clanky?limit=100"); if (Array.isArray(c)) state.clanky = c; } catch { return; }
-      if ((location.pathname === "/" || location.pathname === "") && document.activeElement?.id !== "q") { strankaNovinky(); obarvi(app); }
+      if (location.pathname.replace(/\/+$/, "") === "/novinky" && document.activeElement?.id !== "q") { strankaNovinky(); obarvi(app); }
     }, 300000);
   }
   start();
