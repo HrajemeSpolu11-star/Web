@@ -4,12 +4,17 @@ import { sber, zajistiSchema } from "./sber.js";
 import { napisClanek } from "./psani.js";
 import { overAdmina } from "./access.js";
 import { adminApi } from "./admin.js";
+import { sberTwitch, zajistiSchemaTwitch } from "./twitch.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
 const BARVY = [["#ff7a3d", "#5a1a0a"], ["#7c5cff", "#0c0a2a"], ["#3fbf7f", "#0a2a1a"], ["#2fa8ff", "#06182e"],
   ["#1ec8c8", "#031c22"], ["#ff4d9a", "#2a0618"], ["#f2b631", "#2e2104"], ["#e2554b", "#2b0806"]];
 const CRON_PSANI = "7 * * * *";
+const CRON_TWITCH = "5,20,35,50 * * * *";
+const ZIVE_PLATNOST = 25 * 60e3; // stream je „živě“, pokud ho Twitch vrátil v posledních 25 min
+// Filtr kvality pro adresář: aspoň 3 streamy a 10 diváků (nebo ručně ověřený kanál).
+const KVALITA = "s.skryty = 0 AND ((s.pocet_streamu >= 3 AND s.max_divaku >= 10) OR s.overeno = 1)";
 
 const BEZPECNE_HLAVICKY = {
   "Content-Type": "application/json; charset=utf-8",
@@ -87,14 +92,94 @@ async function apiClanek(id, env) {
   return r ? json(naClanek(r), 200, 300) : json({ chyba: "Nenalezeno" }, 404);
 }
 
+// ---------- Streameři ----------
+function naStreamera(r, ted) {
+  const zive = !!(r.zive_cas && r.zive_cas > ted - ZIVE_PLATNOST);
+  return {
+    login: r.login, jmeno: r.jmeno || r.login, profilovka: r.profilovka || "", partner: r.typ === "partner",
+    sledujici: r.sledujici ?? null, max_divaku: r.max_divaku || 0, posledni_hra: r.posledni_hra || "",
+    zive, divaci: zive ? r.zive_divaci : null, hra: zive ? r.zive_hra : null, titulek: zive ? r.zive_titulek : null,
+    zacatek: zive ? r.zive_zacatek : null, nahled: zive && r.zive_nahled ? `${r.zive_nahled}?t=${Math.floor(r.zive_cas / 60e3)}` : "",
+    minut30: r.minut30 ?? undefined, rust30: r.rust30 ?? undefined,
+  };
+}
+
+async function apiZive(env) {
+  const ted = Date.now();
+  const [st, hry] = await env.DB.batch([
+    env.DB.prepare(`SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? ORDER BY s.zive_divaci DESC LIMIT 120`).bind(ted - ZIVE_PLATNOST),
+    env.DB.prepare(`SELECT zive_hra AS hra, SUM(zive_divaci) AS divaci, COUNT(*) AS streamu FROM streameri
+                    WHERE skryty = 0 AND zive_cas > ? AND zive_hra <> '' GROUP BY zive_hra ORDER BY divaci DESC LIMIT 12`).bind(ted - ZIVE_PLATNOST),
+  ]);
+  return json({ streamy: st.results.map((r) => naStreamera(r, ted)), hry: hry.results, cas: new Date(ted).toISOString() }, 200, 60);
+}
+
+async function apiStreameri(url, env) {
+  const ted = Date.now();
+  const p = url.searchParams;
+  const razeni = ["sledujici", "divaci", "hodiny", "rust"].includes(p.get("razeni")) ? p.get("razeni") : "sledujici";
+  const q = (p.get("q") || "").slice(0, 40).trim();
+  const hra = (p.get("hra") || "").slice(0, 120).trim();
+  const kde = [KVALITA], hod = [];
+  if (q) { kde.push("(s.jmeno LIKE ? OR s.login LIKE ?)"); hod.push(`%${q}%`, `%${q}%`); }
+  if (hra) { kde.push("EXISTS (SELECT 1 FROM hry_streamera h WHERE h.user_id = s.id AND h.hra = ?)"); hod.push(hra); }
+  const poradi = {
+    sledujici: "s.sledujici IS NULL, s.sledujici DESC",
+    divaci: "s.max_divaku DESC",
+    hodiny: "minut30 DESC",
+    rust: "rust30 IS NULL, rust30 DESC",
+  }[razeni];
+  const sql = `SELECT s.*,
+      (SELECT COALESCE(SUM(minut), 0) FROM snimky n WHERE n.user_id = s.id AND n.den >= date('now', '-30 day')) AS minut30,
+      s.sledujici - (SELECT n.sledujici FROM snimky n WHERE n.user_id = s.id AND n.sledujici IS NOT NULL
+                     AND n.den >= date('now', '-30 day') ORDER BY n.den LIMIT 1) AS rust30
+    FROM streameri s WHERE ${kde.join(" AND ")} ORDER BY ${poradi} LIMIT 200`;
+  const { results } = await env.DB.prepare(sql).bind(...hod).all();
+  return json(results.map((r) => naStreamera(r, ted)), 200, 120);
+}
+
+async function apiStreamer(login, env) {
+  if (!/^[a-z0-9_]{1,25}$/i.test(login)) return json({ chyba: "Neplatné jméno" }, 400);
+  const ted = Date.now();
+  const r = await env.DB.prepare("SELECT * FROM streameri s WHERE s.login = ? AND s.skryty = 0").bind(login.toLowerCase()).first();
+  if (!r) return json({ chyba: "Nenalezeno" }, 404);
+  const [sn, hry] = await env.DB.batch([
+    env.DB.prepare("SELECT den, sledujici, max_divaku, minut FROM snimky WHERE user_id = ? AND den >= date('now', '-90 day') ORDER BY den").bind(r.id),
+    env.DB.prepare("SELECT hra, minut FROM hry_streamera WHERE user_id = ? ORDER BY minut DESC LIMIT 8").bind(r.id),
+  ]);
+  const od30 = new Date(ted - 30 * 86400e3).toISOString().slice(0, 10);
+  return json({
+    ...naStreamera(r, ted),
+    popis: r.popis || "", banner: r.banner || "", ucet_od: r.ucet_od, overeno: !!r.overeno,
+    prvni_videno: r.prvni_videno ? new Date(r.prvni_videno).toISOString() : null,
+    posledni_zive: r.posledni_zive ? new Date(r.posledni_zive).toISOString() : null,
+    streamu: r.pocet_streamu || 0,
+    hodin30: Math.round(sn.results.filter((x) => x.den >= od30).reduce((a, x) => a + (x.minut || 0), 0) / 60),
+    snimky: sn.results, hry: hry.results,
+    aktualizovano: { profil: r.profil_cas ? new Date(r.profil_cas).toISOString() : null, sledujici: r.sledujici_cas ? new Date(r.sledujici_cas).toISOString() : null },
+  }, 200, 120);
+}
+
 async function apiStav(env) {
   const [z, c, v] = await env.DB.batch([
     env.DB.prepare("SELECT * FROM zdroje"),
     env.DB.prepare("SELECT COUNT(*) AS n FROM clanky"),
     env.DB.prepare("SELECT COUNT(*) AS n FROM prispevky WHERE stav = 'publikovano'"),
   ]);
+  let twitch = { nastaveno: !!(env.TWITCH_CLIENT_ID && env.TWITCH_CLIENT_SECRET) };
+  try {
+    const [t, n, k] = await env.DB.batch([
+      env.DB.prepare("SELECT hodnota FROM nastaveni WHERE klic = 'twitch_stav'"),
+      env.DB.prepare("SELECT COUNT(*) AS n FROM streameri"),
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM streameri s WHERE ${KVALITA}`),
+    ]);
+    const posledni = t.results[0] ? JSON.parse(t.results[0].hodnota) : null;
+    twitch = { ...twitch, posledni_beh: posledni && { ...posledni, cas: new Date(posledni.cas).toISOString() },
+      streameru_celkem: n.results[0]?.n || 0, streameru_na_webu: k.results[0]?.n || 0 };
+  } catch { twitch.posledni_beh = "zatím neproběhl"; }
   const stavy = Object.fromEntries(z.results.map((r) => [r.id, r]));
   return json({
+    twitch,
     zprav_z_rss: c.results[0]?.n || 0,
     vlastnich_clanku: v.results[0]?.n || 0,
     zdroje: ZDROJE.map((zd) => ({
@@ -109,10 +194,6 @@ async function apiStav(env) {
 
 async function verejneApi(request, env, ctx, url) {
   if (request.method !== "GET" && request.method !== "HEAD") return json({ chyba: "Metoda není povolena" }, 405);
-  if (url.pathname === "/api/streameri") {
-    // Streameři jsou zatím testovací data ze statických souborů.
-    return env.ASSETS.fetch(new Request(new URL("/data/streameri.json", url)));
-  }
 
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
@@ -125,11 +206,14 @@ async function verejneApi(request, env, ctx, url) {
     if (url.pathname === "/api/clanky") odpoved = await apiClanky(url, env);
     else if (url.pathname.startsWith("/api/clanek/")) odpoved = await apiClanek(url.pathname.slice(12), env);
     else if (url.pathname === "/api/stav") odpoved = await apiStav(env);
+    else if (url.pathname === "/api/zive") odpoved = await apiZive(env);
+    else if (url.pathname === "/api/streameri") odpoved = await apiStreameri(url, env);
+    else if (url.pathname.startsWith("/api/streamer/")) odpoved = await apiStreamer(decodeURIComponent(url.pathname.slice(14)), env);
     else return json({ chyba: "Nenalezeno" }, 404);
   } catch (e) {
     if (/no such table/i.test(String(e))) {
-      ctx.waitUntil(zajistiSchema(env.DB));
-      return json([], 200);
+      ctx.waitUntil(Promise.all([zajistiSchema(env.DB), zajistiSchemaTwitch(env.DB)]));
+      return json(url.pathname === "/api/zive" ? { streamy: [], hry: [] } : [], 200);
     }
     console.error(e);
     return json({ chyba: "Interní chyba" }, 500);
@@ -171,7 +255,9 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    if (event.cron === CRON_PSANI) {
+    if (event.cron === CRON_TWITCH) {
+      ctx.waitUntil(sberTwitch(env));
+    } else if (event.cron === CRON_PSANI) {
       ctx.waitUntil(napisClanek(env).then((v) => console.log("psaní:", JSON.stringify(v))).catch((e) => console.error("psaní:", e)));
     } else {
       ctx.waitUntil(sber(env));

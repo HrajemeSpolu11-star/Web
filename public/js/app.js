@@ -1,7 +1,7 @@
 (() => {
   const C = window.CONFIG || {};
   const app = document.getElementById("app");
-  const state = { clanky: [], streameri: [], filtr: "Vše", hledat: "" };
+  const state = { clanky: [], zive: { streamy: [], hry: [] }, adresar: {}, razeni: "sledujici", hledatS: "", hraZive: "", filtr: "Vše", hledat: "" };
 
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " mil." : n >= 1e3 ? Math.round(n / 100) / 10 + " tis." : String(n);
@@ -74,15 +74,60 @@
       <div class="meta">${c.vlastni ? `<span class="own">Herní puls</span>` : ""}${pfs(c.platformy)}<span>· ${c.vlastni ? "" : esc(c.zdroje?.[0]?.nazev || "") + " · "}${kdy(datum(c))}</span></div></div></a>`;
   }
 
-  function avatar(s, extra = "") {
-    return `<div class="avatar${s.zive ? " live" : ""} ${extra}" data-col="${esc(s.barva)}">${esc(String(s.jmeno || "?")[0])}</div>`;
+  // ---------- Streameři (data z oficiálního Twitch API) ----------
+  const https = (u) => /^https:\/\//.test(String(u || "")) ? u : "";
+  const twitchUrl = (login) => "https://www.twitch.tv/" + encodeURIComponent(login);
+  function av(s, velky = false) {
+    const cls = `av${velky ? " av-l" : ""}${s.zive ? " av-live" : ""}`;
+    return https(s.profilovka)
+      ? `<img class="${cls}" src="${esc(s.profilovka)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+      : `<div class="${cls} av-text">${esc(String(s.jmeno || "?")[0])}</div>`;
   }
-  function radekStreamera(s) {
-    return `<a class="streamer" href="#/streamer/${esc(s.id)}">
-      ${avatar(s)}
-      <div class="info"><h3>${esc(s.jmeno)} <span class="plat plat-${esc(s.platforma)}">${esc(s.platforma)}</span></h3>
-      <div class="sub">${s.zive ? "Hraje " + esc(s.hra) : "Naposledy: " + esc(s.hra)}</div></div>
-      <div class="num">${s.zive ? `<b>${num(s.divaci)}</b>diváků` : `<b>${num(s.sledujici)}</b>sledujících`}</div></a>`;
+  const partner = (s) => s.partner ? `<span class="partner" title="Twitch partner" aria-label="Twitch partner">✓</span>` : "";
+  function delka(zacatek) {
+    if (!zacatek) return "";
+    const m = Math.max(0, Math.round((Date.now() - new Date(zacatek)) / 60000));
+    return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+  }
+
+  function kartaZive(s) {
+    return `<a class="live-card" href="#/streamer/${esc(s.login)}">
+      <div class="live-thumb">${https(s.nahled) ? `<img src="${esc(s.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+        <span class="live-badge">ŽIVĚ</span><span class="live-viewers">${num(s.divaci || 0)} diváků</span>
+        ${s.zacatek ? `<span class="live-time">${esc(delka(s.zacatek))}</span>` : ""}</div>
+      <div class="live-info">${av(s)}<div class="info"><h3>${esc(s.jmeno)}${partner(s)}</h3>
+        <div class="sub">${esc(s.hra || "")}</div><div class="sub dim">${esc(s.titulek || "")}</div></div></div></a>`;
+  }
+
+  const RAZENI = { sledujici: "Sledující", divaci: "Rekord diváků", hodiny: "Odvysíláno (30 dní)", rust: "Růst (30 dní)" };
+  function hodnota(s, razeni) {
+    if (razeni === "divaci") return [num(s.max_divaku), "diváků max."];
+    if (razeni === "hodiny") return [Math.round((s.minut30 || 0) / 60) + " h", "za 30 dní"];
+    if (razeni === "rust") return [s.rust30 == null ? "–" : (s.rust30 > 0 ? "+" : "") + num(s.rust30), "sledujících"];
+    return [s.sledujici == null ? "–" : num(s.sledujici), "sledujících"];
+  }
+  function radekStreamera(s, i, razeni = "sledujici") {
+    const [h, popis] = hodnota(s, razeni);
+    return `<a class="srow" href="#/streamer/${esc(s.login)}">
+      ${i != null ? `<span class="rank">${i + 1}</span>` : ""}${av(s)}
+      <div class="info"><h3>${esc(s.jmeno)}${partner(s)}</h3>
+        <div class="sub">${s.zive ? `<span class="dot-live"></span>Živě: ${esc(s.hra || "")}` : esc(s.posledni_hra ? "Naposledy: " + s.posledni_hra : "")}</div></div>
+      <div class="num"><b>${esc(h)}</b>${esc(popis)}</div></a>`;
+  }
+
+  // Graf počtu sledujících (vykresluje se podle skutečné šířky kontejneru).
+  function graf(el, body) {
+    const W = el.clientWidth || 320, H = 160, P = 8;
+    const ys = body.map((b) => b.v), min = Math.min(...ys), max = Math.max(...ys), rozsah = max - min || 1;
+    const x = (i) => P + (i / Math.max(body.length - 1, 1)) * (W - 2 * P);
+    const y = (v) => H - 22 - ((v - min) / rozsah) * (H - 44);
+    const cara = body.map((b, i) => `${x(i).toFixed(1)},${y(b.v).toFixed(1)}`).join(" ");
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Vývoj počtu sledujících">
+      <polygon class="g-area" points="${x(0)},${H - 22} ${cara} ${x(body.length - 1)},${H - 22}"></polygon>
+      <polyline class="g-line" points="${cara}"></polyline>
+      <text class="g-txt" x="${P}" y="${H - 6}">${esc(body[0].d)}</text>
+      <text class="g-txt" x="${W - P}" y="${H - 6}" text-anchor="end">${esc(body[body.length - 1].d)}</text>
+      <text class="g-txt" x="${W - P}" y="14" text-anchor="end">${esc(num(max))}</text></svg>`;
   }
 
   function strankaNovinky() {
@@ -95,13 +140,13 @@
     // Nahoru jako hlavní článek dej nejnovější vlastní článek (pokud je z posledních 24 h).
     const hi = list.findIndex((c) => c.vlastni && Date.now() - datum(c) < 864e5);
     if (hi > 0) list.unshift(...list.splice(hi, 1));
-    const zive = state.streameri.filter((s) => s.zive).sort((a, b) => b.divaci - a.divaci).slice(0, 3);
+    const zive = state.zive.streamy.slice(0, 4);
     app.innerHTML = `
       <input class="search" id="q" type="search" placeholder="Hledat ve zprávách" value="${esc(state.hledat)}">
       <div class="chips">${platformy.map((p) => `<button class="chip${p === state.filtr ? " on" : ""}" data-f="${p}">${p}</button>`).join("")}</div>
       ${list.length ? `<div class="grid">${list.map(kartaClanku).join("")}</div>`
         : `<p class="empty">${state.clanky.length ? "Nic jsme nenašli." : "Sběr novinek právě běží. První zprávy se objeví do 15 minut."}</p>`}
-      ${zive.length ? `<div class="section-title">Právě živě</div><div class="grid">${zive.map(radekStreamera).join("")}</div>` : ""}`;
+      ${zive.length ? `<div class="section-title">Právě živě na českém Twitchi · <a href="#/zive">vše</a></div><div class="live-grid">${zive.map(kartaZive).join("")}</div>` : ""}`;
     app.querySelectorAll(".chip").forEach((b) => b.onclick = () => { state.filtr = b.dataset.f; strankaNovinky(); });
     const inp = document.getElementById("q");
     obarvi(app);
@@ -112,7 +157,8 @@
     let c = state.clanky.find((x) => x.id === id);
     if (!c && C.api) { try { c = await nacti("clanek/" + encodeURIComponent(id)); } catch {} }
     if (!c) return (app.innerHTML = `<p class="empty">Článek nenalezen. <a href="#/">Zpět</a></p>`);
-    const streameri = state.streameri.filter((s) => (s.hry || []).some((h) => c.nadpis.includes(h)));
+    const nadpis = c.nadpis.toLowerCase();
+    const streameri = state.zive.streamy.filter((s) => s.hra && s.hra.length > 3 && nadpis.includes(s.hra.toLowerCase())).slice(0, 4);
     app.innerHTML = `<article class="article">
       <a class="back" href="#/">← Zpět na novinky</a>
       <div class="article-cover">${cover(c, c.nadpis[0])}</div>
@@ -123,38 +169,89 @@
       ${c.url && !c.vlastni ? `<a class="btn-source" href="${esc(bezpecnaUrl(c.url))}" target="_blank" rel="noopener noreferrer">Číst celý článek na ${esc(c.zdroje?.[0]?.nazev || "zdroji")} →</a>` : ""}
       <div class="sources"><b>${(c.zdroje || []).length > 1 ? "Zdroje" : "Zdroj"}:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer nofollow">${esc(z.nazev)}</a>`).join(", ")}
         <div class="ai-note">${c.ai ? "Článek napsala AI na základě uvedených zdrojů a prošel automatickou kontrolou faktů." : c.vlastni ? "Článek redakce Herní puls." : "Zpráva byla automaticky převzata z RSS kanálu zdroje. Celý článek najdeš u autora."}</div></div>
-      ${streameri.length ? `<div class="section-title">Kdo tuhle hru streamuje</div><div class="grid">${streameri.map(radekStreamera).join("")}</div>` : ""}
+      ${streameri.length ? `<div class="section-title">Tuhle hru právě streamují</div><div class="live-grid">${streameri.map(kartaZive).join("")}</div>` : ""}
     </article>`;
     scrollTo(0, 0);
   }
 
   function strankaZive() {
-    const list = state.streameri.filter((s) => s.zive).sort((a, b) => b.divaci - a.divaci);
-    app.innerHTML = `<div class="section-title">Právě vysílají</div>
-      ${list.length ? `<div class="grid">${list.map(radekStreamera).join("")}</div>` : `<p class="empty">Teď nikdo nevysílá.</p>`}`;
+    const { streamy, hry, cas } = state.zive;
+    const list = state.hraZive ? streamy.filter((s) => s.hra === state.hraZive) : streamy;
+    const divaku = streamy.reduce((a, s) => a + (s.divaci || 0), 0);
+    app.innerHTML = `<div class="live-head"><h1>Právě živě</h1>
+        <p class="dim">${streamy.length} českých streamů · ${num(divaku)} diváků${cas ? ` · aktualizováno ${esc(kdy(new Date(cas)))}` : ""}</p></div>
+      ${hry.length ? `<div class="chips"><button class="chip${state.hraZive ? "" : " on"}" data-h="">Vše</button>${hry.map((h) =>
+        `<button class="chip${state.hraZive === h.hra ? " on" : ""}" data-h="${esc(h.hra)}">${esc(h.hra)}<span class="cnt">${h.streamu}</span></button>`).join("")}</div>` : ""}
+      ${list.length ? `<div class="live-grid">${list.map(kartaZive).join("")}</div>`
+        : `<p class="empty">Teď nikdo z českých streamerů nevysílá (nebo se seznam teprve načítá).</p>`}
+      <p class="source-note">Údaje z oficiálního Twitch API, obnovují se každých 15 minut. Zahrnuty jsou streamy s jazykem nastaveným na češtinu.</p>`;
+    app.querySelectorAll("[data-h]").forEach((b) => b.onclick = () => { state.hraZive = b.dataset.h; strankaZive(); });
   }
 
-  function strankaStreameri() {
-    const list = [...state.streameri].sort((a, b) => b.sledujici - a.sledujici);
-    app.innerHTML = `<div class="section-title">Nejsledovanější streameři</div>
-      <div class="grid">${list.map(radekStreamera).join("")}</div>`;
+  let hledaniTimer;
+  async function strankaStreameri() {
+    const klic = `${state.razeni}|${state.hledatS}`;
+    if (!state.adresar[klic]) {
+      app.innerHTML = `<p class="loading">Načítám streamery…</p>`;
+      try {
+        state.adresar[klic] = await nacti(`streameri?razeni=${encodeURIComponent(state.razeni)}&q=${encodeURIComponent(state.hledatS)}`);
+      } catch { app.innerHTML = `<p class="empty">Seznam se nepodařilo načíst.</p>`; return; }
+    }
+    if (location.hash.split("/")[1] !== "streameri") return;
+    const list = state.adresar[klic];
+    app.innerHTML = `<div class="live-head"><h1>Čeští streameři</h1>
+        <p class="dim">Žebříček podle skutečných dat z Twitche. Streamer se objeví po 3 streamech s aspoň 10 diváky.</p></div>
+      <input class="search" id="qs" type="search" placeholder="Hledat streamera" value="${esc(state.hledatS)}">
+      <div class="chips">${Object.entries(RAZENI).map(([k, v]) => `<button class="chip${k === state.razeni ? " on" : ""}" data-r="${k}">${v}</button>`).join("")}</div>
+      ${list.length ? `<div class="slist">${list.map((s, i) => radekStreamera(s, i, state.razeni)).join("")}</div>`
+        : `<p class="empty">${state.hledatS ? "Nikoho takového jsme nenašli." : "Seznam se teprve plní. První streameři se objeví během pár dní, jakmile odvysílají aspoň 3 streamy."}</p>`}
+      <p class="source-note">Počty sledujících a diváků pocházejí z oficiálního Twitch API a obnovují se denně. Růst a odvysílané hodiny počítáme z vlastních denních záznamů.</p>`;
+    app.querySelectorAll("[data-r]").forEach((b) => b.onclick = () => { state.razeni = b.dataset.r; strankaStreameri(); });
+    const inp = document.getElementById("qs");
+    inp.oninput = () => {
+      clearTimeout(hledaniTimer);
+      hledaniTimer = setTimeout(async () => {
+        state.hledatS = inp.value.trim().slice(0, 40);
+        await strankaStreameri();
+        const n = document.getElementById("qs");
+        if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
+      }, 350);
+    };
   }
 
-  function strankaStreamer(id) {
-    const s = state.streameri.find((x) => x.id === id);
-    if (!s) return (app.innerHTML = `<p class="empty">Streamer nenalezen.</p>`);
-    const clanky = state.clanky.filter((c) => (s.hry || []).some((h) => c.nadpis.includes(h)));
-    app.innerHTML = `<div class="article">
+  async function strankaStreamer(login) {
+    app.innerHTML = `<p class="loading">Načítám profil…</p>`;
+    let s;
+    try { s = await nacti("streamer/" + encodeURIComponent(login)); }
+    catch { app.innerHTML = `<p class="empty">Streamer nenalezen. <a href="#/streameri">Zpět na seznam</a></p>`; return; }
+    const body = (s.snimky || []).filter((x) => x.sledujici != null).map((x) => ({ v: x.sledujici, d: new Date(x.den).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) }));
+    const maxHra = Math.max(1, ...(s.hry || []).map((h) => h.minut));
+    const datumCz = (d) => d ? new Date(d).toLocaleDateString("cs-CZ") : "–";
+    app.innerHTML = `<div class="profile">
       <a class="back" href="#/streameri">← Všichni streameři</a>
-      <div class="profile-head">${avatar(s)}<div><h1 class="m0">${esc(s.jmeno)}</h1>
-        <span class="plat plat-${esc(s.platforma)}">${esc(s.platforma)}</span> <span class="back">${s.jazyk === "sk" ? "slovensky" : "česky"}</span></div></div>
+      <div class="banner">${https(s.banner) ? `<img src="${esc(s.banner)}" alt="" referrerpolicy="no-referrer">` : ""}</div>
+      <div class="profile-head">${av(s, true)}
+        <div class="ph-text"><h1 class="m0">${esc(s.jmeno)}${partner(s)}</h1>
+          <div class="dim">twitch.tv/${esc(s.login)}${s.ucet_od ? ` · účet od ${esc(new Date(s.ucet_od).getFullYear())}` : ""}</div></div></div>
+      <a class="btn-twitch" href="${esc(twitchUrl(s.login))}" target="_blank" rel="noopener noreferrer">${s.zive ? "Sledovat živě na Twitchi" : "Kanál na Twitchi"} →</a>
+      ${s.zive ? `<div class="section-title">Právě vysílá</div>${kartaZive(s)}` : ""}
       <div class="stats">
-        <div class="stat"><b>${num(s.sledujici)}</b><span>sledujících</span></div>
-        <div class="stat"><b>${s.zive ? num(s.divaci) : "–"}</b><span>${s.zive ? "diváků teď" : "offline"}</span></div>
-        <div class="stat"><b>${(s.hry || []).length}</b><span>her</span></div></div>
-      <p>${esc(s.bio)}</p>
-      ${clanky.length ? `<div class="section-title">Novinky k jeho hrám</div><div class="grid">${clanky.map((c) => kartaClanku(c, 1)).join("")}</div>` : ""}
+        <div class="stat"><b>${s.sledujici == null ? "–" : num(s.sledujici)}</b><span>sledujících</span></div>
+        <div class="stat"><b>${num(s.max_divaku || 0)}</b><span>rekord diváků</span></div>
+        <div class="stat"><b>${s.hodin30 || 0} h</b><span>odvysíláno za 30 dní</span></div>
+      </div>
+      ${s.popis ? `<p class="popis">${esc(s.popis)}</p>` : ""}
+      ${body.length >= 2 ? `<div class="section-title">Vývoj sledujících</div><div class="graf" id="graf"></div>` : ""}
+      ${(s.hry || []).length ? `<div class="section-title">Nejčastěji hrané hry</div><div class="hry">${s.hry.map((h) =>
+        `<div class="hra"><div class="hra-t"><span>${esc(h.hra)}</span><span class="dim">${Math.round(h.minut / 60)} h</span></div>
+         <div class="bar"><i data-w="${Math.round((h.minut / maxHra) * 100)}"></i></div></div>`).join("")}</div>` : ""}
+      <p class="source-note">Údaje z oficiálního Twitch API. Na Herním pulsu sledujeme od ${esc(datumCz(s.prvni_videno))} ·
+        profil aktualizován ${esc(datumCz(s.aktualizovano?.profil))} · sledující ${esc(datumCz(s.aktualizovano?.sledujici))}.
+        Odvysílané hodiny a hry počítáme jen od chvíle, kdy kanál sledujeme.</p>
     </div>`;
+    app.querySelectorAll(".bar i[data-w]").forEach((i) => (i.style.width = Math.max(2, Math.min(100, +i.dataset.w || 0)) + "%"));
+    const g = document.getElementById("graf");
+    if (g) graf(g, body);
     scrollTo(0, 0);
   }
 
@@ -162,12 +259,21 @@
     const [, sekce, id] = (location.hash || "#/").split("/");
     const tab = sekce === "zive" ? "zive" : sekce === "streameri" || sekce === "streamer" ? "streameri" : "novinky";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
-    if (sekce === "clanek") return strankaClanek(decodeURIComponent(id)).then(() => obarvi(app));
+    let p;
+    if (sekce === "clanek") p = strankaClanek(decodeURIComponent(id));
     else if (sekce === "zive") strankaZive();
-    else if (sekce === "streameri") strankaStreameri();
-    else if (sekce === "streamer") strankaStreamer(decodeURIComponent(id));
+    else if (sekce === "streameri") p = strankaStreameri();
+    else if (sekce === "streamer") p = strankaStreamer(decodeURIComponent(id || ""));
     else strankaNovinky();
-    obarvi(app);
+    Promise.resolve(p).then(() => obarvi(app));
+  }
+
+  async function nactiZive() {
+    try {
+      const z = await nacti("zive");
+      if (z && Array.isArray(z.streamy)) state.zive = z;
+    } catch {}
+    document.getElementById("live-count").textContent = state.zive.streamy.length || "";
   }
 
   async function start() {
@@ -177,16 +283,17 @@
       document.title = `${C.nazev} – novinky a streameři`;
     }
     document.getElementById("year").textContent = new Date().getFullYear();
-    try {
-      [state.clanky, state.streameri] = await Promise.all([nacti("clanky"), nacti("streameri")]);
-    } catch (e) {
-      app.innerHTML = `<p class="empty">Data se nepodařilo načíst.</p>`;
-      return;
-    }
-    const n = state.streameri.filter((s) => s.zive).length;
-    document.getElementById("live-count").textContent = n || "";
+    const [clanky] = await Promise.allSettled([nacti("clanky"), nactiZive()]);
+    if (clanky.status === "fulfilled" && Array.isArray(clanky.value)) state.clanky = clanky.value;
     addEventListener("hashchange", route);
     route();
+    // Živé streamy se obnovují každé 2 minuty (jen pokud je stránka vidět).
+    setInterval(async () => {
+      if (document.hidden) return;
+      await nactiZive();
+      const sekce = (location.hash || "#/").split("/")[1] || "";
+      if (sekce === "zive") route();
+    }, 120000);
   }
   start();
 })();

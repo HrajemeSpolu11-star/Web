@@ -80,3 +80,58 @@ main{max-width:960px;margin:0 auto;padding:16px}
 .own{background:var(--accent);color:#fff;padding:2px 7px;border-radius:5px;font-weight:700;font-size:11px}
 .article .text h2{font-size:21px;margin:24px 0 6px}
 .article .text a{color:#9db4ff;text-decoration:underline}
+/* ---------- Streameři ---------- */
+.dim{color:var(--muted)}
+.section-title a{color:var(--text);text-decoration:underline}
+.av{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;background:var(--card2);border:2px solid var(--line)}
+.av-l{width:84px;height:84px;border-width:3px}
+.av-live{border-color:var(--live)}
+.av-text{display:grid;place-items:center;font-weight:800;font-size:18px;color:var(--muted)}
+.av-l.av-text{font-size:32px}
+.partner{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#9146ff;color:#fff;font-size:10px;font-weight:900;margin-left:5px;vertical-align:1px}
+.live-head h1{font-size:26px;margin:6px 0 2px;line-height:1.15}
+.live-head p{margin:0 0 14px;font-size:14px}
+.live-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.live-card{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.live-card:active{transform:scale(.985)}
+.live-thumb{position:relative;aspect-ratio:16/9;background:linear-gradient(135deg,#2a1a4a,#0d0f14)}
+.live-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.live-badge{position:absolute;left:8px;top:8px;background:var(--live);color:#fff;font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px}
+.live-viewers,.live-time{position:absolute;bottom:8px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;font-weight:600;padding:2px 7px;border-radius:5px}
+.live-viewers{left:8px}.live-time{right:8px}
+.live-info{display:flex;gap:10px;padding:10px 12px;align-items:flex-start}
+.live-info .info,.srow .info{flex:1;min-width:0}
+.live-info h3,.srow h3{margin:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slist{display:flex;flex-direction:column;gap:8px}
+.srow{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:64px}
+.rank{width:22px;text-align:center;color:var(--muted);font-weight:700;font-size:14px;flex:none}
+.srow .num{text-align:right;font-size:12px;color:var(--muted);flex:none}
+.srow .num b{display:block;color:var(--text);font-size:16px;white-space:nowrap}
+.dot-live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--live);margin-right:5px;vertical-align:1px}
+.source-note{font-size:12px;color:var(--muted);margin-top:22px;line-height:1.5}
+.profile{max-width:720px;margin:0 auto}
+.banner{margin-top:10px;aspect-ratio:3/1;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#3b2470,#121019)}
+.banner img{width:100%;height:100%;object-fit:cover;display:block}
+.profile .profile-head{margin:-36px 0 12px 12px;display:flex;align-items:flex-end;gap:14px}
+.profile .av-l{border-color:var(--bg);background:var(--card2)}
+.profile .av-l.av-live{border-color:var(--live)}
+.ph-text{padding-bottom:6px;min-width:0}
+.ph-text h1{font-size:24px;line-height:1.15}
+.ph-text .dim{font-size:13px}
+.btn-twitch{display:block;text-align:center;padding:13px;border-radius:12px;background:#9146ff;color:#fff;font-weight:700;margin:6px 0 4px}
+.stats .stat b{white-space:nowrap}
+.popis{color:#c9ced8;white-space:pre-line;overflow-wrap:anywhere}
+.graf{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;overflow:hidden}
+.graf svg{display:block;width:100%;height:auto}
+.g-line{fill:none;stroke:#9146ff;stroke-width:2.5;stroke-linejoin:round}
+.g-area{fill:rgba(145,70,255,.18)}
+.g-txt{fill:var(--muted);font-size:11px;font-family:system-ui,sans-serif}
+.hry{display:flex;flex-direction:column;gap:10px}
+.hra-t{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:4px}
+.hra-t span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{height:8px;border-radius:4px;background:var(--card2);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#9146ff,#ff4d6d);border-radius:4px}
+@media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+.chip .cnt{display:inline-block;margin-left:6px;padding:0 6px;border-radius:8px;background:var(--line);font-size:11px;color:var(--text)}
+.chip.on .cnt{background:var(--bg);color:var(--text)}
