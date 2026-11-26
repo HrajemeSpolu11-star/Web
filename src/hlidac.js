@@ -11,7 +11,7 @@ import { zajistiSchemaPush } from "./push.js";
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const JAZYKU_NA_BEH = 12;
 const CEN_POZADAVKU = 3; // × 100 her
-export const MAX_HLIDANYCH = 50;
+export const MAX_HLIDANYCH = 200; // hlídaných her na jedno zařízení (seznam přání může být delší)
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS steam_hry (id TEXT PRIMARY KEY, nazev TEXT NOT NULL, norm TEXT NOT NULL, obrazek TEXT,
@@ -233,13 +233,24 @@ export async function apiCestina(env, q, filtr) {
 }
 
 // /api/steam-hry?ids=1,2,3 – pro seznam hlídaných her.
+// Hry z databáze podle Steam ID – po dávkách (D1 dovolí nejvýš 100 parametrů v jednom dotazu).
+export async function hryPodleId(db, ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += 90) {
+    const d = ids.slice(i, i + 90);
+    const { results } = await db.prepare(`SELECT ${SLOUPCE} FROM steam_hry g WHERE g.id IN (${d.map(() => "?").join(",")})`).bind(od90(Date.now()), ...d).all();
+    out.push(...results);
+  }
+  return out;
+}
+export { naHru };
+
 export async function apiSteamHry(env, idsText) {
   const db = env.DB;
   await zajistiSchemaHlidac(db);
-  const ids = String(idsText || "").split(",").map(steamId).filter(Boolean).slice(0, MAX_HLIDANYCH);
+  const ids = [...new Set(String(idsText || "").split(",").map(steamId).filter(Boolean))].slice(0, 300);
   if (!ids.length) return { hry: [] };
-  const { results } = await db.prepare(`SELECT ${SLOUPCE} FROM steam_hry g WHERE g.id IN (${ids.map(() => "?").join(",")})`).bind(od90(Date.now()), ...ids).all();
-  return { hry: results.map(naHru) };
+  return { hry: (await hryPodleId(db, ids)).map(naHru) };
 }
 
 // Čeština a nejnižší cena pro katalog a stránku hry.

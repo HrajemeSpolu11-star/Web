@@ -1000,3 +1000,35 @@ h1{letter-spacing:-.03em}
 .archiv-t b{font-size:15px;line-height:1.3;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .archiv-t small{font-size:12.5px;color:var(--muted)}
 .archiv-dalsi{display:flex;justify-content:center;margin:20px 0 6px}
+
+/* ===== Aktualizace her v2 ===== */
+.patch{display:grid;grid-template-columns:minmax(0,1fr);gap:0;padding:0;overflow:hidden}
+@media (min-width:760px){.patch:not(.patch-mala){grid-template-columns:240px minmax(0,1fr)}}
+.patch-obr{display:block;background:var(--card2)}
+.patch-obr img{display:block;width:100%;aspect-ratio:460/215;object-fit:cover}
+@media (min-width:760px){.patch:not(.patch-mala) .patch-obr img{height:100%;aspect-ratio:auto;min-height:130px}}
+.patch-t{padding:14px 16px;min-width:0}
+.patch header{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;font-size:13px}
+.patch-typ{--sk:#5cc8ff;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--sk) 20%,transparent);color:var(--sk);border:1px solid color-mix(in srgb,var(--sk) 50%,transparent)}
+.patch-hra{font-weight:800;color:var(--text)}
+.patch h3{margin:8px 0 6px;font-size:17px;line-height:1.3}
+.patch-shrnuti{margin:0 0 8px;color:var(--text);font-size:15px;line-height:1.5}
+.patch-komu{margin:0 0 10px;font-size:14px;color:var(--muted)}.patch-komu b{color:var(--text)}
+.patch-skupina{margin:8px 0}.patch-skupina b{font-size:13px;color:var(--accent)}
+.patch-skupina ul{margin:4px 0 0;padding-left:18px;display:grid;gap:3px;font-size:14px}
+.patch-ceka{font-style:italic}
+.slovnicek{margin:10px 0 4px;font-size:14px}
+.slovnicek summary{cursor:pointer;font-weight:700;color:#5cc8ff;min-height:36px;display:flex;align-items:center}
+.slovnicek dl{margin:6px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.slovnicek dt{font-weight:800}.slovnicek dd{margin:0;color:var(--muted)}
+.patche-mrizka{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:600px){.patche-mrizka{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:1000px){.patche-mrizka{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.patch-mala{background:var(--card2);border:0}
+.patch-mala h3{font-size:15px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.patch-mala .patch-shrnuti{font-size:14px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.patch-mala:hover{background:#2a2260}
+/* Seznam přání */
+.seznam-prani{margin:18px 0}
+.seznam-prani .section-title{margin-top:0}
+.prani-souhrn{margin:12px 0 8px}

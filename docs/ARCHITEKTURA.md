@@ -88,7 +88,8 @@ Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?
 | Část | Soubor | Kdy běží | Požadavky |
 |---|---|---|---|
 | Ranní přehled (AI) | `src/ranni.js`, tabulka `ranni` | Cron psaní „7“, od 6:00 Praha, 1× denně | 1 AI volání |
-| Aktualizace her | `src/patche.js`, tabulka `patche` | sběr v Cronu obsahu „40“ (3 hry), shrnutí v Cronu psaní (1/h) | 3 Steam + 1 AI |
+| Aktualizace her | `src/patche.js`, tabulky `patche`, `sledovane` | seznam her 1× denně (Cron psaní), kontrola v Cronu novinek „*/15“ (15 her), shrnutí v Cronu psaní (2/h) | 15 Steam / 15 min; ~7 IGDB/den; 2 AI/h |
+| Seznam přání | `src/wishlist.js` | jen na žádost (10/min) | až 7 Steam |
 | Výročí | `src/vyroci.js`, katalog `vyroci` | Cron katalogu „25“, 1× denně | 1–3 IGDB |
 | Co hrát, Rádce, Vyšší/nižší | `src/nastroje.js` | jen na žádost (mezipaměť 30 min) | 0 externích |
 | Česká scéna | `apiCeskaScena` v `src/studia.js` | jen na žádost | 0 externích |

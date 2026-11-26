@@ -24,6 +24,7 @@ export const ULOHY = {
   psani: { nazev: "Psaní článků (AI)", interval: null }, // běží jen v nastavené hodiny a jen s AI klíčem
   ranni: { nazev: "Ranní přehled (AI)", interval: null }, // jednou denně ráno
   patche: { nazev: "Shrnutí aktualizací her (AI)", interval: null }, // jen když je nová aktualizace
+  aktualizace: { nazev: "Aktualizace her (Steam, ~1 000 her)", interval: 15 },
 };
 
 export async function zapis(db, uloha, ok, text) {

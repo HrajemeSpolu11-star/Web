@@ -24,7 +24,7 @@
   // Styly se nastavují přes JS (CSSOM), takže CSP může zakázat inline styly.
   function obarvi(root) {
     requestAnimationFrame(() => nakresliEkg(root));
-    root.querySelectorAll("img.cover-img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
+    root.querySelectorAll("img.cover-img, .patch-obr img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
     root.querySelectorAll("[data-a]").forEach((el) => {
       el.style.background = `linear-gradient(135deg,${barva(el.dataset.a, "#444")},${barva(el.dataset.b, "#111")})`;
     });
@@ -187,7 +187,7 @@
     return "";
   }
   function hlidane() { try { return JSON.parse(localStorage.getItem("hp_hlidam") || "[]"); } catch { return []; } }
-  const ulozHlidane = (l) => { try { localStorage.setItem("hp_hlidam", JSON.stringify(l.slice(0, 50))); } catch {} };
+  const ulozHlidane = (l) => { try { localStorage.setItem("hp_hlidam", JSON.stringify(l.slice(0, 200))); } catch {} };
   const hlidam = (id) => hlidane().some((x) => x.id === String(id));
   const tlacitkoHlidat = (h) => `<button type="button" class="hlidat${hlidam(h.id) ? " on" : ""}" data-hlidat="${esc(h.id)}" data-nazev="${esc(h.nazev)}"
       aria-pressed="${hlidam(h.id)}">${hlidam(h.id) ? "🔔 Hlídám" : "🔔 Hlídat cenu"}</button>`;
@@ -272,6 +272,14 @@
       ${!pushPodpora() ? `<p class="info-box">Tenhle prohlížeč upozornění nepodporuje. Na iPhonu si web nejdřív přidej na plochu (Sdílet → Přidat na plochu) a otevři ho odtamtud.</p>` : ""}
       <form class="hledat-hru" role="search"><input id="q-hra" type="search" placeholder="Přidat hru – napiš název…" autocomplete="off" maxlength="60" aria-label="Název hry"><button type="submit">Najít</button></form>
       <div id="hl-hledani"></div>
+      <section class="blok seznam-prani" id="seznam-prani">
+        <div class="section-title">Můj seznam přání ze Steamu</div>
+        <p class="dim">Vlož odkaz na svůj Steam profil a načteme tvůj seznam přání: ceny, slevy, češtinu a novinky k aktualizacím těch her.
+          Seznam se uloží jen v tomhle prohlížeči, k nám se neukládá, čí je.</p>
+        <form class="hledat-hru" id="f-prani"><input id="q-prani" type="text" inputmode="url" placeholder="steamcommunity.com/id/tvoje-jmeno" autocomplete="off" maxlength="200" aria-label="Odkaz na Steam profil" value="${esc((() => { try { return localStorage.getItem("hp_steam") || ""; } catch { return ""; } })())}"><button type="submit">Načíst</button></form>
+        <p class="dim pc-pozn">Seznam musí být veřejný: Steam → Profil → Upravit profil → Nastavení soukromí → Detaily o hrách: Veřejné. GOG a Epic seznamy přání přes oficiální rozhraní nezveřejňují.</p>
+        <div id="prani-seznam"></div>
+      </section>
       <div class="section-title">Moje hlídané hry</div>
       <div id="hl-seznam">${l.length ? kostra(Math.min(4, l.length)) : `<p class="empty">Zatím nic nehlídáš. Najdi hru výše nebo klikni na „Hlídat cenu“ u kterékoliv hry na webu.</p>`}</div>
       <p class="source-note">Ceny hlídaných her kontrolujeme každou hodinu přímo na Steamu (v Kč). Upozornění přijde jednou za slevu – a znovu, jen když cena klesne ještě níž. Hlídané hry jsou uložené u tvého odběru upozornění; vypnutím upozornění se smažou. <a href="/soukromi.html">Soukromí</a></p>`;
@@ -282,6 +290,47 @@
       out.innerHTML = kostra(3);
       try { const d = await nacti(`cestina?q=${enc(v)}`); out.innerHTML = d.hry.length ? `<div class="hrady">${d.hry.slice(0, 6).map((h) => radekHry(h)).join("")}</div>` : `<p class="dim">Nic jsme nenašli – zkus anglický název ze Steamu.</p>`; }
       catch { out.innerHTML = `<p class="dim">Hledání se nepovedlo, zkus to znovu.</p>`; }
+    };
+    // Seznam přání
+    const vykresliPrani = (hry) => {
+      const el = document.getElementById("prani-seznam");
+      if (!el) return;
+      if (!hry.length) { el.innerHTML = ""; return; }
+      const serazene = [...hry].sort((a, b) => (b.sleva || 0) - (a.sleva || 0));
+      const vSleve = serazene.filter((h) => h.sleva > 0).length, cesky = serazene.filter((h) => h.cestina > 0).length;
+      el.innerHTML = `<p class="prani-souhrn"><b>${pl(hry.length, "hra", "hry", "her")}</b> · ve slevě <b>${vSleve}</b> · s češtinou <b>${cesky}</b>
+          · <a href="/aktualizace?f=moje">aktualizace mých her</a></p>
+        <div class="vyd-akce"><button type="button" class="btn-maly" id="hlidat-vse">🔔 Hlídat slevy u všech</button><button type="button" class="btn-maly" id="prani-smazat">Odebrat seznam</button></div>
+        <div class="hrady">${serazene.slice(0, 200).map((h) => radekHry(h)).join("")}</div>`;
+      el.querySelector("#prani-smazat").onclick = () => { try { localStorage.removeItem("hp_moje"); } catch {} el.innerHTML = ""; };
+      el.querySelector("#hlidat-vse").onclick = async (e) => {
+        const b = e.target; b.disabled = true;
+        const uz = new Set(hlidane().map((x) => x.id));
+        const zbyva = serazene.filter((h) => !uz.has(String(h.id))).slice(0, 200);
+        let n = 0;
+        for (const h of zbyva) {
+          try { await nastavHlidani(h.id, h.nazev, true); n++; b.textContent = `Přidávám… ${n}/${zbyva.length}`; }
+          catch (err) { achievement("Hotovo jen částečně", err.message); break; }
+        }
+        achievement("Hlídám slevy", `${pl(n, "nová hra", "nové hry", "nových her")} v hlídání.`);
+        strankaHlidac();
+      };
+    };
+    const moje = mojeHry();
+    if (moje.length) nacti(`steam-hry?ids=${moje.map((x) => x.id).join(",")}`).then((d) => vykresliPrani(d.hry || [])).catch(() => {});
+    document.getElementById("f-prani").onsubmit = async (e) => {
+      e.preventDefault();
+      const v = document.getElementById("q-prani").value.trim(), el = document.getElementById("prani-seznam");
+      if (v.length < 2) return;
+      el.innerHTML = kostra(3);
+      try {
+        const r = await fetch(`/api/wishlist?steam=${enc(v)}`);
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.chyba || "Seznam se nepodařilo načíst.");
+        try { localStorage.setItem("hp_steam", v); localStorage.setItem("hp_moje", JSON.stringify(d.hry.map((h) => ({ id: String(h.id), nazev: h.nazev })))); } catch {}
+        vykresliPrani(d.hry);
+        achievement("Seznam přání načten", `${pl(d.hry.length, "hra", "hry", "her")} ze Steamu.`);
+      } catch (err) { el.innerHTML = `<p class="info-box">${esc(err.message)}</p>`; }
     };
     if (!l.length) return;
     let d;
@@ -363,26 +412,74 @@
   }
 
   // ---------- Aktualizace her ----------
+  const TYP_PATCHE = {
+    velka: ["Velká aktualizace", "#ffc04d"], sezona: ["Nová sezóna", "#b47cff"], opravy: ["Opravy chyb", "#4fd88f"],
+    rovnovaha: ["Úpravy rovnováhy", "#ff7a9c"], aktualizace: ["Aktualizace", "#5cc8ff"],
+  };
+  const SKUPINY_PATCHE = [["novinky", "Novinky"], ["hratelnost", "Úpravy hratelnosti"], ["opravy", "Opravy"], ["vykon", "Výkon a stabilita"]];
+  // Slovníček: pevné vysvětlivky (nepíše je AI) – ukážou se jen pojmy, které se v aktualizaci opravdu objevují.
+  const SLOVNICEK = [
+    [/\bbuff/i, "Buff", "Posílení – zbraň, postava nebo schopnost je silnější než dřív."],
+    [/\bnerf/i, "Nerf", "Oslabení – něco, co bylo moc silné, vývojáři zeslabili."],
+    [/hotfix/i, "Hotfix", "Rychlá malá oprava, která řeší akutní chybu hned, bez čekání na velkou aktualizaci."],
+    [/\bpatch/i, "Patch", "Aktualizace hry, která přidává obsah nebo opravuje chyby."],
+    [/\bmeta\b/i, "Meta", "Nejsilnější a nejpoužívanější taktiky, zbraně nebo postavy v danou chvíli."],
+    [/battle ?pass/i, "Battle pass", "Sezónní odměny, které odemykáš hraním; obvykle bezplatná a placená část."],
+    [/\bpvp\b/i, "PvP", "Hráči proti hráčům."], [/\bpve\b/i, "PvE", "Hráči proti počítači (nepřátelům ve hře)."],
+    [/matchmaking/i, "Matchmaking", "Systém, který ti hledá spoluhráče a soupeře do zápasu."],
+    [/\branked|hodnocen/i, "Ranked", "Hodnocené zápasy, ve kterých stoupáš nebo klesáš v žebříčku."],
+    [/\bexploit/i, "Exploit", "Zneužití chyby ve hře k nečekané výhodě."],
+    [/cooldown/i, "Cooldown", "Čas, po který nejde schopnost znovu použít."],
+    [/hitbox/i, "Hitbox", "Neviditelná oblast postavy nebo předmětu, která počítá zásahy."],
+    [/netcode/i, "Netcode", "Jak hra posílá data přes internet – ovlivňuje zpoždění a „sekání“ v online hře."],
+    [/anti-?cheat/i, "Anti-cheat", "Ochrana proti podvádění."], [/\bcrash/i, "Crash", "Pád hry."],
+    [/\bfps\b/i, "FPS", "Snímky za sekundu – čím víc, tím plynulejší obraz. (Někdy také střílečka z pohledu první osoby.)"],
+    [/\bdlc\b/i, "DLC", "Stahovatelný obsah navíc – rozšíření hry, často placené."],
+    [/kosmet|cosmetic|skin/i, "Kosmetika / skin", "Vzhled postavy nebo zbraně, který nemění sílu."],
+    [/\bspawn/i, "Spawn", "Místo nebo okamžik, kdy se objeví hráč, nepřítel nebo předmět."],
+    [/\bloot/i, "Loot", "Kořist – předměty, které ve hře sbíráš."], [/\bxp\b|zkušenost/i, "XP", "Body zkušeností za hraní."],
+  ];
+  const mojeHry = () => { try { return JSON.parse(localStorage.getItem("hp_moje") || "[]"); } catch { return []; } };
+  const typStitek = (t) => { const [n, c] = TYP_PATCHE[t] || TYP_PATCHE.aktualizace; return `<span class="patch-typ" data-barva="${c}">${esc(n)}</span>`; };
+  function kartaPatche(p, mala = false) {
+    const text = [p.nadpis, p.shrnuti, p.komu, ...SKUPINY_PATCHE.flatMap(([k]) => p.skupiny?.[k] || [])].join(" ");
+    const pojmy = SLOVNICEK.filter(([re]) => re.test(text));
+    return `<article class="patch${mala ? " patch-mala" : ""}">
+      <a class="patch-obr" href="/hra/steam/${esc(p.steam_id)}"><img src="${esc(p.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
+      <div class="patch-t">
+        <header>${typStitek(p.typ)}<a class="patch-hra" href="/hra/steam/${esc(p.steam_id)}">${esc(p.hra)}</a><span class="dim">${esc(kdy(new Date(p.datum)))}</span></header>
+        <h3>${esc(p.nadpis)}</h3>
+        ${p.stav === "hotovo" ? `<p class="patch-shrnuti">${esc(p.shrnuti)}</p>${p.komu && !mala ? `<p class="patch-komu"><b>Komu se to týká:</b> ${esc(p.komu)}</p>` : ""}
+          ${mala ? "" : SKUPINY_PATCHE.filter(([k]) => (p.skupiny?.[k] || []).length).map(([k, n]) => `<div class="patch-skupina"><b>${n}</b><ul>${p.skupiny[k].map((z) => `<li>${esc(z)}</li>`).join("")}</ul></div>`).join("")}
+          ${!mala && pojmy.length ? `<details class="slovnicek"><summary>Slovníček (${pojmy.length})</summary><dl>${pojmy.map(([, t, v]) => `<dt>${t}</dt><dd>${v}</dd>`).join("")}</dl></details>` : ""}`
+          : p.stav === "ceka" ? `<p class="dim patch-ceka">Shrnutí v češtině se připravuje – zatím si přečti originál.</p>` : `<p class="dim">Shrnutí není k dispozici – přečti si originální poznámky.</p>`}
+        ${mala ? "" : `<footer>${p.stav === "hotovo" ? `<span class="ai-stitek">Shrnula AI</span>` : ""}<a href="${esc(bezpecnaUrl(p.url))}" target="_blank" rel="noopener noreferrer">Originální poznámky na Steamu</a></footer>`}
+      </div></article>`;
+  }
   async function strankaAktualizace() {
     nastavTitulek("Aktualizace her česky – co přinesly nové patche");
-    app.innerHTML = `${hubHry("aktualizace", "Aktualizace her", "")}${kostra(4)}`;
-    let d;
-    try { d = await nacti("aktualizace"); } catch { d = { polozky: [] }; }
+    if (!state.patche) app.innerHTML = `${hubHry("aktualizace", "Aktualizace her", "")}${kostra(4)}`;
+    if (!state.patche || Date.now() - state.patche._cas > 5 * 60e3) {
+      try { state.patche = { ...(await nacti("aktualizace")), _cas: Date.now() }; } catch { state.patche = { polozky: [], _cas: 0 }; }
+    }
     if (!location.pathname.startsWith("/aktualizace")) return;
-    const hra = new URLSearchParams(location.search).get("hra") || "";
-    const hry = [...new Set(d.polozky.map((p) => p.hra))];
-    const list = hra ? d.polozky.filter((p) => p.hra === hra) : d.polozky;
-    app.innerHTML = `${hubHry("aktualizace", "Aktualizace her", "Vývojáři píšou poznámky k aktualizacím dlouze a anglicky. AI z nich vybere to podstatné a napíše to česky.")}
-      ${hry.length > 1 ? `<div class="chips"><a class="chip${hra ? "" : " on"}" href="/aktualizace">Všechny hry</a>${hry.map((h) => `<a class="chip${h === hra ? " on" : ""}" href="/aktualizace?hra=${enc(h)}">${esc(h)}</a>`).join("")}</div>` : ""}
-      ${list.length ? `<div class="patche">${list.map((p) => `<article class="patch">
-          <header><a class="patch-hra" href="/hra/steam/${esc(p.steam_id)}">${esc(p.hra)}</a><span class="dim">${esc(kdy(new Date(p.datum)))}</span></header>
-          <h3>${esc(p.nadpis)}</h3>
-          <p>${esc(p.shrnuti)}</p>
-          ${p.zmeny.length ? `<ul>${p.zmeny.map((z) => `<li>${esc(z)}</li>`).join("")}</ul>` : ""}
-          <footer><span class="ai-stitek">Shrnula AI</span><a href="${esc(bezpecnaUrl(p.url))}" target="_blank" rel="noopener noreferrer">Celé poznámky na Steamu</a></footer>
-        </article>`).join("")}</div>`
-        : `<p class="empty">Zatím tu nic není. Web každou hodinu kontroluje oficiální oznámení nejhranějších her na Steamu a nové aktualizace postupně shrnuje.</p>`}
-      <p class="source-note">Zdroj: oficiální oznámení vývojářů na Steamu (jen nejhranější hry). Shrnutí píše AI a web ho zveřejní, jen když v něm nejsou čísla, která v originále chybí. Přesné znění vždy najdeš v odkazu na Steam.</p>`;
+    const d = state.patche, q = new URLSearchParams(location.search), f = q.get("f") || "", hra = q.get("hra") || "";
+    const moje = new Set([...mojeHry(), ...hlidane()].map((x) => String(x.id)));
+    const FILTRY = [["", "Všechny"], ["velke", "Velké a sezóny"], ["opravy", "Opravy"], ["cesko", "Hraje Česko"], ["moje", `Moje hry${moje.size ? ` (${moje.size})` : ""}`]];
+    let list = d.polozky;
+    if (hra) list = list.filter((p) => p.hra === hra);
+    if (f === "velke") list = list.filter((p) => p.typ === "velka" || p.typ === "sezona");
+    if (f === "opravy") list = list.filter((p) => p.typ === "opravy" || p.typ === "rovnovaha");
+    if (f === "cesko") list = list.filter((p) => p.cesko);
+    if (f === "moje") list = list.filter((p) => moje.has(String(p.steam_id)));
+    app.innerHTML = `${hubHry("aktualizace", "Aktualizace her", `Hlídáme oficiální oznámení vývojářů u ${d.sledovanych ? `<b>${esc(num(d.sledovanych))}</b>` : "stovek"} her na Steamu. Nová aktualizace se tu ukáže do pár hodin a AI ji česky vysvětlí: co přináší, komu se týká a co se změnilo.`)}
+      <div class="chips chips-barvy">${FILTRY.map(([k, t]) => `<a class="chip${k === f && !hra ? " on" : ""}" href="/aktualizace${k ? `?f=${k}` : ""}">${t}</a>`).join("")}${hra ? `<a class="chip on" href="/aktualizace">${esc(hra)} ✕</a>` : ""}</div>
+      ${f === "moje" && !moje.size ? `<p class="info-box">Zatím nemáš žádné „Moje hry“. Načti si <a href="/hlidac#seznam-prani">seznam přání ze Steamu</a> nebo si v Hlídači cen označ hry, které tě zajímají.</p>` : ""}
+      ${list.length ? `<div class="patche">${list.slice(0, 60).map((p) => kartaPatche(p)).join("")}</div>`
+        : `<p class="empty">${d.polozky.length ? "Tady zatím nic není – zkus jiný filtr." : "Seznam se teprve plní: web každých 15 minut prochází oficiální oznámení dalších her a nové aktualizace sem hned přidá."}</p>`}
+      <p class="source-note">Zdroj: oficiální oznámení vývojářů na Steamu (kanál, kam píše sám vývojář). Sledujeme ~1 000 nejpopulárnějších her, hry, které se hrají v Česku, a hry ze seznamů přání.
+        Shrnutí píše AI a web ho zveřejní, jen když v něm nejsou čísla, která v originále chybí. Slovníček je pevný, nepíše ho AI. GOG a Epic poznámky k aktualizacím přes oficiální rozhraní nezveřejňují.</p>`;
+    app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#5cc8ff")));
   }
 
   // ---------- Česká herní scéna ----------
@@ -1796,7 +1893,9 @@
     const akce = (state.akce?.akce || [])[0];
     const zpravDnes = state.clanky.filter((c) => Date.now() - datum(c) < 864e5).length;
     const brzy = (vydani?.hry || []).slice(0, 5);
-    const patche = (aktualizace?.polozky || []).slice(0, 3);
+    // Nejdřív aktualizace se shrnutím, nejpopulárnější hry první; jedna hra jen jednou.
+    const patche = (() => { const vid = new Set(); return [...(aktualizace?.polozky || [])].filter((p) => Date.now() - Date.parse(p.datum) < 7 * 864e5)
+      .sort((a, b) => (b.stav === "hotovo") - (a.stav === "hotovo") || (a.poradi || 9999) - (b.poradi || 9999)).filter((p) => !vid.has(p.hra) && vid.add(p.hra)).slice(0, 4); })();
     app.innerHTML = `
       <section class="uvod">
         <h1>Hry mají tep.<br>My ho <em>měříme.</em></h1>
@@ -1821,6 +1920,12 @@
               ${h.presne ? `<span class="brzy-za">${esc(dnyDoVydani(h.datum))}</span>` : ""}</div></a>`).join("")}</div>
         </section>` : ""}
 
+        ${patche.length ? `<section class="blok m12 domu-patche">
+          <div class="section-title">Co je nového ve hrách · <a href="/aktualizace">všechny aktualizace</a></div>
+          <div class="patche-mrizka">${patche.map((p) => kartaPatche(p, true)).join("")}</div>
+          <p class="source-note">Oficiální poznámky vývojářů ze Steamu, česky vysvětlené AI. Klikni na hru pro detail.</p>
+        </section>` : ""}
+
         ${tydne ? `<a class="hra-velka m5" ${odkazHry(tydne)}>${https(tydne.obrazek) ? `<img src="${esc(tydne.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}
           <div class="hv-t"><span class="hv-pill">${tydne.cena === 0 || tydne.do ? `Zdarma na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}${tydne.do ? ` · ${esc(zbyva(tydne.do))}` : ""}` : `Sleva −${Number(tydne.sleva) || 0} % na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}`}</span>
             <h2>${esc(tydne.nazev)}</h2>
@@ -1839,12 +1944,7 @@
           <div class="nastroje">${NASTROJE_DOMU.map(([h, t, p, b, ik]) => `<a class="nastroj" href="${h}" data-barva="${b}"><span class="n-ikona" aria-hidden="true">${IKONY[ik]}</span><div><b>${t}</b><span>${p}</span></div></a>`).join("")}</div>
         </section>
 
-        ${patche.length ? `<section class="blok ${vyroci?.hry?.length ? "m6" : "m12"}">
-          <div class="section-title">Nové aktualizace her · <a href="/aktualizace">všechny</a></div>
-          <div class="patche-mini">${patche.map((p) => `<a href="/aktualizace?hra=${enc(p.hra)}"><b>${esc(p.hra)}</b><span>${esc(p.shrnuti)}</span><small class="dim">${esc(kdy(new Date(p.datum)))} · shrnula AI</small></a>`).join("")}</div>
-        </section>` : ""}
-
-        ${vyroci?.hry?.length ? `<section class="blok ${patche.length ? "m6" : "m12"}">
+        ${vyroci?.hry?.length ? `<section class="blok m12">
           <div class="section-title">Dnes před lety vyšlo</div>
           <div class="vyroci">${vyroci.hry.slice(0, 4).map((h) => `<a class="vyr" ${h.steam ? `href="/hra/steam/${esc(h.steam)}"` : `href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer"`}>
               ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyr-bez">${esc(h.nazev[0])}</div>`}

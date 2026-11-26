@@ -22,10 +22,11 @@ import { apiStudia, apiStudio, sberStudii } from "./studia.js";
 import { apiAkce, obnovObrazkyAkci } from "./akce.js";
 import { apiVydani, sberVydani } from "./vydani.js";
 import { apiRanni, generujRanni } from "./ranni.js";
-import { apiAktualizace, sberPatchu, shrnPatch } from "./patche.js";
+import { apiAktualizace, sberPatchu, shrnPatch, sestavSledovane } from "./patche.js";
 import { apiVyroci, sberVyroci } from "./vyroci.js";
 import { apiCoHrat, apiVyssiNizsi } from "./nastroje.js";
 import { apiCeskaScena } from "./studia.js";
+import { apiWishlist } from "./wishlist.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -348,9 +349,9 @@ async function verejneApi(request, env, ctx, url) {
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
   // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
-  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred"];
+  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam"];
   const ciste = new URL(url.origin + url.pathname);
-  for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, 200)); }
+  for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, k === "ids" ? 4000 : 200)); }
   const klic = new Request(ciste.toString(), { method: "GET" });
   const ulozeno = await cache.match(klic);
   if (ulozeno) return ulozeno;
@@ -393,6 +394,7 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/vyroci") odpoved = json(await apiVyroci(env), 200, 1800);
     else if (url.pathname === "/api/co-hrat") odpoved = json(await apiCoHrat(env, url.searchParams), 200, 1800);
     else if (url.pathname === "/api/vyssi-nizsi") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiVyssiNizsi(env), 200, 1800); }
+    else if (url.pathname === "/api/wishlist") { const w = await apiWishlist(env, url.searchParams.get("steam") || ""); odpoved = w.chyba ? json({ chyba: w.chyba }, w.status || 400) : json(w, 200, 600); }
     else if (url.pathname === "/api/ceska-scena") odpoved = json(await apiCeskaScena(env), 200, 900);
     else if (url.pathname === "/api/stav-systemu") odpoved = json(await apiStavSystemu(env), 200, 60);
     else if (url.pathname === "/api/obsah") odpoved = json(await apiObsah(env), 200, 600);
@@ -481,20 +483,11 @@ export default {
       }, (v) => `Zkontrolovala obchody Steam, Epic a GOG – hry zdarma, slevy, žebříčky a hodnocení hráčů.` +
         `${v.vydani?.her ? ` Aktualizovala kalendář vydání (${pl(v.vydani.her, "hra", "hry", "her")}).` : ""}${v.chyby.length ? ` Nedostupné: ${v.chyby.join("; ")}.` : ""}`));
     } else if (event.cron === CRON_OBSAH) {
-      ctx.waitUntil(behUlohy(env, "obsah", async () => {
-        const v = await sberObsahu(env);
-        // Aktualizace her: 3 hry z nejhranějších na Steamu za běh (3 požadavky).
-        try {
-          const r = await env.DB.prepare("SELECT data FROM katalog WHERE klic = 'steam_hrane'").first();
-          v.patche = await sberPatchu(env, r ? JSON.parse(r.data) : []);
-        } catch (e) { v.patche = { chyba: String(e.message || e).slice(0, 80) }; }
-        return v;
-      }, (v) => {
+      ctx.waitUntil(behUlohy(env, "obsah", () => sberObsahu(env), (v) => {
         const h = typeof v.hlidac === "object" ? v.hlidac : {};
         return `Zkontrolovala ceny ${pl(Number(h.ceny) || 0, "hry", "her", "her")} a češtinu u ${pl(Number(h.jazyky) || 0, "hry", "her", "her")}` +
           `${Number(h.upozorneni) ? `, poslala ${pl(Number(h.upozorneni), "upozornění", "upozornění", "upozornění")} na slevy` : ""}` +
-          `, načetla ${pl(Number(v.klipy?.klipu) || 0, "klip", "klipy", "klipů")} a ${pl(Number(v.youtube?.videi) || 0, "video", "videa", "videí")}` +
-          `${Number(v.patche?.novych) ? `, našla ${pl(Number(v.patche.novych), "novou aktualizaci", "nové aktualizace", "nových aktualizací")} her` : ""}.`;
+          `, načetla ${pl(Number(v.klipy?.klipu) || 0, "klip", "klipy", "klipů")} a ${pl(Number(v.youtube?.videi) || 0, "video", "videa", "videí")}.`;
       }));
     } else if (event.cron === CRON_TWITCH) {
       const stav = async (klic) => { try { return JSON.parse((await env.DB.prepare("SELECT hodnota FROM nastaveni WHERE klic = ?").bind(klic).first())?.hodnota || "{}"); } catch { return {}; } };
@@ -511,11 +504,22 @@ export default {
     } else if (event.cron === CRON_PSANI) {
       ctx.waitUntil(behUlohy(env, "psani", () => napisClanek(env), (v) => v?.id || v?.nadpis ? `Napsala článek: ${v.nadpis || v.id}.` : null));
       ctx.waitUntil(behUlohy(env, "ranni", () => generujRanni(env), (v) => v?.bodu ? `Sestavila ranní přehled (${pl(v.bodu, "bod", "body", "bodů")}).` : null));
-      ctx.waitUntil(behUlohy(env, "patche", () => shrnPatch(env), (v) => v?.nadpis ? `Shrnula aktualizaci hry ${v.hra}: ${v.nadpis}.`
-        : v?.stav === "shrnutí neprošlo kontrolou" ? `Shrnutí aktualizace hry ${v.hra} neprošlo kontrolou faktů – nezveřejněno.` : null));
+      ctx.waitUntil(behUlohy(env, "patche", async () => {
+        const sez = await sestavSledovane(env).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) })); // 1× denně, ~7 dotazů na IGDB
+        return { ...(await shrnPatch(env, 2)), sez };
+      }, (v) => {
+        const casti = [];
+        if (v.sez?.her) casti.push(`Sestavila seznam ${pl(v.sez.her, "sledované hry", "sledovaných her", "sledovaných her")}${v.sez.chyba ? ` (IGDB: ${v.sez.chyba})` : ""}.`);
+        else if (v.sez?.chyba) casti.push(`Seznam sledovaných her se nepodařilo obnovit: ${v.sez.chyba}.`);
+        for (const h of v.hotove || []) casti.push(`Shrnula aktualizaci hry ${h.hra}: ${h.nadpis}.`);
+        for (const h of v.neprosle || []) casti.push(`Shrnutí aktualizace hry ${h.hra} neprošlo kontrolou faktů – zůstává jen originální nadpis.`);
+        return casti.length ? casti.join(" ") : null;
+      }));
     } else {
       ctx.waitUntil(behUlohy(env, "studia", () => sberStudii(env), (v) =>
         `Zkontrolovala oficiální kanály: ${v.studia.join(", ")} – ${pl(v.polozek, "položka", "položky", "položek")}.${v.chyby.length ? ` Problém: ${v.chyby.join("; ")}.` : ""}`));
+      ctx.waitUntil(behUlohy(env, "aktualizace", () => sberPatchu(env), (v) => v.her
+        ? `Zkontrolovala oficiální oznámení ${pl(v.her, "hry", "her", "her")} na Steamu${v.novych ? `, našla ${pl(v.novych, "novou aktualizaci", "nové aktualizace", "nových aktualizací")}` : ""}.` : null));
       ctx.waitUntil(behUlohy(env, "rss", async () => { const v = await sber(env); await uklidDeniku(env.DB); return v; }, (v) =>
         `Prošla ${pl(v.zdroju.length, "herní web", "herní weby", "herních webů")} (${v.zdroju.join(", ")}), našla ${pl(v.cerstvych, "čerstvou zprávu", "čerstvé zprávy", "čerstvých zpráv")}.` +
         `${v.chybne.length ? ` Nedostupné: ${v.chybne.join(", ")}.` : ""}`));

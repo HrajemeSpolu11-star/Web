@@ -6,6 +6,26 @@
 
 ---
 
+## 2026-11-26 (večer, 28) – Aktualizace her pro ~1 000 her, seznam přání ze Steamu
+- **Sledované hry** (tabulka `sledovane`, `sestavSledovane` 1× denně v Cronu psaní): 1 000 nejpopulárnějších her na Steamu
+  podle IGDB (`popularity_types` → „Steam 24hr Peak Players“ → `popularity_primitives` → `external_games`), 100 nejhranějších
+  ze Steamu, hry nejvíc streamované v Česku, hlídané hry a hry ze seznamů přání.
+- **Kontrola každých 15 min** (Cron novinek, úloha „aktualizace“ v deníku): 15 nejdéle nekontrolovaných her = 60/h,
+  celý seznam ~1× za 17 h. Nová aktualizace se zobrazí hned (nadpis, hra, obrázek, typ podle nadpisu, odkaz) se štítkem
+  „Shrnutí se připravuje“.
+- **Shrnutí AI 2× za hodinu**, nejpopulárnější hry první. Struktura: typ (Velká aktualizace / Nová sezóna / Opravy chyb /
+  Úpravy rovnováhy / Aktualizace), co přináší, komu se týká, změny ve skupinách Novinky / Úpravy hratelnosti / Opravy /
+  Výkon. Kontrola čísel; neprojde-li, zůstane originální nadpis s odkazem.
+- **Slovníček** (buff, nerf, hotfix, meta, battle pass, PvP…): pevné vysvětlivky, ukážou se jen pojmy z dané aktualizace.
+- Filtry: Všechny / Velké a sezóny / Opravy / Hraje Česko / Moje hry. **Domů: blok „Co je nového ve hrách“** (4 karty).
+- **Seznam přání ze Steamu** v Hlídači cen (`/api/wishlist?steam=`, `src/wishlist.js`): IWishlistService/GetWishlist,
+  názvy přes IStoreBrowseService/GetItems, vlastní adresa profilu přes veřejný XML profil (nebo ResolveVanityURL, pokud je
+  nastaven Secret `STEAM_API_KEY`). Seznam „Moje hry“ jen v prohlížeči (`hp_moje`), server neukládá, čí seznam je.
+  Hry z něj se přidají do databáze her a mezi sledované aktualizace. „Hlídat slevy u všech“. Limit 10 načtení/min.
+- Hlídač cen: až 200 her (dřív 50). `/api/steam-hry` po dávkách 90 (D1 má limit 100 parametrů).
+- Oprava: klíč mezipaměti API ořezával `ids` na 200 znaků → různé seznamy her mohly dostat stejnou odpověď.
+- Požadavky: Cron novinek ~10 RSS + ~14 studia + 15 aktualizace ≈ 39 z 50; Cron psaní + 1× denně ~7 IGDB.
+
 ## 2026-11-26 (večer, 27) – Oprava: falešný odpočet u vydání her
 - Kalendář vydání a „Brzy vyjde“ ukazovaly odpočet na sekundy do půlnoci UTC (např. „za 7 h 03 min“), i když IGDB ani Steam API
   neznají hodinu vydání (Steam ji ukazuje jen na stránce obchodu). Teď jen „vychází dnes / zítra / za N dní“ a datum v UTC
