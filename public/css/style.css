@@ -955,3 +955,19 @@ h1{letter-spacing:-.03em}
 /* Okraje křivky: průhledný přechod (maska) místo překryvu barvou – funguje na jakémkoli pozadí */
 .ekg::after{display:none}
 .ekg{-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+/* Domů: Brzy vyjde a nové aktualizace */
+.brzy{display:grid;gap:8px}
+.brzy-h{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;padding:6px;border-radius:14px;transition:background-color .15s}
+.brzy-h:hover{background:var(--card2)}
+.brzy-h img,.brzy-bez{width:44px;height:58px;object-fit:cover;border-radius:8px;background:var(--card2)}
+.brzy-h b{display:block;font-size:14.5px;line-height:1.25}
+.brzy-h span{font-size:13px;color:var(--muted)}
+.brzy-za{display:block;color:var(--accent)!important;font-weight:700;font-variant-numeric:tabular-nums}
+.patche-mini{display:grid;gap:10px}
+.patche-mini a{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:16px;background:var(--card2);border-left:3px solid #39d5ff}
+.patche-mini a:hover{background:#2a2260}
+.patche-mini b{color:#39d5ff;font-size:14px}
+.patche-mini span{font-size:14px;line-height:1.4}
+/* EKG: tenčí čára jako na monitoru */
+.ekg path{stroke-width:2}
+.ekg-velka path{stroke-width:2.6}

@@ -19,6 +19,7 @@ navázat bez čtení celé historie. **Aktualizuj ho, když se změní stav nebo
    uživatel nechtěl – odstraněn, nevracet.
    **Vzhled „tep“**: slogan „Hry mají tep. My ho měříme.“, pulzující EKG křivky (u streamerů rychlost podle diváků),
    písmo nadpisů Bricolage Grotesque, na mobilu spodní lišta. Uživatel chce moderní, ne strohý web.
+   **Na Domů NESMÍ být streameři** (výslovné přání). EKG musí vypadat jako skutečné a tepat klidně (60–130/min).
 1. **Novinky** – sběr z RSS (19 zdrojů: 11 zahraničních, 8 českých – `src/zdroje.js`) každých 15 min, jen zprávy mladší 12 h.
    Přepínač České weby / Ze zahraničí, kategorie, platformy, hledání. RSS zprávy odkazují na původní článek
    a mají `noindex`. České zdroje (Games.cz, Zing, Hrej, Doupě, Spite, Gaming Professors, PCTuning) ověřené 26. 11. 2026.

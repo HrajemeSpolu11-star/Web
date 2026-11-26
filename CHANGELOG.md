@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-11-26 (večer, 24) – Opravdové EKG, streameři pryč z Domů
+- **Tep jako skutečné EKG**: rovná linka, vlna P, ostrý komplex QRS, vlna T (`uderEkg()`). Papír jede stálou rychlostí,
+  při vyšším tepu jsou údery hustěji – jako na monitoru. Tempo uvěřitelné: 60–130 tepů/min
+  (0–1 divák ≈ 60, 10 ≈ 75, 100 ≈ 90, 1 000 ≈ 105, 10 000 ≈ 120). Dřív bylo moc rychlé (až 190) a tvar nepřipomínal EKG.
+- **Na Domů nejsou streameři** (přání majitele): pryč „Tep scény“ i „Tento týden na scéně“. Nově „Brzy vyjde“
+  (5 nejbližších nových her z kalendáře, `/api/vydani?limit=5`) a „Nové aktualizace her“. Velká křivka pod sloganem
+  = „tep herního světa“ podle počtu zpráv za 24 h. Křivky u streamerů zůstávají v sekci Streameři a na profilech.
+
 ## 2026-11-26 (večer, 23) – Nový vzhled „Herní puls“: všechno tepe
 - **Slogan** na Domů: „Hry mají tep. My ho měříme.“ (nadpisy písmem Bricolage Grotesque, OFL, vlastní hosting v `public/fonts`).
 - **EKG křivka jako hlavní motiv** (`ekg()`, `nakresliEkg()`, `tepZDivaku()` v `app.js`): velká křivka pod sloganem tepe podle

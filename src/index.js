@@ -379,6 +379,9 @@ async function verejneApi(request, env, ctx, url) {
       let v = await apiVydani(env);
       // Prázdný kalendář (první spuštění): stáhnout z IGDB nejvýš jednou za 10 minut, ať návštěvy nezahltí IGDB.
       if (!v.cas && await zamekNa(env.DB, "vydani_pokus", 600e3)) { await sberVydani(env).catch((e) => console.error("vydání:", e)); v = await apiVydani(env); }
+      // ?limit=N → jen N nejbližších opravdu nových her (pro Domů), ať se nestahuje celý kalendář.
+      const lim = parseInt(url.searchParams.get("limit") || "", 10);
+      if (lim > 0) v = { ...v, hry: v.hry.filter((h) => !h.uz_vyslo && Date.parse(h.datum) > Date.now() - 864e5).slice(0, Math.min(lim, 20)) };
       odpoved = json(v, 200, v.cas ? 1800 : 60);
     }
     else if (url.pathname === "/api/ranni") { const d = String(url.searchParams.get("den") || ""); odpoved = json(await apiRanni(env, d), 200, d ? 3600 : 600); }
