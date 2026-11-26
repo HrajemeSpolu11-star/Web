@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 10) – Vzhled „web spravuje AI“
+- **Nadpisy sekcí výrazně větší** (23–30 px, tučné, barevný proužek vlevo) a při prvním zobrazení se „dekódují“:
+  znaky se přeskupí do textu a dobliká kurzor jako u odpovědi AI. Jen jednou za návštěvu, mění se jen text (odkazy a přepínače ne).
+  Při omezení animací v systému se nic nehýbe.
+- **Stavový řádek „AI správce webu“** nahoře na Domů: kdy byly obchody naposledy zkontrolovány a kdy bude další kontrola,
+  kolik živých streamů AI sleduje a z kolika webů čte zprávy. Jen skutečné časy z dat.
+- **Čipy u sekcí** (např. „● Steam API · 11:25“): zdroj dat a čas poslední kontroly, zelená tečka „pulzuje“.
+
 ## 2026-11-26 (odpoledne, 9) – Opravy podle externího auditu (ChatGPT)
 - **Push upozornění se už neztrácí**: síťová chyba, 429 a 5xx = zpráva zůstane ve frontě a zkusí se znovu (dřív se označila
   jako odeslaná). 404/410/403 = zaniklý odběr se smaže. Fronta bere nejstarší zprávy první; označí se jen zprávy z doby odeslání.

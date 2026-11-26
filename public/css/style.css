@@ -485,3 +485,21 @@ a.termin{color:inherit}
 .hub-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .hub-tabs::-webkit-scrollbar{display:none}
 .hub-tabs a{white-space:nowrap;flex:none}
+
+/* ---------- AI vzhled: větší nadpisy s dekódováním, stavový řádek AI ---------- */
+.section-title{font-size:clamp(23px,6.2vw,30px);font-weight:800;letter-spacing:-.01em;line-height:1.15;margin:36px 0 14px;align-items:center;gap:10px 12px}
+.section-title a{font-size:14px}
+.sekce .section-title::before,.report .section-title::before,.profile .section-title::before{content:"";width:4px;height:.9em;border-radius:3px;background:linear-gradient(var(--accent),var(--accent2));flex:none;align-self:center}
+.nt-bezi{color:#d9ccff}
+.ai-kurzor{display:inline-block;width:.5em;height:.95em;margin-left:3px;background:var(--accent);border-radius:2px;vertical-align:-.1em;animation:ai-blik .8s steps(1) infinite}
+@keyframes ai-blik{50%{opacity:0}}
+.ai-cip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 10px;letter-spacing:0;white-space:nowrap}
+.ai-cip i{width:7px;height:7px;border-radius:50%;background:#7fe0a0;box-shadow:0 0 0 0 rgba(127,224,160,.6);animation:ai-ping 2.4s ease-out infinite}
+@keyframes ai-ping{0%{box-shadow:0 0 0 0 rgba(127,224,160,.55)}70%,100%{box-shadow:0 0 0 7px rgba(127,224,160,0)}}
+.ai-stav{display:flex;align-items:center;gap:12px;margin:14px 0 4px;padding:10px 14px;border-radius:var(--r);background:linear-gradient(90deg,rgba(155,92,255,.16),rgba(155,92,255,.04));border:1px solid rgba(155,92,255,.35);font-size:13.5px;position:relative;overflow:hidden}
+.ai-stav b{display:block;font-size:14px}
+.ai-stav span{color:var(--muted)}
+.ai-stav::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);transform:translateX(-100%);animation:ai-sken 4.5s ease-in-out infinite}
+@keyframes ai-sken{60%,100%{transform:translateX(100%)}}
+.ai-jadro{width:14px;height:14px;border-radius:50%;flex:none;background:var(--accent);box-shadow:0 0 0 4px rgba(255,192,77,.2),0 0 14px rgba(255,192,77,.8);animation:li-jadro 1.5s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.ai-kurzor,.ai-cip i,.ai-stav::after,.ai-jadro{animation:none}}

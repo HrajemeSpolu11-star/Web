@@ -31,6 +31,7 @@
       const w = Math.max(2, Math.min(100, +i.dataset.w || 0)) + "%";
       if (malyPohyb()) i.style.width = w; else requestAnimationFrame(() => requestAnimationFrame(() => (i.style.width = w)));
     });
+    dekodujNadpisy(root);
     root.querySelectorAll(".sloupce i[data-h]").forEach((i) => { i.style.height = Math.max(2, Math.min(100, +i.dataset.h || 0)) + "%"; });
     // Čísla „naběhnou“ jako skóre ve hře.
     if (!malyPohyb()) root.querySelectorAll("[data-count]").forEach((el) => {
@@ -48,6 +49,53 @@
     });
   }
   const animovano = new Set();
+
+  // Nadpisy sekcí se při prvním zobrazení „dekódují“ jako výstup AI: znaky se přeskupí do textu a dobliká kurzor.
+  // Mění se jen první textový uzel nadpisu (odkazy a přepínače zůstávají). Každý nadpis jen jednou za návštěvu stránky.
+  const ZNAKY_AI = "01<>/#*+=%?_";
+  const dekodovano = new Set();
+  let pozorovatel = null;
+  function dekodujNadpis(el) {
+    const uzel = [...el.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+    if (!uzel) return;
+    const cil = uzel.textContent, delka = Math.min(900, 300 + cil.trim().length * 28), start = performance.now();
+    const kurzor = document.createElement("span");
+    kurzor.className = "ai-kurzor";
+    kurzor.setAttribute("aria-hidden", "true");
+    uzel.after(kurzor);
+    el.classList.add("nt-bezi");
+    const krok = (t) => {
+      const p = Math.min(1, (t - start) / delka), hotovo = Math.floor(cil.length * p);
+      uzel.textContent = cil.slice(0, hotovo) + [...cil.slice(hotovo)].map((z) => (z === " " ? " " : ZNAKY_AI[(Math.random() * ZNAKY_AI.length) | 0])).join("");
+      if (p < 1) requestAnimationFrame(krok);
+      else { uzel.textContent = cil; el.classList.remove("nt-bezi"); setTimeout(() => kurzor.remove(), 1600); }
+    };
+    requestAnimationFrame(krok);
+  }
+  function dekodujNadpisy(root) {
+    if (malyPohyb() || !("IntersectionObserver" in window)) return;
+    pozorovatel ||= new IntersectionObserver((zaznamy) => zaznamy.forEach((z) => {
+      if (!z.isIntersecting) return;
+      pozorovatel.unobserve(z.target);
+      dekodujNadpis(z.target);
+    }), { threshold: 0.6 });
+    root.querySelectorAll(".section-title, .home-head h1, .cesko-head h2, .rep-head h2").forEach((el) => {
+      const klic = location.pathname + "|" + el.textContent.trim().slice(0, 40);
+      if (dekodovano.has(klic)) return;
+      dekodovano.add(klic);
+      pozorovatel.observe(el);
+    });
+  }
+
+  // Stavový řádek AI: jen skutečné časy z dat (kdy se naposledy kontrolovalo), nic vymyšleného.
+  const hhmm = (d) => new Date(d).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+  function dalsiKontrola(minuta) {
+    const d = new Date(); d.setSeconds(0, 0);
+    if (d.getMinutes() >= minuta) d.setHours(d.getHours() + 1);
+    d.setMinutes(minuta);
+    return d;
+  }
+  const aiCip = (zdroj, cas) => cas ? `<span class="ai-cip" title="Data ověřila AI z oficiálního zdroje"><i></i>${esc(zdroj)} · ${esc(hhmm(cas))}</span>` : "";
   const malyPohyb = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const kostra = (n = 4, typ = "radek") => `<div class="kostry">${Array.from({ length: n }, () => `<div class="kostra kostra-${typ}"></div>`).join("")}</div>`;
 
@@ -837,6 +885,11 @@
     const maxSleva = Math.max(0, ...(k.steam_slevy || []).map((h) => h.sleva), ...(k.gog_slevy || []).map((h) => h.sleva));
     const zpravy = [...state.clanky].sort((a, b) => datum(b) - datum(a)).slice(0, 4);
     app.innerHTML = `
+      <div class="ai-stav" role="status"><span class="ai-jadro" aria-hidden="true"></span>
+        <div><b>AI správce webu</b>
+        <span>${k.cas ? `obchody zkontrolovány v ${esc(hhmm(k.cas))}, další kontrola v ${esc(hhmm(dalsiKontrola(25)))}` : "právě kontroluji obchody"}
+        ${state.zive.cas ? ` · sleduji ${pl(state.zive.streamy.length, "živý stream", "živé streamy", "živých streamů")} (${esc(hhmm(state.zive.cas))})` : ""}
+        ${(() => { const n = new Set(state.clanky.map((c) => c.zdroje?.[0]?.nazev).filter(Boolean)).size; return n ? ` · čtu zprávy z ${pl(n, "webu", "webů", "webů")}` : ""; })()}</span></div></div>
       <div class="home-head"><h1>Co je nového ve hrách</h1>
         <p class="home-shrnuti">${zdarma.length ? `<a href="#zdarma"><b>${pl(zdarma.length, "hra", "hry", "her")} zdarma</b></a>` : ""}
           ${maxSleva ? `<a href="#slevy">slevy až <b>−${maxSleva} %</b></a>` : ""}
@@ -844,7 +897,7 @@
 
       ${hraTydne(k)}
       <section id="zdarma" class="sekce sekce-zdarma">
-        <div class="section-title">Hry zdarma</div>
+        <div class="section-title">Hry zdarma ${aiCip("Epic · Steam", k.cas)}</div>
         ${zdarma.length ? `<div class="regal regal-velky">${zdarma.map((h) => kartaHry(h, { velka: true, odpocet: h.do ? zbyva(h.do) : "trvale" })).join("")}</div>` : `<p class="dim">Teď žádná hra zdarma – podívej se na slevy.</p>`}
         ${(k.epic_brzy || []).length ? `<p class="dalsi-zdarma">Příští týden na Epicu: ${k.epic_brzy.map((h) => `<b>${esc(h.nazev)}</b>`).join(", ")}</p>` : ""}
       </section>
@@ -856,12 +909,12 @@
       </section>` : ""}
 
       <section id="slevy" class="sekce">
-        <div class="section-title">Největší slevy ${prepinac("so", [["steam", "Steam"], ["gog", "GOG"]], state.slevyObchod)}</div>
+        <div class="section-title">Největší slevy ${aiCip(state.slevyObchod === "gog" ? "GOG" : "Steam", k.cas)} ${prepinac("so", [["steam", "Steam"], ["gog", "GOG"]], state.slevyObchod)}</div>
         ${regal(slevy, {})}
       </section>
 
       <section id="hrane" class="sekce">
-        <div class="section-title">Nejhranější na Steamu</div>
+        <div class="section-title">Nejhranější na Steamu ${aiCip("Steam API", k.cas)}</div>
         ${hrane.length ? `<div class="slist">${hrane.slice(0, 10).map((h, i) => `<a class="srow" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
             <span class="rank">${i + 1}</span>${https(h.obrazek) ? `<img class="hra-cap" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="hra-cap"></div>`}
             <div class="info"><h3>${esc(h.nazev)}</h3>${hodnoceniHry(h)}<div class="bar"><i data-w="${Math.round((h.hracu || 0) / Math.max(1, hrane[0].hracu || 1) * 100)}"></i></div></div>
