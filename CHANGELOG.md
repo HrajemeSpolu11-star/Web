@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 19) – Poctivé statistiky streamerů a historie vysílání z Twitche
+- „Odvysíláno za 30 dní“ bylo zavádějící: počítáme ho sami a měření teprve začalo. Profil teď ukazuje
+  „odvysíláno od <datum>“ a „nejvíc diváků najednou od <datum>, kdy měříme“, dokud neuplyne 30 dní (`mereno_od` v API).
+- **Historie z Twitche**: profil načítá záznamy vysílání (Helix `/videos?type=archive`) – skutečné hodiny i před naším měřením
+  a seznam posledních 10 vysílání (název, datum, délka, zhlédnutí). Když dávají víc než naše měření, ukáže se jejich číslo
+  s popiskem „podle záznamů na Twitchi“ a správným oknem (Twitch drží záznamy partnerů 60 dní, affiliate 14, ostatních 7;
+  jen když je má streamer zapnuté). Bez záznamů web napíše, že historii před měřením neznáme.
+- Kick: místo „–“ u sledujících vysvětlení, že je Kick ve svém oficiálním API nezveřejňuje.
+- Žebříček a porovnání: „Odvysíláno (naše měření)“, „Růst (naše měření)“.
+
 ## 2026-11-26 (odpoledne, 18) – Stránka pro každou hru, obrázky akcí, loga a náhledy webů studií
 - **Každá hra ze Steamu má vlastní stránku** `/hra/steam/<číslo hry>` (`/api/hra-steam/:id`): cena a sleva, čeština (podle Steamu),
   hodnocení, hráči teď, vývoj ceny, PC požadavky, GOG a Epic podle přesného názvu. Když hru streamuje někdo z Česka, přidají

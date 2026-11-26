@@ -648,3 +648,4 @@ a.ai-stav u{text-decoration-color:var(--line)}
 .akce>*,.studia>*,.rec-list>*,.vydani>*,.hrady>*,.stav-ulohy>*,.grid>*,.slist>*{min-width:0}
 .rec>div,.vyd-t,.hrad-t,.studio-h>div,.akce-k,.studio-k p,.hk-t{min-width:0;overflow-wrap:anywhere}
 .hub-tabs{max-width:100%}
+.stat span small{display:block;font-size:11.5px;opacity:.8;margin-top:2px;line-height:1.3}

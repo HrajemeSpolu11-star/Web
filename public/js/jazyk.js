@@ -263,6 +263,14 @@
     "Zdarma na Epicu za": ["Zadarmo na Epicu o", "Free on Epic in"], "teď": ["teraz", "now"],
     "Otevřít web studia": ["Otvoriť web štúdia", "Visit studio website"], "← Hry": ["← Hry", "← Games"],
     "Tuhle hru zatím nikdo z českých streamerů nevysílal (od začátku našeho měření). Jakmile ji někdo začne hrát, objeví se tu statistiky.": ["Túto hru zatiaľ nikto z českých streamerov nevysielal (od začiatku nášho merania). Keď ju niekto začne hrať, objavia sa tu štatistiky.", "No Czech streamer has played this game yet (since we started measuring). Stats will appear once someone does."],
+    "Odvysíláno (naše měření)": ["Odvysielané (naše meranie)", "Streamed (our measurement)"], "Růst (naše měření)": ["Rast (naše meranie)", "Growth (our measurement)"],
+    "Odvysíláno (naše měření, max. 30 dní)": ["Odvysielané (naše meranie, max. 30 dní)", "Streamed (our measurement, max. 30 days)"],
+    "Kick je ve svém oficiálním API nezveřejňuje": ["Kick ich vo svojom oficiálnom API nezverejňuje", "Kick doesn't publish them in its official API"],
+    "doplní se do 24 h": ["doplní sa do 24 h", "added within 24 h"], "nejvíc diváků najednou": ["najviac divákov naraz", "most viewers at once"],
+    "od té doby ho měříme my": ["odvtedy ho meriame my", "since we started measuring"], "Poslední vysílání": ["Posledné vysielania", "Recent broadcasts"],
+    "zhlédnutí": ["zhliadnutí", "views"], "Vysílání": ["Vysielanie", "Broadcast"],
+    "Ze záznamů vysílání na Twitchi. Twitch je drží jen omezeně (partneři 60 dní, affiliate 14 dní, ostatní 7 dní) a jen když je má streamer zapnuté – starší vysílání tu proto chybí.": ["Zo záznamov vysielaní na Twitchi. Twitch ich drží len obmedzene (partneri 60 dní, affiliate 14 dní, ostatní 7 dní) a len keď ich má streamer zapnuté – staršie vysielania tu preto chýbajú.", "From Twitch past broadcasts. Twitch keeps them only for a limited time (partners 60 days, affiliates 14, others 7) and only if the streamer has them enabled – older streams are therefore missing."],
+    "Tenhle streamer nemá na Twitchi uložené záznamy vysílání, takže historii před začátkem našeho měření neznáme.": ["Tento streamer nemá na Twitchi uložené záznamy vysielaní, takže históriu pred začiatkom nášho merania nepoznáme.", "This streamer has no saved past broadcasts on Twitch, so we don't know their history before we started measuring."],
     "Teď nejsi připojený k internetu": ["Teraz nie si pripojený na internet", "You're offline"], "Nainstalováno": ["Nainštalované", "Installed"], "Herní puls najdeš na ploše.": ["Herní puls nájdeš na ploche.", "Find Herní puls on your home screen."],
   };
 
@@ -321,6 +329,9 @@
   // Obecná pravidla pro krátké texty s čísly (časy, zkratky).
   const OBECNE = [
     [/^právě teď$/, "práve teraz", "just now"],
+    [/^od (.+), kdy měříme$/, "od $1, kedy meriame", "since $1 (when we started measuring)"], [/^odvysíláno od (.+)$/, "odvysielané od $1", "streamed since $1"],
+    [/^odvysíláno za (?:posledních )?(\d+) dní$/, "odvysielané za posledných $1 dní", "streamed in the last $1 days"],
+    [/^podle záznamů na Twitchi \((\d+) vysílání\)$/, "podľa záznamov na Twitchi ($1 vysielaní)", "per Twitch past broadcasts ($1 streams)"],
     [/^(\d+) d (\d+) h (\d+) min$/, "$1 d $2 h $3 min", "$1 d $2 h $3 min"], [/^(\d+) h (\d+) min (\d+) s$/, "$1 h $2 min $3 s", "$1 h $2 min $3 s"],
     [/^(.+) · za$/, (m) => `${m[1]} · o`, (m) => `${m[1]} · in`], [/^včera$/, "včera", "yesterday"],
     [/^před (\d+) min$/, "pred $1 min", "$1 min ago"], [/^před (\d+) h$/, "pred $1 h", "$1 h ago"], [/^před (\d+) (?:dny|dnem|dní)$/, "pred $1 d", "$1 d ago"],

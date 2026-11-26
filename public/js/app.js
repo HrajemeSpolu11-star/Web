@@ -570,7 +570,7 @@
         <div class="sub">${esc(s.hra || "")}</div><div class="sub dim">${esc(s.titulek || "")}</div></div></div></a>`;
   }
 
-  const RAZENI = { sledujici: "Sledující", divaci: "Rekord diváků", hodiny: "Odvysíláno (30 dní)", rust: "Růst (30 dní)" };
+  const RAZENI = { sledujici: "Sledující", divaci: "Rekord diváků", hodiny: "Odvysíláno (naše měření)", rust: "Růst (naše měření)" };
   function hodnota(s, razeni) {
     if (razeni === "divaci") return [num(s.max_divaku), "diváků max."];
     if (razeni === "hodiny") return [Math.round((s.minut30 || 0) / 60) + " h", "za 30 dní"];
@@ -879,9 +879,11 @@
       ${odkazySit(s.odkazy)}
       ${s.zive ? `<div class="section-title">Právě vysílá</div>${kartaZive(s)}` : ""}
       <div class="stats">
-        <div class="stat"><b data-count="${s.sledujici ?? ""}">${s.sledujici == null ? "–" : num(s.sledujici)}</b><span>sledujících</span></div>
-        <div class="stat"><b data-count="${s.max_divaku || 0}">${num(s.max_divaku || 0)}</b><span>rekord diváků</span></div>
-        <div class="stat"><b data-count="${s.hodin30 || 0}" data-suffix=" h">${s.hodin30 || 0} h</b><span>odvysíláno za 30 dní</span></div>
+        ${s.platforma === "kick"
+          ? `<div class="stat"><b>–</b><span>sledujících<small>Kick je ve svém oficiálním API nezveřejňuje</small></span></div>`
+          : `<div class="stat"><b data-count="${s.sledujici ?? ""}">${s.sledujici == null ? "–" : num(s.sledujici)}</b><span>sledujících${s.sledujici == null ? "<small>doplní se do 24 h</small>" : ""}</span></div>`}
+        <div class="stat"><b data-count="${s.max_divaku || 0}">${num(s.max_divaku || 0)}</b><span>nejvíc diváků najednou${merenoOd(s) ? `<small>od ${esc(merenoOd(s))}, kdy měříme</small>` : ""}</span></div>
+        <div class="stat" id="stat-hodiny"><b data-count="${s.hodin30 || 0}" data-suffix=" h">${s.hodin30 || 0} h</b><span>${merenoOd(s) ? `odvysíláno od ${esc(merenoOd(s))}<small>od té doby ho měříme my</small>` : "odvysíláno za 30 dní"}</span></div>
       </div>
       ${s.popis ? `<p class="popis">${esc(s.popis)}</p>` : ""}
       <div id="extra"></div>
@@ -922,14 +924,35 @@
     };
   }
 
-  // Rozvrh a klipy (Twitch) – načítají se zvlášť, aby profil nečekal.
+  // Naše měření tohoto streamera začalo později než před 30 dny → číslo „za 30 dní“ by bylo zavádějící, ukážeme „od data“.
+  function merenoOd(s) {
+    if (!s.mereno_od) return "";
+    const od = new Date(s.mereno_od + "T00:00:00");
+    return Date.now() - od < 30 * 864e5 ? od.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) : "";
+  }
+  const UCHOVANI = { partner: 60, affiliate: 14 };
+
+  // Rozvrh, klipy a záznamy vysílání (Twitch) – načítají se zvlášť, aby profil nečekal.
   async function nactiExtra(s) {
     let x;
     try { x = await nacti(`streamer-extra/${enc(s.platforma || "twitch")}/${enc(s.login)}`); } catch { return; }
     const el = document.getElementById("extra");
     if (!el) return;
     const den = (d) => new Date(d).toLocaleString("cs-CZ", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+    const v = x.vysilani;
+    // Záznamy na Twitchi pokrývají i dobu před naším měřením → když dávají víc, ukážeme je (s uvedením zdroje).
+    const dniZaznamu = Math.min(30, UCHOVANI[s.typ] || 7);
+    if (v && v.pocet && v.hodin >= (s.hodin30 || 0)) {
+      const st = document.getElementById("stat-hodiny");
+      if (st) st.innerHTML = `<b>${esc(String(v.hodin))} h</b><span>odvysíláno za ${dniZaznamu < 30 ? `posledních ${dniZaznamu}` : "30"} dní<small>podle záznamů na Twitchi (${pl(v.pocet, "vysílání", "vysílání", "vysílání")})</small></span>`;
+    }
     el.innerHTML = `
+      ${v && (v.posledni || []).length ? `<div class="section-title">Poslední vysílání</div><div class="slist">${v.posledni.map((z) =>
+        `<a class="srow" href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer"><div class="info"><h3>${esc(z.nazev || "Vysílání")}</h3>
+          <div class="sub">${esc(den(z.zacatek))} · ${esc(String(Math.floor(z.minut / 60)))} h ${esc(String(z.minut % 60).padStart(2, "0"))} min</div></div>
+          <div class="num"><b>${esc(num(z.zhlednuti))}</b>zhlédnutí</div></a>`).join("")}</div>
+        <p class="source-note">Ze záznamů vysílání na Twitchi. Twitch je drží jen omezeně (partneři 60 dní, affiliate 14 dní, ostatní 7 dní) a jen když je má streamer zapnuté – starší vysílání tu proto chybí.</p>` : ""}
+      ${v && !v.pocet && s.platforma !== "kick" ? `<p class="source-note">Tenhle streamer nemá na Twitchi uložené záznamy vysílání, takže historii před začátkem našeho měření neznáme.</p>` : ""}
       ${(x.rozvrh || []).length ? `<div class="section-title">Rozvrh streamů</div><div class="rozvrh">${x.rozvrh.slice(0, 7).map((r) =>
         `<div class="termin"><b>${esc(den(r.zacatek))}</b><span>${esc(r.nazev || r.hra || "Stream")}</span>${r.hra ? `<span class="dim">${esc(r.hra)}</span>` : ""}</div>`).join("")}</div>` : ""}
       ${(x.klipy || []).length ? `<div class="section-title">Nejlepší klipy za 30 dní</div><div class="klipy">${x.klipy.map((k) =>
@@ -1184,7 +1207,7 @@
     const radky = a && b ? [
       ["Sledující", a.sledujici, b.sledujici, (v) => v == null ? "–" : num(v)],
       ["Rekord diváků", a.max_divaku, b.max_divaku, num],
-      ["Odvysíláno za 30 dní", a.hodin30, b.hodin30, (v) => (v || 0) + " h"],
+      ["Odvysíláno (naše měření, max. 30 dní)", a.hodin30, b.hodin30, (v) => (v || 0) + " h"],
       ["Streamů od začátku sledování", a.streamu, b.streamu, (v) => v || 0],
       ["Právě", a.zive ? 1 : 0, b.zive ? 1 : 0, (v) => v ? "živě" : "offline"],
     ] : [];

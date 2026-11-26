@@ -177,7 +177,9 @@ async function apiStreamer(platforma, login, env) {
     popis: r.popis || "", banner: r.banner || "", ucet_od: r.ucet_od, overeno: !!r.overeno,
     prvni_videno: r.prvni_videno ? new Date(r.prvni_videno).toISOString() : null,
     posledni_zive: r.posledni_zive ? new Date(r.posledni_zive).toISOString() : null,
-    streamu: r.pocet_streamu || 0,
+    streamu: r.pocet_streamu || 0, typ: r.typ || "",
+    // Od kdy máme vlastní měření tohoto streamera (dřív nic nevíme – nedomýšlíme).
+    mereno_od: sn.results[0]?.den || null,
     hodin30: Math.round(sn.results.filter((x) => x.den >= od30).reduce((a, x) => a + (x.minut || 0), 0) / 60),
     snimky: sn.results, hry: hry.results.map((h) => ({ ...h, slug: slugHry(h.hra) })),
     aktualizovano: { profil: r.profil_cas ? new Date(r.profil_cas).toISOString() : null, sledujici: r.sledujici_cas ? new Date(r.sledujici_cas).toISOString() : null },
