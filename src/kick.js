@@ -2,7 +2,7 @@
 // Zapne se sám, jakmile je nastaven KICK_CLIENT_ID (wrangler.jsonc) a Secret KICK_CLIENT_SECRET.
 import { denPraha } from "./psani.js";
 import { zajistiSchemaTwitch, slugHry } from "./twitch.js";
-import { prikazScena, vyhodnotZmeny, nactiPredchozi } from "./prehled.js";
+import { prikazScena, vyhodnotZmeny, nactiPredchozi, prikazyHryDen } from "./prehled.js";
 import { zaradUpozorneni } from "./push.js";
 
 const API = "https://api.kick.com/public/v1";
@@ -80,7 +80,7 @@ export async function sberKick(env) {
 
     const predchozi = await nactiPredchozi(db, "kick", ted, 25 * 60e3);
     const zmeny = vyhodnotZmeny(db, ted, predchozi, streamy, (s) => "k" + s.broadcaster_user_id, "kick");
-    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "kick", streamy)];
+    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "kick", streamy), ...prikazyHryDen(db, ted, "kick", streamy, (s) => s.category?.name, INTERVAL_MIN)];
     const videneHry = new Set();
     for (const s of streamy) {
       const id = "k" + s.broadcaster_user_id;

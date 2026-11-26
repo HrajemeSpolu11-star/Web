@@ -12,6 +12,10 @@ import { pushApi } from "./push.js";
 import { apiPrehled } from "./prehled.js";
 import { apiKatalog, sberKatalogu, sberKataloguPokudStary } from "./katalog.js";
 import { apiObsah, sberObsahu } from "./obsah.js";
+import { apiCesko, apiReport } from "./statistiky.js";
+import { infoHry } from "./hra-data.js";
+import { zajistiSchemaObsah } from "./obsah.js";
+import { denPraha } from "./psani.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -187,21 +191,37 @@ async function apiHry(env) {
   return json(results, 200, results.length ? 120 : 0);
 }
 
-async function apiHra(slug, env) {
+async function apiHra(slug, env, ctx) {
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return json({ chyba: "Neplatná hra" }, 400);
   const ted = Date.now();
-  const h = await env.DB.prepare("SELECT slug, nazev FROM hry WHERE slug = ?").bind(slug).first();
+  await zajistiSchemaTwitch(env.DB);
+  await zajistiSchemaObsah(env.DB);
+  const h = await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE slug = ?").bind(slug).first();
   if (!h) return json({ chyba: "Nenalezeno" }, 404);
   const q = `%${h.nazev}%`;
-  const [zive, nejvic, rss, vl] = await env.DB.batch([
+  const od30 = new Date(ted - 30 * 86400e3).toISOString().slice(0, 10), od7 = denPraha(ted - 6 * 86400e3);
+  const infoP = infoHry(env, ctx, h.slug, h.nazev).catch(() => null);
+  const [zive, nejvic, rss, vl, dny, klipy] = await env.DB.batch([
     env.DB.prepare("SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? AND s.zive_hra = ? ORDER BY s.zive_divaci DESC LIMIT 50").bind(ted - ZIVE_PLATNOST, h.nazev),
     env.DB.prepare(`SELECT s.*, x.minut AS minut_hra FROM hry_streamera x JOIN streameri s ON s.id = x.user_id
                     WHERE x.hra = ? AND s.skryty = 0 ORDER BY x.minut DESC LIMIT 20`).bind(h.nazev),
     env.DB.prepare("SELECT * FROM clanky WHERE nadpis LIKE ? ORDER BY datum DESC LIMIT 10").bind(q),
     env.DB.prepare("SELECT * FROM prispevky WHERE stav = 'publikovano' AND (nadpis LIKE ? OR perex LIKE ?) ORDER BY publikovano DESC LIMIT 10").bind(q, q),
+    env.DB.prepare("SELECT den, SUM(divako_minut) AS dm, MAX(max_divaku) AS spicka, MAX(max_streamu) AS streamu FROM hry_den WHERE hra = ? AND den >= ? GROUP BY den ORDER BY den").bind(h.nazev, od30),
+    env.DB.prepare(`SELECT k.url, k.nazev, k.nahled, k.zhlednuti, k.delka, k.cas, s.jmeno, s.login, s.platforma, s.profilovka FROM klipy k
+      JOIN streameri s ON s.id = k.streamer_id WHERE k.hra_id = ? AND s.skryty = 0 ORDER BY k.zhlednuti DESC LIMIT 8`).bind(h.twitch_id || "-"),
   ]);
+  const tyden = dny.results.filter((d) => d.den >= od7);
   return json({
-    ...h,
+    slug: h.slug, nazev: h.nazev,
+    info: await infoP,
+    statistiky: {
+      hodin7: Math.round(tyden.reduce((a, d) => a + (d.dm || 0), 0) / 60),
+      spicka7: Math.max(0, ...tyden.map((d) => d.spicka || 0)),
+      dny: dny.results.map((d) => ({ den: d.den, hodin: Math.round((d.dm || 0) / 60), spicka: d.spicka || 0 })),
+    },
+    klipy: klipy.results.map((r) => ({ url: r.url, nazev: r.nazev, nahled: r.nahled, zhlednuti: r.zhlednuti, delka: r.delka,
+      cas: new Date(r.cas).toISOString(), streamer: { jmeno: r.jmeno || r.login, login: r.login, platforma: r.platforma || "twitch", profilovka: r.profilovka || "" } })),
     zive: zive.results.map((r) => naStreamera(r, ted)),
     nejvic: nejvic.results.map((r) => ({ ...naStreamera(r, ted), hodin: Math.round((r.minut_hra || 0) / 60) })),
     clanky: [...vl.results.map(naPrispevek), ...rss.results.map(naClanek)].sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 12),
@@ -276,6 +296,13 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/streameri") odpoved = await apiStreameri(url, env);
     else if (url.pathname === "/api/hry") odpoved = await apiHry(env);
     else if (url.pathname === "/api/prehled") odpoved = json(await apiPrehled(env, naStreamera), 200, 300);
+    else if (url.pathname === "/api/cesko") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiCesko(env), 200, 900); }
+    else if (url.pathname === "/api/report") {
+      await zajistiSchemaTwitch(env.DB);
+      const t = String(url.searchParams.get("tyden") || "").slice(0, 10);
+      const r = await apiReport(env, naStreamera, /^(\d{4}-W\d{2}|aktualni)$/.test(t) ? t : "");
+      odpoved = json(r, 200, r.cache);
+    }
     else if (url.pathname === "/api/obsah") odpoved = json(await apiObsah(env), 200, 600);
     else if (url.pathname === "/api/katalog") {
       await zajistiSchemaTwitch(env.DB);
@@ -284,7 +311,7 @@ async function verejneApi(request, env, ctx, url) {
       else ctx.waitUntil(sberKataloguPokudStary(env).catch((e) => console.error("katalog:", e)));
       odpoved = json(k, 200, k.cas ? 600 : 0);
     }
-    else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(decodeURIComponent(url.pathname.slice(9)), env);
+    else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(decodeURIComponent(url.pathname.slice(9)), env, ctx);
     else if (url.pathname.startsWith("/api/streamer-extra/")) {
       const [plat, login] = url.pathname.slice(20).split("/").map(decodeURIComponent);
       odpoved = await apiExtra(plat, login || "", env);

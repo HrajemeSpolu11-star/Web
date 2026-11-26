@@ -9,7 +9,33 @@ export const SCHEMA_PREHLED = [
   `CREATE TABLE IF NOT EXISTS rozvrh (user_id TEXT NOT NULL, zacatek INTEGER NOT NULL, konec INTEGER, nazev TEXT, hra TEXT,
      PRIMARY KEY (user_id, zacatek))`,
   `CREATE INDEX IF NOT EXISTS idx_rozvrh_zacatek ON rozvrh(zacatek)`,
+  // Statistiky her po dnech (den podle Prahy): divácké minuty (= hodiny sledování × 60), minuty vysílání, špičky.
+  // slot = 15min běh, ve kterém se řádek naposledy navýšil – opakovaný běh ve stejném slotu nic nezapočítá dvakrát.
+  `CREATE TABLE IF NOT EXISTS hry_den (den TEXT NOT NULL, hra TEXT NOT NULL, platforma TEXT NOT NULL,
+     divako_minut INTEGER DEFAULT 0, minut INTEGER DEFAULT 0, max_divaku INTEGER DEFAULT 0, max_streamu INTEGER DEFAULT 0,
+     slot INTEGER DEFAULT 0, PRIMARY KEY (den, hra, platforma))`,
+  `CREATE INDEX IF NOT EXISTS idx_hry_den_den ON hry_den(den)`,
 ];
+
+// Jeden zápis na hru a běh: součet diváků, počet streamů. Bere všechny streamy (i s 0 diváky), ať je to přesné.
+export function prikazyHryDen(db, ted, platforma, streamy, nazevHry, intervalMin) {
+  const souhrn = new Map();
+  for (const s of streamy) {
+    const hra = String(nazevHry(s) || "").slice(0, 120);
+    if (!hra) continue;
+    const x = souhrn.get(hra) || { divaci: 0, streamu: 0 };
+    x.divaci += s.viewer_count || 0; x.streamu++;
+    souhrn.set(hra, x);
+  }
+  const den = denPraha(ted), slot = casBehu(ted);
+  const st = db.prepare(`INSERT INTO hry_den (den, hra, platforma, divako_minut, minut, max_divaku, max_streamu, slot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(den, hra, platforma) DO UPDATE SET
+      divako_minut = hry_den.divako_minut + CASE WHEN hry_den.slot = excluded.slot THEN 0 ELSE excluded.divako_minut END,
+      minut = hry_den.minut + CASE WHEN hry_den.slot = excluded.slot THEN 0 ELSE excluded.minut END,
+      max_divaku = MAX(hry_den.max_divaku, excluded.max_divaku), max_streamu = MAX(hry_den.max_streamu, excluded.max_streamu),
+      slot = excluded.slot`);
+  return [...souhrn].map(([hra, x]) => st.bind(den, hra, platforma, x.divaci * intervalMin, x.streamu * intervalMin, x.divaci, x.streamu, slot));
+}
 
 export const MILNIKY = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
 const MIN_PRO_REKORD = 30; // rekordy diváků hlásíme až u kanálů, které už měly aspoň 30 diváků

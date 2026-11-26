@@ -68,6 +68,11 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 - Domů má i Hru týdne, Recenze, Klipy týdne a Videa streamerů (`src/obsah.js`, Cron `40`). YouTube kanály se zadávají v adminu u streamera.
 - Všech 5 Cronů je obsazeno.
 
+## Strategie odlišení (schváleno 2026-11-26)
+Vlastní data o české scéně: „Co hraje Česko“ (`/hry`), týdenní report (`/report`), stránka hry se vším (obchody + čeština +
+hodnocení + streamy + klipy), rychlost bez reklam, upřímnost u čísel (`/o-webu#data`). Data jen z oficiálních zdrojů / vlastního měření.
+Nápad na později: IsThereAnyDeal API (zdarma s klíčem) pro ceny v dalších obchodech v €.
+
 ## Rozpracované / další možné kroky
 - Vlastní doména → Cloudflare Access pro admin (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ve `wrangler.jsonc`).
 - Konzolista.cz a BonusWeb – RSS se nepodařilo ověřit (Konzolista vrací chybu, BonusWeb blokuje).

@@ -36,3 +36,12 @@ Ruční SQL není potřeba. Data si můžeš prohlédnout v Cloudflare → D1 �
 - `videa`: id videa (Shorts s předponou `s:`), streamer_id, nazev, cas. Maže se po 60 dnech.
 - `klipy`: id, streamer_id, url, nazev, nahled, zhlednuti, delka, hra_id, cas. Maže se po 14 dnech.
 - `obsah_stav`: `yt:<streamer_id>` = ID YouTube kanálu nebo chyba (+ odkaz, ze kterého se hledal), `kl:<streamer_id>` = čas posledních klipů.
+
+## `hry_den` (src/prehled.js)
+Klíč (den, hra, platforma). `divako_minut` (÷60 = hodiny sledování), `minut` (minuty vysílání všech streamů), `max_divaku`, `max_streamu`, `slot` (15min běh – brání dvojímu započtení). Drží se 400 dní.
+
+## `hra_info` (src/hra-data.js)
+slug → JSON s daty ze Steamu, GOGu a Epicu, `cas`. Platnost 12 h, obnova na pozadí.
+
+## `hry.twitch_id`
+Twitch ID hry (z /streams), páruje klipy ke hře.

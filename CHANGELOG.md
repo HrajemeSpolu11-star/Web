@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 8) – Vlastní statistiky: Co hraje Česko, report týdne, stránka hry s daty obchodů
+- **Nové měření `hry_den`**: každých 15 min se u každé hry sečtou diváci a streamy (Twitch i Kick, všechny streamy).
+  Z toho hodiny sledování, minuty vysílání a špičky po dnech. Ochrana proti dvojímu započtení (slot 15 min).
+  Zápisy: ~65 her × 96 běhů ≈ 6 tis. řádků denně. Data `scena` a `hry_den` se drží 400 dní (dřív `scena` 35 dní).
+  K hrám se ukládá i Twitch ID hry (`hry.twitch_id`) – podle něj se ke hře přiřazují klipy.
+- **Co hraje Česko** (`/hry`, `/api/cesko`): žebříček her podle hodin sledování za 7 dní, změna proti předchozím 7 dnům,
+  „Rostou“, „Nově se hraje“, podíl Kicku, počet streamerů. Top 5 i na Domů.
+- **Report týdne** (`/report`, `/report/2026-W48`, `/report/aktualni`, `/api/report`): pondělí–neděle podle Prahy;
+  hodiny sledování (Twitch/Kick), průměr a špička diváků, aktivní kanály, top hry se změnou, streameři (diváci, hodiny,
+  noví sledující), rekordy a milníky, shrnutí větami jen z čísel, archiv týdnů, tlačítko Sdílet. Upozorní, když je měření neúplné.
+- **Stránka hry** (`src/hra-data.js`, tabulka `hra_info`, mezipaměť 12 h): Steam – cena v Kč a sleva, čeština (titulky/dabing),
+  datum vydání, žánry, vývojář, hodnocení hráčů, Metacritic, počet hráčů právě teď (oficiální Steam Web API);
+  GOG – cena v € a hodnocení; Epic – jestli je zdarma. Párování jen podle přesného názvu. Dále hodiny sledování
+  za 7 dní, graf po dnech, nejlepší klipy ke hře.
+- **Upřímnost**: na `/o-webu#data` nová sekce „Odkud bereme data a jak počítáme“ a „Bez reklam, bez sledování“;
+  u čísel odkaz „Jak počítáme“, v patičce „Odkud jsou čísla“.
+- **Rychlost**: fonty se cachují rok (`_headers`). Záložky ve Streamerech se na mobilu posouvají do strany.
+- Oprava: odkazy na `/o-webu` a `/soukromi` uvnitř webu otevíraly hlavní stránku (zachytával je router).
+
 ## 2026-11-26 (odpoledne, 7) – Hra týdne, recenze, klipy, videa z YouTube, hodnocení ze Steamu
 - **Hra týdne** nahoře na Domů: hra zdarma (jinak největší sleva) + hodnocení hráčů ze Steamu + kdo z českých streamerů ji
   právě hraje + články, které o ní píšou.

@@ -50,3 +50,12 @@ Herní katalog pro hlavní stránku. Klíče: `epic_zdarma`, `epic_brzy`, `steam
 
 ## `GET /api/obsah`
 `videa` (YouTube: `url`, `nahled`, `nazev`, `cas`, `streamer`), `klipy` (Twitch, 7 dní, podle zhlédnutí), `recenze` (články typu Recenze, české první). Cache 10 min.
+
+## `GET /api/cesko`
+Co hraje Česko: `od`, `do`, `data_od`, `celkem {hodin, hodin_pred, zmena}`, `hry[]` (`hra`, `slug`, `poradi`, `hodin`, `hodin_pred`, `zmena` %, `novinka`, `spicka`, `kick_podil` %, `streameru`), `nahoru[]`, `novinky[]`. Cache 15 min.
+
+## `GET /api/report?tyden=2026-W48 | aktualni`
+Týdenní report (bez parametru poslední celý týden): `souhrn` (hodin, zmena, hodin_twitch/kick, prumer_divaku, spicka, kanalu, pokryti %), `vety[]`, `hry[]`, `streameri {divaci, hodiny, rust}`, `udalosti[]`, `tydny[]`. Cache 30 min (běžící týden) / 1 den.
+
+## `GET /api/hra/:slug` (rozšířeno)
+Navíc `info {steam, gog, epic, cas}` z obchodů, `statistiky {hodin7, spicka7, dny[]}` a `klipy[]`.

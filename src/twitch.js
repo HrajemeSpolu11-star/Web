@@ -1,7 +1,7 @@
 // Sběr českých streamerů z oficiálního Twitch API (Helix).
 // Všechna čísla pocházejí přímo z Twitche – nic se neodhaduje ani negeneruje.
 import { denPraha } from "./psani.js";
-import { SCHEMA_PREHLED, prikazScena, prikazMilnik, vyhodnotZmeny, nactiPredchozi } from "./prehled.js";
+import { SCHEMA_PREHLED, prikazScena, prikazMilnik, vyhodnotZmeny, nactiPredchozi, prikazyHryDen } from "./prehled.js";
 import { SCHEMA_PUSH, zaradUpozorneni, odesliFrontu } from "./push.js";
 
 const API = "https://api.twitch.tv/helix";
@@ -52,6 +52,8 @@ export async function zajistiSchemaTwitch(db) {
   const pridat = [];
   if (!sloupce.has("odkazy")) pridat.push(db.prepare("ALTER TABLE streameri ADD COLUMN odkazy TEXT"));
   if (!sloupce.has("rozvrh_cas")) pridat.push(db.prepare("ALTER TABLE streameri ADD COLUMN rozvrh_cas INTEGER DEFAULT 0"));
+  const sloupceHry = new Set((await db.prepare("PRAGMA table_info(hry)").all()).results.map((c) => c.name));
+  if (!sloupceHry.has("twitch_id")) pridat.push(db.prepare("ALTER TABLE hry ADD COLUMN twitch_id TEXT"));
   if (pridat.length) await db.batch(pridat);
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_streameri_plogin ON streameri(platforma, login)").run();
   migraceHotova = true;
@@ -141,7 +143,7 @@ export async function sberTwitch(env) {
     // Předchozí stav (kdo byl živě, rekordy) – pro upozornění a milníky.
     const predchozi = await nactiPredchozi(db, "twitch", ted, ZIVE_PLATNOST);
     const zmeny = vyhodnotZmeny(db, ted, predchozi, streamy, (s) => s.user_id, "twitch");
-    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "twitch", streamy)];
+    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "twitch", streamy), ...prikazyHryDen(db, ted, "twitch", streamy, (s) => s.game_name, INTERVAL_MIN)];
     const upsert = db.prepare(`
       INSERT INTO streameri (id, login, jmeno, prvni_videno, posledni_zive, posledni_stream, pocet_streamu, max_divaku, posledni_hra,
         zive_cas, zive_hra, zive_titulek, zive_divaci, zive_zacatek, zive_nahled)
@@ -155,8 +157,8 @@ export async function sberTwitch(env) {
         posledni_hra = COALESCE(NULLIF(excluded.posledni_hra, ''), streameri.posledni_hra)`);
     const snimek = db.prepare(`INSERT INTO snimky (user_id, den, max_divaku, minut) VALUES (?, ?, ?, ?)
       ON CONFLICT(user_id, den) DO UPDATE SET max_divaku = MAX(snimky.max_divaku, excluded.max_divaku), minut = snimky.minut + excluded.minut`);
-    const hraSeznam = db.prepare(`INSERT INTO hry (slug, nazev, posledni) VALUES (?, ?, ?)
-      ON CONFLICT(slug) DO UPDATE SET posledni = excluded.posledni`);
+    const hraSeznam = db.prepare(`INSERT INTO hry (slug, nazev, posledni, twitch_id) VALUES (?, ?, ?, ?)
+      ON CONFLICT(slug) DO UPDATE SET posledni = excluded.posledni, twitch_id = COALESCE(excluded.twitch_id, hry.twitch_id)`);
     const videneHry = new Set();
     const hra = db.prepare(`INSERT INTO hry_streamera (user_id, hra, minut, posledni) VALUES (?, ?, ?, ?)
       ON CONFLICT(user_id, hra) DO UPDATE SET minut = hry_streamera.minut + excluded.minut, posledni = excluded.posledni`);
@@ -168,7 +170,7 @@ export async function sberTwitch(env) {
           ted, s.game_name || "", String(s.title || "").slice(0, 300), s.viewer_count || 0, s.started_at || null, nahled),
       );
       const slug = slugHry(s.game_name);
-      if (slug && !videneHry.has(slug)) { videneHry.add(slug); prikazy.push(hraSeznam.bind(slug, s.game_name, ted)); }
+      if (slug && !videneHry.has(slug)) { videneHry.add(slug); prikazy.push(hraSeznam.bind(slug, s.game_name, ted, s.game_id ? String(s.game_id) : null)); }
       if ((s.viewer_count || 0) >= MIN_STATISTIKY) {
         prikazy.push(snimek.bind(s.user_id, den, s.viewer_count || 0, INTERVAL_MIN));
         if (s.game_name) prikazy.push(hra.bind(s.user_id, s.game_name, INTERVAL_MIN, ted));
@@ -234,7 +236,11 @@ export async function sberTwitch(env) {
       } catch { /* bez rozvrhu (Twitch vrací 404) – nic */ }
     }
     if (rozPrikazy.length) await db.batch(rozPrikazy);
-    await db.prepare("DELETE FROM scena WHERE cas < ?").bind(ted - 35 * 86400e3).run();
+    // Data pro týdenní reporty a žebříčky držíme ~13 měsíců (malé tabulky: ~200 a ~150 řádků denně).
+    await db.batch([
+      db.prepare("DELETE FROM scena WHERE cas < ?").bind(ted - 400 * 86400e3),
+      db.prepare("DELETE FROM hry_den WHERE den < ?").bind(new Date(ted - 400 * 86400e3).toISOString().slice(0, 10)),
+    ]);
     try { await odesliFrontu(env, PUSH_NA_BEH); } catch (e) { console.warn("push fronta:", e); }
 
     await zaznamenejStav(db, { ok: true, zivych: streamy.length, profilu: kProfilu.length, sledujicich: sledPrikazy.length / 2, chyba_sledujici: sledujiciChyba });
