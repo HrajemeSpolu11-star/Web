@@ -200,11 +200,11 @@
     if (location.hash.split("/")[1] !== "streameri") return;
     const list = state.adresar[klic];
     app.innerHTML = `<div class="live-head"><h1>Čeští streameři</h1>
-        <p class="dim">Žebříček podle skutečných dat z Twitche. Streamer se objeví po 3 streamech s aspoň 10 diváky.</p></div>
+        <p class="dim">Všichni čeští streameři z Twitche. Kdo je právě živě, je nahoře.</p></div>
       <input class="search" id="qs" type="search" placeholder="Hledat streamera" value="${esc(state.hledatS)}">
       <div class="chips">${Object.entries(RAZENI).map(([k, v]) => `<button class="chip${k === state.razeni ? " on" : ""}" data-r="${k}">${v}</button>`).join("")}</div>
       ${list.length ? `<div class="slist">${list.map((s, i) => radekStreamera(s, i, state.razeni)).join("")}</div>`
-        : `<p class="empty">${state.hledatS ? "Nikoho takového jsme nenašli." : "Seznam se teprve plní. První streameři se objeví během pár dní, jakmile odvysílají aspoň 3 streamy."}</p>`}
+        : `<p class="empty">${state.hledatS ? "Nikoho takového jsme nenašli." : "Seznam se právě plní. Streameři se objeví, jakmile je Twitch zachytí živě (do 15 minut)."}</p>`}
       <p class="source-note">Počty sledujících a diváků pocházejí z oficiálního Twitch API a obnovují se denně. Růst a odvysílané hodiny počítáme z vlastních denních záznamů.</p>`;
     app.querySelectorAll("[data-r]").forEach((b) => b.onclick = () => { state.razeni = b.dataset.r; strankaStreameri(); });
     const inp = document.getElementById("qs");

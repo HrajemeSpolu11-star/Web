@@ -13,8 +13,8 @@ const BARVY = [["#ff7a3d", "#5a1a0a"], ["#7c5cff", "#0c0a2a"], ["#3fbf7f", "#0a2
 const CRON_PSANI = "7 * * * *";
 const CRON_TWITCH = "5,20,35,50 * * * *";
 const ZIVE_PLATNOST = 25 * 60e3; // stream je „živě“, pokud ho Twitch vrátil v posledních 25 min
-// Filtr kvality pro adresář: aspoň 3 streamy a 10 diváků (nebo ručně ověřený kanál).
-const KVALITA = "s.skryty = 0 AND ((s.pocet_streamu >= 3 AND s.max_divaku >= 10) OR s.overeno = 1)";
+// Adresář ukazuje každého streamera, který se objevil živě (kromě ručně skrytých).
+const KVALITA = "s.skryty = 0";
 
 const BEZPECNE_HLAVICKY = {
   "Content-Type": "application/json; charset=utf-8",
@@ -133,8 +133,9 @@ async function apiStreameri(url, env) {
       (SELECT COALESCE(SUM(minut), 0) FROM snimky n WHERE n.user_id = s.id AND n.den >= date('now', '-30 day')) AS minut30,
       s.sledujici - (SELECT n.sledujici FROM snimky n WHERE n.user_id = s.id AND n.sledujici IS NOT NULL
                      AND n.den >= date('now', '-30 day') ORDER BY n.den LIMIT 1) AS rust30
-    FROM streameri s WHERE ${kde.join(" AND ")} ORDER BY ${poradi} LIMIT 200`;
-  const { results } = await env.DB.prepare(sql).bind(...hod).all();
+    FROM streameri s WHERE ${kde.join(" AND ")}
+    ORDER BY (s.zive_cas > ?) DESC, ${poradi} LIMIT 300`;
+  const { results } = await env.DB.prepare(sql).bind(...hod, ted - ZIVE_PLATNOST).all();
   return json(results.map((r) => naStreamera(r, ted)), 200, 120);
 }
 
