@@ -73,6 +73,8 @@ Vlastní data o české scéně: „Co hraje Česko“ (`/hry`), týdenní repor
 hodnocení + streamy + klipy), rychlost bez reklam, upřímnost u čísel (`/o-webu#data`). Data jen z oficiálních zdrojů / vlastního měření.
 Nápad na později: IsThereAnyDeal API (zdarma s klíčem) pro ceny v dalších obchodech v €.
 
+- Hlídač cen `/hlidac`, Má to češtinu? `/cestina` (src/hlidac.js), karty ke sdílení (public/og, tools/og-obrazky.py, canvas v app.js).
+
 ## Rozpracované / další možné kroky
 - Vlastní doména → Cloudflare Access pro admin (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ve `wrangler.jsonc`).
 - Konzolista.cz a BonusWeb – RSS se nepodařilo ověřit (Konzolista vrací chybu, BonusWeb blokuje).

@@ -1,6 +1,7 @@
 // Upozornění „je živě“ přes Web Push – bez účtů a bez osobních údajů.
 // Push se posílá BEZ obsahu (nic se nešifruje); service worker si zprávu vyzvedne z /api/push/zpravy.
 // VAPID klíče si Worker vygeneruje sám při prvním použití a uloží do D1 (tabulka nastaveni).
+import { zajistiSchemaHlidac, hlidat, nehlidat } from "./hlidac.js";
 
 const POVOLENE_SLUZBY = [/^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/,
   /^web\.push\.apple\.com$/, /\.push\.apple\.com$/, /^android\.googleapis\.com$/];
@@ -116,7 +117,11 @@ export async function odesliFrontu(env, max = 10) {
     try { vysledek = await posliPush(env, o.endpoint); } catch (e) { console.warn("push:", e); vysledek = "znovu"; }
     // Označíme jen zprávy, které existovaly před odesláním – nové počkají na další oznámení.
     if (vysledek === "ok") await db.prepare("UPDATE push_zpravy SET odeslano = 1 WHERE odber_id = ? AND odeslano = 0 AND id <= ?").bind(o.id, o.posledni).run();
-    else if (vysledek === "neplatny") await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(o.id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(o.id)]);
+    else if (vysledek === "neplatny") {
+      await zajistiSchemaHlidac(db);
+      await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(o.id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(o.id),
+        db.prepare("DELETE FROM hlidani WHERE odber_id = ?").bind(o.id)]);
+    }
   }
   // Úklid: staré zprávy (přes 2 dny) smazat.
   await db.prepare("DELETE FROM push_zpravy WHERE cas < ?").bind(Date.now() - 2 * 86400e3).run();
@@ -126,7 +131,7 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 
-// /api/push/klic (GET), /api/push/odber (POST), /api/push/zrusit (POST), /api/push/zpravy (POST)
+// /api/push/klic (GET), /api/push/odber, /zrusit, /zpravy, /hlidat, /nehlidat (POST)
 export async function pushApi(request, env) {
   const url = new URL(request.url);
   const cesta = url.pathname.slice(9);
@@ -149,8 +154,18 @@ export async function pushApi(request, env) {
     return json({ ok: true, oblibenych: obl.length });
   }
   if (cesta === "/zrusit") {
-    await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(id)]);
+    await zajistiSchemaHlidac(db);
+    await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(id),
+      db.prepare("DELETE FROM hlidani WHERE odber_id = ?").bind(id)]);
     return json({ ok: true });
+  }
+  if (cesta === "/hlidat" || cesta === "/nehlidat") {
+    // Odběr musí existovat (vznikne při zapnutí upozornění); hlídání bez něj nemá kam poslat zprávu.
+    const ted = Date.now();
+    await db.prepare(`INSERT INTO push_odbery (id, endpoint, oblibeni, vytvoreno, upraveno) VALUES (?, ?, '[]', ?, ?)
+      ON CONFLICT(id) DO NOTHING`).bind(id, endpoint, ted, ted).run();
+    const v = cesta === "/hlidat" ? await hlidat(db, id, b) : await nehlidat(db, id, b);
+    return json(v.chyba ? { chyba: v.chyba } : v, v.status || 200);
   }
   if (cesta === "/zpravy") {
     const { results } = await db.prepare("SELECT id, titulek, text, url FROM push_zpravy WHERE odber_id = ? ORDER BY id DESC LIMIT 5").bind(id).all();

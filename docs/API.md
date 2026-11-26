@@ -59,3 +59,12 @@ Týdenní report (bez parametru poslední celý týden): `souhrn` (hodin, zmena,
 
 ## `GET /api/hra/:slug` (rozšířeno)
 Navíc `info {steam, gog, epic, cas}` z obchodů, `statistiky {hodin7, spicka7, dny[]}` a `klipy[]`.
+
+## `GET /api/cestina?q=… | filtr=sleva|zdarma|dabing|vse`
+Hry ze Steamu s češtinou (`cestina`: 0 bez, 1 titulky, 2 dabing, null neověřeno), cenou a `min90`. S `q` hledá v databázi a případně na Steamu (max. 4 požadavky). Cache 1 h (hledání) / 15 min.
+
+## `GET /api/steam-hry?ids=1,2,3`
+Aktuální údaje hlídaných her (max. 50).
+
+## `POST /api/push/hlidat` / `POST /api/push/nehlidat`
+Tělo `{endpoint, steam_id, nazev, cil}` (cil = cílová cena v Kč, null = jakákoliv sleva). Odběr musí být platná push adresa.

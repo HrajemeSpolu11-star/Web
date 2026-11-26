@@ -14,6 +14,7 @@ import { apiKatalog, sberKatalogu, sberKataloguPokudStary } from "./katalog.js";
 import { apiObsah, sberObsahu } from "./obsah.js";
 import { apiCesko, apiReport } from "./statistiky.js";
 import { infoHry } from "./hra-data.js";
+import { apiCestina, apiSteamHry, doplnSteamUdaje, prikazyUlozHry, zajistiSchemaHlidac } from "./hlidac.js";
 import { zajistiSchemaObsah } from "./obsah.js";
 import { denPraha } from "./psani.js";
 
@@ -212,9 +213,19 @@ async function apiHra(slug, env, ctx) {
       JOIN streameri s ON s.id = k.streamer_id WHERE k.hra_id = ? AND s.skryty = 0 ORDER BY k.zhlednuti DESC LIMIT 8`).bind(h.twitch_id || "-"),
   ]);
   const tyden = dny.results.filter((d) => d.den >= od7);
+  const info = await infoP;
+  // Hra ze Steamu jde do databáze her (sleduje se cena, dá se hlídat) a přidá se nejnižší cena za 90 dní.
+  if (info?.steam?.id) {
+    try {
+      await zajistiSchemaHlidac(env.DB);
+      ctx.waitUntil(env.DB.batch(prikazyUlozHry(env.DB, [info.steam], ted)).catch(() => {}));
+      const u = (await doplnSteamUdaje(env.DB, [info.steam.id])).get(String(info.steam.id));
+      if (u) info.steam.min90 = u.min90;
+    } catch { /* nepovinné */ }
+  }
   return json({
     slug: h.slug, nazev: h.nazev,
-    info: await infoP,
+    info,
     statistiky: {
       hodin7: Math.round(tyden.reduce((a, d) => a + (d.dm || 0), 0) / 60),
       spicka7: Math.max(0, ...tyden.map((d) => d.spicka || 0)),
@@ -303,6 +314,11 @@ async function verejneApi(request, env, ctx, url) {
       const r = await apiReport(env, naStreamera, /^(\d{4}-W\d{2}|aktualni)$/.test(t) ? t : "");
       odpoved = json(r, 200, r.cache);
     }
+    else if (url.pathname === "/api/cestina") {
+      const q = url.searchParams.get("q") || "", f = String(url.searchParams.get("filtr") || "");
+      odpoved = json(await apiCestina(env, q, ["sleva", "zdarma", "dabing", "vse"].includes(f) ? f : ""), 200, q ? 3600 : 900);
+    }
+    else if (url.pathname === "/api/steam-hry") odpoved = json(await apiSteamHry(env, url.searchParams.get("ids")), 200, 300);
     else if (url.pathname === "/api/obsah") odpoved = json(await apiObsah(env), 200, 600);
     else if (url.pathname === "/api/katalog") {
       await zajistiSchemaTwitch(env.DB);

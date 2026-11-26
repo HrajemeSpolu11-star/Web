@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 12) – Hlídač cen, „Má to češtinu?“, karty ke sdílení
+- **Databáze her ze Steamu** (`src/hlidac.js`, tabulky `steam_hry`, `ceny_historie`, `hlidani`): hry z katalogu, z hledání,
+  ze stránek her a hlídané hry. Čeština z appdetails (0 bez, 1 titulky/rozhraní, 2 dabing), ceny v Kč z `price_overview`
+  (až 100 her jedním požadavkem), denní nejnižší cena → „nejnižší cena za 90 dní“. Sběr v Cronu `40` (≈ +15 požadavků, celkem ≈ 34 z 50).
+- **Hlídač cen** (`/hlidac`): tlačítko „Hlídat cenu“ u her (stránka hry, Má to češtinu?, hlídač), volitelná cílová cena.
+  Upozornění přes stávající Web Push (bez účtu a e-mailu) – jednou za slevu, znovu jen při dalším zlevnění. Max. 50 her.
+  API `POST /api/push/hlidat`, `/api/push/nehlidat`; vypnutí upozornění smaže i hlídané hry.
+- **Má to češtinu?** (`/cestina`, `/api/cestina`): hledání hry (když ji nemáme, zeptá se Steamu a rovnou ověří češtinu),
+  filtry Ve slevě / Zdarma / S dabingem / Vše s češtinou. Štítky „CZ titulky“ / „CZ dabing“ u her v katalogu.
+  Na Domů sekce „Ve slevě a česky“ a rychlé odkazy na Má to češtinu? a Hlídač cen.
+- **Karty ke sdílení**: obrázky 1200×630 pro sdílení odkazů (`public/og/*.png`, generátor `tools/og-obrazky.py`), u hry obrázek ze Steamu,
+  v popisu reportu a hry skutečná čísla, `summary_large_image`. Tlačítko **„Sdílet jako obrázek“** u reportu, hry a streamera:
+  karta 1080×1350 se nakreslí v prohlížeči (canvas, jen text a čísla) a otevře se nabídka Sdílet / stáhne se.
+- Stránka Soukromí doplněna o hlídané hry (localStorage `hp_hlidam` i server).
+
 ## 2026-11-26 (odpoledne, 11) – Přehlednější začátek Domů a nový uvítací text
 - Hlavní nadpis Domů: „Všechno o hrách na jednom místě“ + věta, co AI dělá. Pod ním rychlé odkazy a pak řádek AI správce.
 - Hra týdne se už neopakuje v sekci her zdarma: sekce se jmenuje „Další hry zdarma“ a zobrazí se jen, když je zdarma víc her.

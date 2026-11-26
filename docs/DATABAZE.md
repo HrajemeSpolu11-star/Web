@@ -45,3 +45,9 @@ slug → JSON s daty ze Steamu, GOGu a Epicu, `cas`. Platnost 12 h, obnova na po
 
 ## `hry.twitch_id`
 Twitch ID hry (z /streams), páruje klipy ke hře.
+
+## `steam_hry`, `ceny_historie`, `hlidani` (src/hlidac.js)
+- `steam_hry`: id (Steam appid), nazev, norm (pro hledání), obrazek, cestina (0/1/2/null), cena, puvodni, sleva, zdarma, vychazi,
+  kladne, recenzi, jazyky_cas (ověřeno – znovu po 30 dnech), cena_cas (znovu po 6 h, hlídané každou hodinu), pridano.
+- `ceny_historie`: (id, den) → nejnižší cena dne a sleva. 400 dní.
+- `hlidani`: (odber_id, steam_id) → nazev, cil, upozorneno (cena, při které už upozornění odešlo), cas. Maže se s odběrem.

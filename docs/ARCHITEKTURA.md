@@ -22,7 +22,7 @@ návštěvník →│ statické soubory (public/)   ← servíruje Cloudflare As
 | `7 * * * *` | AI psaní (jen v hodinách `HODINY`, max `CLANKU_DENNE`) | `napisClanek()` v `src/psani.js` |
 | `5,20,35,50 * * * *` | Twitch + Kick streameři, rekordy, milníky, rozvrhy, push | `sberTwitch()`, `sberKick()` |
 | `25 * * * *` | Herní katalog: Steam (slevy, top, nové, brzy, nejhranější + hodnocení hráčů), Epic (zdarma), GOG (trendy, slevy) – ≈33 požadavků | `sberKatalogu()` v `src/katalog.js` |
-| `40 * * * *` | Videa z YouTube RSS (8 kanálů) a Twitch klipy (8 streamerů) – ≈19 požadavků | `sberObsahu()` v `src/obsah.js` |
+| `40 * * * *` | Videa z YouTube RSS (8 kanálů), Twitch klipy (8 streamerů), ceny her (≤3 × 100) a čeština (12 her) + upozornění hlídače – ≈34 požadavků | `sberObsahu()` v `src/obsah.js`, `sberHlidace()` v `src/hlidac.js` |
 
 **Všech 5 Cronů je obsazeno.** Další pravidelná úloha se musí přidat do některého stávajícího běhu.
 

@@ -111,6 +111,190 @@
     setTimeout(() => el.remove(), 3800);
   }
 
+  // ---------- Sdílení jako obrázek ----------
+  // Karta 1080×1350 se nakreslí přímo v prohlížeči (canvas) jen z textu a čísel – žádné cizí obrázky, nic se neposílá na server.
+  // Na mobilu se otevře nabídka Sdílet (Instagram, WhatsApp, Discord…), jinde se obrázek stáhne.
+  async function sdilejObrazek({ stitek, nadpis, radky = [], odkaz }) {
+    const W = 1080, H = 1350, c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    try { await Promise.all([document.fonts.load('800 80px "Rubik"'), document.fonts.load('500 40px "Rubik"')]); } catch {}
+    const F = (v, s) => `${v} ${s}px "Rubik", system-ui, sans-serif`;
+    g.fillStyle = "#16132e"; g.fillRect(0, 0, W, H);
+    const z = g.createRadialGradient(W * 0.85, H * 0.1, 0, W * 0.85, H * 0.1, 700);
+    z.addColorStop(0, "rgba(155,92,255,.38)"); z.addColorStop(1, "rgba(155,92,255,0)");
+    g.fillStyle = z; g.fillRect(0, 0, W, H);
+    // neuronová síť z loga
+    const sit = (cx, cy, r, a) => {
+      const b = [-90, -30, 30, 90, 150, 210].map((u) => [cx + r * Math.cos(u * Math.PI / 180), cy + r * Math.sin(u * Math.PI / 180)]);
+      g.strokeStyle = `rgba(155,92,255,${0.45 * a})`; g.lineWidth = Math.max(2, r / 40);
+      b.forEach((p, i) => { g.beginPath(); g.moveTo(...p); g.lineTo(...b[(i + 1) % 6]); g.moveTo(...p); g.lineTo(cx, cy); g.stroke(); });
+      g.fillStyle = `rgba(155,92,255,${a})`; b.forEach((p) => { g.beginPath(); g.arc(...p, r / 9, 0, 7); g.fill(); });
+      g.fillStyle = `rgba(255,192,77,${a})`; g.beginPath(); g.arc(cx, cy, r / 4.5, 0, 7); g.fill();
+    };
+    sit(880, 210, 150, 0.35); sit(110, 110, 34, 1);
+    g.fillStyle = "#f4f1ff"; g.font = F(800, 46); g.textBaseline = "middle"; g.fillText("Herní puls", 165, 112);
+    // štítek
+    g.font = F(800, 34); const sw = g.measureText(stitek).width;
+    g.fillStyle = "#ffc04d"; g.beginPath(); g.roundRect(72, 250, sw + 48, 64, 32); g.fill();
+    g.fillStyle = "#2a1d00"; g.fillText(stitek, 96, 283);
+    // nadpis (zalomení, max 3 řádky)
+    let vel = 84; g.font = F(800, vel);
+    const zalom = (t, max) => { const out = []; let r = ""; for (const s of t.split(" ")) { const z = r ? r + " " + s : s; if (g.measureText(z).width > max && r) { out.push(r); r = s; } else r = z; } return [...out, r]; };
+    let rad = zalom(nadpis, W - 144);
+    if (rad.length > 3) { vel = 66; g.font = F(800, vel); rad = zalom(nadpis, W - 144); }
+    g.fillStyle = "#f4f1ff"; g.textBaseline = "alphabetic";
+    let y = 420; rad.slice(0, 3).forEach((r) => { g.fillText(r, 72, y); y += vel * 1.12; });
+    // čísla
+    y += 30;
+    // Dlaždice s čísly se přizpůsobí místu, které zbývá nad patičkou.
+    const list = radky.slice(0, 4), mezera = 20, vyska = Math.min(150, (H - 190 - y - mezera * (list.length - 1)) / Math.max(1, list.length)), k = vyska / 150;
+    for (const [cislo, popis] of list) {
+      g.fillStyle = "rgba(255,255,255,.06)"; g.beginPath(); g.roundRect(72, y, W - 144, vyska, 28 * k); g.fill();
+      g.fillStyle = "#ffc04d"; g.font = F(800, Math.round(64 * k)); g.fillText(String(cislo), 112, y + 88 * k);
+      g.fillStyle = "#b9b2dc"; g.font = F(500, Math.round(32 * k)); g.fillText(String(popis).slice(0, 48), 112, y + 128 * k);
+      y += vyska + mezera;
+    }
+    g.fillStyle = "#ffc04d"; g.fillRect(0, H - 14, W, 14);
+    g.fillStyle = "#f4f1ff"; g.font = F(800, 32); g.fillText(location.host + (odkaz || ""), 72, H - 100);
+    g.fillStyle = "#b9b2dc"; g.font = F(500, 28); g.fillText("Data ověřila AI z oficiálních zdrojů · Herní puls", 72, H - 56);
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    const soubor = new File([blob], `herni-puls-${(odkaz || "karta").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "karta"}.png`, { type: "image/png" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [soubor] })) { await navigator.share({ files: [soubor], title: nadpis, url: location.origin + (odkaz || "") }); return; }
+    } catch (e) { if (e.name === "AbortError") return; }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = soubor.name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  const tlacitkoObrazek = (id) => `<button type="button" class="btn-maly" id="${id}">Sdílet jako obrázek</button>`;
+
+  // ---------- Čeština a hlídač cen ----------
+  // Čeština podle údajů na Steamu: 2 = dabing, 1 = titulky/rozhraní, 0 = bez češtiny, null = zatím neověřeno.
+  function czStitek(h, uplny = false) {
+    if (h.cestina === 2) return `<span class="cz cz-dabing">CZ dabing</span>`;
+    if (h.cestina === 1) return `<span class="cz">CZ titulky</span>`;
+    if (uplny && h.cestina === 0) return `<span class="cz cz-ne">bez češtiny</span>`;
+    if (uplny && h.cestina == null) return `<span class="cz cz-nevim">čeština se ověřuje</span>`;
+    return "";
+  }
+  function hlidane() { try { return JSON.parse(localStorage.getItem("hp_hlidam") || "[]"); } catch { return []; } }
+  const ulozHlidane = (l) => { try { localStorage.setItem("hp_hlidam", JSON.stringify(l.slice(0, 50))); } catch {} };
+  const hlidam = (id) => hlidane().some((x) => x.id === String(id));
+  const tlacitkoHlidat = (h) => `<button type="button" class="hlidat${hlidam(h.id) ? " on" : ""}" data-hlidat="${esc(h.id)}" data-nazev="${esc(h.nazev)}"
+      aria-pressed="${hlidam(h.id)}">${hlidam(h.id) ? "🔔 Hlídám" : "🔔 Hlídat cenu"}</button>`;
+  async function odberPush() {
+    if (!pushZapnuto()) await zapniUpozorneni();
+    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (!sub) { await zapniUpozorneni(); return odberPush(); }
+    return sub;
+  }
+  async function nastavHlidani(id, nazev, zapnout, cil = null) {
+    const sub = await odberPush();
+    const r = await fetch(`/api/push/${zapnout ? "hlidat" : "nehlidat"}`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: sub.endpoint, steam_id: String(id), nazev, cil }) });
+    const v = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(v.chyba || "Nepodařilo se uložit.");
+    const l = hlidane().filter((x) => x.id !== String(id));
+    if (zapnout) l.unshift({ id: String(id), nazev, cil });
+    ulozHlidane(l);
+  }
+  // Jedno místo pro všechna tlačítka „Hlídat cenu“ (karty, stránka hry, čeština, hlídač).
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-hlidat]");
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const id = b.dataset.hlidat, zapnout = !hlidam(id);
+    b.disabled = true;
+    try {
+      await nastavHlidani(id, b.dataset.nazev || "", zapnout);
+      document.querySelectorAll(`[data-hlidat="${CSS.escape(id)}"]`).forEach((x) => {
+        x.classList.toggle("on", zapnout); x.setAttribute("aria-pressed", zapnout); x.textContent = zapnout ? "🔔 Hlídám" : "🔔 Hlídat cenu";
+      });
+      achievement(zapnout ? "Hlídám cenu" : "Hlídání zrušeno", zapnout ? "Dám ti vědět, až bude ve slevě." : b.dataset.nazev || "");
+    } catch (err) { achievement("Nejde to", err.message || "Zkus to znovu."); }
+    finally { b.disabled = false; }
+  }, true);
+
+  function radekHry(h, { hlidac = false } = {}) {
+    const cenaTxt = h.cena == null ? (h.vychazi ? "zatím se neprodává" : "") : h.cena === 0 ? "Zdarma"
+      : `${h.sleva ? `<s>${esc(cena(h.puvodni, h.mena))}</s> <em>−${h.sleva} %</em> ` : ""}<strong>${esc(cena(h.cena, h.mena))}</strong>`;
+    const minTxt = h.min90 != null && h.cena != null && h.cena > 0
+      ? (h.cena <= h.min90 ? `<span class="min90 min-ok">nejnižší cena za 90 dní</span>` : `<span class="min90">nejníž za 90 dní: ${esc(cena(h.min90, h.mena))}</span>`) : "";
+    return `<div class="hrad">
+      <a class="hrad-obr" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}</a>
+      <div class="hrad-t"><a href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer"><b>${esc(h.nazev)}</b></a>
+        <div class="hrad-meta">${czStitek(h, true)}${hodnoceniHry(h)}</div>
+        <div class="hrad-cena">${cenaTxt} ${minTxt}</div>
+        ${hlidac ? `<div class="hrad-cil">${(() => { const x = hlidane().find((y) => y.id === String(h.id)); return x?.cil != null ? `Upozorním, až bude pod ${esc(cena(x.cil, "CZK"))}` : "Upozorním na jakoukoliv slevu"; })()}</div>` : ""}
+      </div>
+      <div class="hrad-akce">${tlacitkoHlidat(h)}${hlidac ? `<button type="button" class="cil-btn" data-cil="${esc(h.id)}" data-nazev="${esc(h.nazev)}">Cílová cena</button>` : ""}</div>
+    </div>`;
+  }
+
+  // ---------- Má to češtinu? ----------
+  async function strankaCestina() {
+    nastavTitulek("Má to češtinu? – hry s češtinou ve slevě a zdarma");
+    const filtr = new URLSearchParams(location.search).get("filtr") || "sleva";
+    const q = new URLSearchParams(location.search).get("q") || "";
+    app.innerHTML = `<div class="cesko-head"><h1>Má to češtinu?</h1>
+        <p>Napiš název hry a hned uvidíš, jestli má české titulky nebo dabing, kolik stojí a jestli je ve slevě. Údaje o češtině bereme ze Steamu.</p></div>
+      <form class="hledat-hru" role="search"><input id="q-hra" type="search" placeholder="Např. Kingdom Come, Cyberpunk, Hollow Knight…" value="${esc(q)}" autocomplete="off" maxlength="60" aria-label="Název hry"><button type="submit">Hledat</button></form>
+      <div class="mini-seg cz-filtry" role="group">${[["sleva", "Ve slevě s češtinou"], ["zdarma", "Zdarma s češtinou"], ["dabing", "S českým dabingem"], ["vse", "Vše s češtinou"]]
+        .map(([k, v]) => `<a class="ms-b${!q && k === filtr ? " on" : ""}" href="/cestina?filtr=${k}">${v}</a>`).join("")}</div>
+      <div id="cz-vysledky">${kostra(5)}</div>
+      <p class="source-note">Čeština podle seznamu jazyků na Steamu („dabing“ = Steam uvádí plnou podporu zvuku). Ceny v Kč ze Steamu, kontrolujeme je několikrát denně; vždy platí cena v obchodě. Hry do databáze přibývají – když hru nenajdeš, hledání se zeptá přímo Steamu.</p>`;
+    app.querySelector(".hledat-hru").onsubmit = (e) => { e.preventDefault(); const v = app.querySelector("#q-hra").value.trim(); jdi(v ? `/cestina?q=${enc(v)}` : "/cestina"); };
+    let d;
+    try { d = await nacti(`cestina?${q ? `q=${enc(q)}` : `filtr=${enc(filtr)}`}`); } catch { d = { hry: [] }; }
+    const el = document.getElementById("cz-vysledky");
+    if (!el) return;
+    const p = d.pocty || {};
+    el.innerHTML = (!q && p.vse ? `<p class="dim">Ověřeno ${esc(num(p.vse))} her, z toho ${esc(num(p.cz || 0))} s češtinou a ${esc(num(p.dabing || 0))} s dabingem.</p>` : "")
+      + (d.hry.length ? `<div class="hrady">${d.hry.map((h) => radekHry(h)).join("")}</div>`
+        : `<p class="empty">${q ? "Nic jsme nenašli. Zkus anglický název hry, jak je na Steamu." : "Databáze se teprve plní – zkus to za hodinu nebo hledej konkrétní hru."}</p>`);
+    obarvi(el);
+  }
+
+  // ---------- Hlídač cen ----------
+  async function strankaHlidac() {
+    nastavTitulek("Hlídač cen – upozornění na slevy her");
+    const l = hlidane();
+    app.innerHTML = `<div class="cesko-head"><h1>Hlídač cen</h1>
+        <p>Vyber si hry a my ti pošleme upozornění, až budou ve slevě nebo pod tvou cenou. Bez registrace a bez e-mailu – stačí povolit upozornění v prohlížeči.</p></div>
+      ${!pushPodpora() ? `<p class="info-box">Tenhle prohlížeč upozornění nepodporuje. Na iPhonu si web nejdřív přidej na plochu (Sdílet → Přidat na plochu) a otevři ho odtamtud.</p>` : ""}
+      <form class="hledat-hru" role="search"><input id="q-hra" type="search" placeholder="Přidat hru – napiš název…" autocomplete="off" maxlength="60" aria-label="Název hry"><button type="submit">Najít</button></form>
+      <div id="hl-hledani"></div>
+      <div class="section-title">Moje hlídané hry</div>
+      <div id="hl-seznam">${l.length ? kostra(Math.min(4, l.length)) : `<p class="empty">Zatím nic nehlídáš. Najdi hru výše nebo klikni na „Hlídat cenu“ u kterékoliv hry na webu.</p>`}</div>
+      <p class="source-note">Ceny hlídaných her kontrolujeme každou hodinu přímo na Steamu (v Kč). Upozornění přijde jednou za slevu – a znovu, jen když cena klesne ještě níž. Hlídané hry jsou uložené u tvého odběru upozornění; vypnutím upozornění se smažou. <a href="/soukromi.html">Soukromí</a></p>`;
+    app.querySelector(".hledat-hru").onsubmit = async (e) => {
+      e.preventDefault();
+      const v = app.querySelector("#q-hra").value.trim(), out = document.getElementById("hl-hledani");
+      if (v.length < 2) return;
+      out.innerHTML = kostra(3);
+      try { const d = await nacti(`cestina?q=${enc(v)}`); out.innerHTML = d.hry.length ? `<div class="hrady">${d.hry.slice(0, 6).map((h) => radekHry(h)).join("")}</div>` : `<p class="dim">Nic jsme nenašli – zkus anglický název ze Steamu.</p>`; }
+      catch { out.innerHTML = `<p class="dim">Hledání se nepovedlo, zkus to znovu.</p>`; }
+    };
+    if (!l.length) return;
+    let d;
+    try { d = await nacti(`steam-hry?ids=${l.map((x) => x.id).join(",")}`); } catch { d = { hry: [] }; }
+    const el = document.getElementById("hl-seznam");
+    if (!el) return;
+    const mapa = new Map(d.hry.map((h) => [String(h.id), h]));
+    el.innerHTML = `<div class="hrady">${l.map((x) => radekHry(mapa.get(x.id) || { id: x.id, nazev: x.nazev, url: `https://store.steampowered.com/app/${x.id}/`, cestina: null, cena: null }, { hlidac: true })).join("")}</div>`;
+    el.querySelectorAll("[data-cil]").forEach((b) => b.onclick = async () => {
+      const x = hlidane().find((y) => y.id === b.dataset.cil);
+      const v = prompt(`Upozornit, až bude „${b.dataset.nazev}“ pod jakou cenou (Kč)? Nech prázdné = jakákoliv sleva.`, x?.cil ?? "");
+      if (v === null) return;
+      const c = v.trim() === "" ? null : Number(v.replace(",", ".").replace(/[^\d.]/g, ""));
+      if (c != null && !(c >= 0)) { achievement("Neplatná cena", "Zadej číslo, např. 299."); return; }
+      try { await nastavHlidani(b.dataset.cil, b.dataset.nazev, true, c); strankaHlidac(); }
+      catch (err) { achievement("Nejde to", err.message); }
+    });
+  }
+
   // Jemné 3D naklonění karet za kurzorem (jen počítač s myší).
   if (matchMedia("(pointer: fine)").matches) {
     document.addEventListener("pointermove", (e) => {
@@ -497,6 +681,7 @@
         <button type="button" class="pa-b${jeOblibeny(s) ? " on" : ""}" id="b-obl">${jeOblibeny(s) ? "★ Oblíbený" : "☆ Přidat do oblíbených"}</button>
         <button type="button" class="pa-b" id="b-upoz">${pushZapnuto() && jeOblibeny(s) ? "Upozornění zapnutá" : "Upozornit, až začne vysílat"}</button>
         <a class="pa-b" href="/porovnat?a=${esc(enc(s.platforma || "twitch"))}/${esc(enc(s.login))}">Porovnat</a>
+        <button type="button" class="pa-b" id="b-obr">Sdílet jako obrázek</button>
       </div>
       <p class="pa-zprava" id="pa-zprava" role="status" aria-live="polite"></p>
       ${odkazySit(s.odkazy)}
@@ -520,6 +705,10 @@
     if (g) graf(g, body);
     if (s.platforma !== "kick") nactiExtra(s);
     const zpr = (t) => { document.getElementById("pa-zprava").textContent = t; };
+    document.getElementById("b-obr").onclick = () => sdilejObrazek({ stitek: `${PLAT[s.platforma] || "Twitch"} streamer`, nadpis: s.jmeno,
+      odkaz: `/streamer/${s.platforma || "twitch"}/${s.login}`,
+      radky: [s.sledujici != null && [num(s.sledujici), "sledujících"], [num(s.max_divaku || 0), "rekord diváků najednou"],
+        [`${s.hodin30 || 0} h`, "odvysíláno za 30 dní"], (s.hry || [])[0] && [s.hry[0].hra.slice(0, 26), "nejhranější hra"]].filter(Boolean) });
     const bObl = document.getElementById("b-obl"), bUp = document.getElementById("b-upoz");
     bObl.onclick = () => {
       const pridan = prepniOblibeny(s);
@@ -647,9 +836,15 @@
         </div>
         ${r.udalosti.length ? `<div class="section-title">Rekordy a milníky</div><div class="slist">${r.udalosti.map((u) => `<a class="srow" href="${esc(profilUrl(u))}">${av(u)}
             <div class="info"><h3>${esc(u.jmeno)}</h3><div class="sub">${u.typ === "milnik" ? `překonal(a) ${esc(num(u.hodnota))} sledujících` : `nový rekord: ${esc(num(u.hodnota))} diváků`} · ${esc(kdy(new Date(u.cas)))}</div></div></a>`).join("")}</div>` : ""}
-        <div class="rep-sdilet"><button type="button" class="btn-maly" id="sdilet">Sdílet report</button></div>
+        <div class="rep-sdilet"><button type="button" class="btn-maly" id="sdilet">Sdílet odkaz</button> ${tlacitkoObrazek("sdilet-obr")}</div>
         <p class="source-note">Všechna čísla jsou z vlastních měření oficiálních API Twitche a Kicku každých 15 minut. Aktivní kanál = vysílal aspoň chvíli s 3 a více diváky. <a href="/o-webu#data">Jak počítáme</a></p>
       </article>`;
+    const bo = document.getElementById("sdilet-obr");
+    if (bo) bo.onclick = () => sdilejObrazek({ stitek: `Report týdne · ${datumCz(r.od).replace(/\s?\d{4}$/, "")}–${datumCz(r.do)}`, nadpis: "Týden na české herní scéně", odkaz: `/report/${r.probiha ? "aktualni" : r.tyden}`,
+      radky: [[`${num(s.hodin)} h`, `sledování${s.zmena != null && s.hodin_pred ? ` (${s.zmena >= 0 ? "+" : ""}${s.zmena} % proti minulému týdnu)` : ""}`],
+        r.hry[0] && [r.hry[0].hra.slice(0, 26), `nejsledovanější hra · ${num(r.hry[0].hodin)} h`],
+        r.streameri.divaci[0] && [r.streameri.divaci[0].jmeno.slice(0, 24), `nejvíc diváků najednou · ${num(r.streameri.divaci[0].hodnota)}`],
+        s.spicka && [num(s.spicka.divaci), "diváků českých streamů ve špičce"]].filter(Boolean) });
     const b = document.getElementById("sdilet");
     if (b) b.onclick = async () => {
       const url = `${location.origin}/report/${r.probiha ? "aktualni" : r.tyden}`;
@@ -671,7 +866,7 @@
     const cenaTxt = (o) => o.zdarma || o.cena === 0 ? "Zdarma" : o.cena == null ? "Cena neuvedena"
       : `${o.sleva ? `<s>${esc(cena(o.puvodni, o.mena))}</s> <em>−${o.sleva} %</em> ` : ""}<strong>${esc(cena(o.cena, o.mena))}</strong>`;
     const obchody = [
-      st && obchod("Steam", "ob-steam", st.url, cenaTxt(st)),
+      st && obchod("Steam", "ob-steam", st.url, cenaTxt(st) + (st.min90 != null && st.cena > 0 ? `<br><small>${st.cena <= st.min90 ? "nejnižší cena za 90 dní" : `nejníž za 90 dní ${esc(cena(st.min90, st.mena))}`}</small>` : "")),
       gog && obchod("GOG", "ob-gog", gog.url, cenaTxt(gog)),
       ep && obchod("Epic Games", "ob-epic", ep.url, ep.zdarma_ted ? `<strong>Zdarma</strong> ${ep.do ? esc(zbyva(ep.do)) : ""}` : `zdarma od ${esc(new Date(ep.od).toLocaleDateString("cs-CZ"))}`),
     ].filter(Boolean);
@@ -693,6 +888,7 @@
         <p>${h.zive.length ? `${pl(h.zive.length, "český stream", "české streamy", "českých streamů")} právě živě · ${num(h.zive.reduce((x, s) => x + (s.divaci || 0), 0))} diváků` : "Teď nikdo z českých streamerů nevysílá"}</p></div></div>
       ${st?.popis ? `<p class="hra-popis">${esc(st.popis)}</p>` : ""}
       ${obchody.length ? `<div class="section-title">Kde koupit</div><div class="obchody">${obchody.join("")}</div>` : ""}
+      ${st && !st.zdarma ? `<div class="hra-hlidat">${tlacitkoHlidat({ id: st.id, nazev: st.nazev })}${tlacitkoObrazek("hra-obr")}<span class="dim">Pošleme upozornění, až bude ve slevě. <a href="/hlidac">Hlídač cen</a></span></div>` : ""}
       ${fakta.length ? `<dl class="fakta">${fakta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
       ${!h.info ? `<p class="dim">Údaje z obchodů se načítají – zkus stránku obnovit za chvíli.</p>` : !st && !gog && !ep ? `<p class="dim">Tuhle hru jsme v obchodech Steam, GOG ani Epic pod stejným názvem nenašli (může jít o kategorii jako „Just Chatting“ nebo hru z jiného obchodu).</p>` : ""}
 
@@ -706,6 +902,12 @@
       ${h.clanky.length ? `<div class="section-title">Novinky a recenze</div><div class="grid">${h.clanky.map((c) => kartaClanku(c, 1)).join("")}</div>` : ""}
       <p class="source-note">Ceny, čeština, hodnocení a počet hráčů jsou přímo z obchodů Steam a GOG${h.info?.cas ? ` (stav ${esc(kdy(new Date(h.info.cas)))})` : ""}; vždy platí cena v obchodě. Hodiny na streamech měříme sami z API Twitche a Kicku. <a href="/o-webu#data">Jak počítáme</a></p>
     </div>`;
+    const ho = document.getElementById("hra-obr");
+    if (ho) ho.onclick = () => sdilejObrazek({ stitek: "Hra", nadpis: h.nazev, odkaz: `/hra/${h.slug}`,
+      radky: [st?.cena != null && [st.zdarma || st.cena === 0 ? "Zdarma" : cena(st.cena, st.mena), st.sleva ? `na Steamu, sleva −${st.sleva} %` : "na Steamu"],
+        cz && [cz.dabing ? "CZ dabing" : cz.rozhrani ? "CZ titulky" : "Bez češtiny", "čeština podle Steamu"],
+        st?.hodnoceni && [`${st.hodnoceni.kladne} %`, `kladných recenzí z ${num(st.hodnoceni.recenzi)}`],
+        stat.hodin7 && [`${num(stat.hodin7)} h`, "sledování na českých streamech za 7 dní"]].filter(Boolean) });
   }
 
   const SITE = { web: "Web", youtube: "YouTube", instagram: "Instagram", tiktok: "TikTok", x: "X", discord: "Discord" };
@@ -827,7 +1029,7 @@
     return `<a class="hk${velka ? " hk-velka" : ""}" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
       <div class="hk-obr">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
         ${obchodStitek(h.obchod)}${h.sleva > 0 ? `<span class="hk-sleva">−${h.sleva} %</span>` : ""}${poradi ? `<span class="hk-poradi">${poradi}</span>` : ""}</div>
-      <div class="hk-t"><b>${esc(h.nazev)}</b>
+      <div class="hk-t"><b>${esc(h.nazev)}</b>${czStitek(h)}
         ${odpocet ? `<span class="hk-odpocet">${esc(odpocet)}</span>` : ""}
         ${h.cena != null ? `<span class="hk-cena">${h.puvodni && h.puvodni > h.cena ? `<s>${esc(cena(h.puvodni, h.mena))}</s> ` : ""}<b>${esc(cena(h.cena, h.mena))}</b></span>` : ""}
         ${h.hracu ? `<span class="hk-hraci">${esc(num(h.hracu))} hráčů</span>` : ""}${hodnoceniHry(h)}</div></a>`;
@@ -870,7 +1072,8 @@
     nastavTitulek("");
     if (!state.katalog) {
       app.innerHTML = `<div class="home-head"><h1>Všechno o hrách na jednom místě</h1></div><div class="kostra kostra-banner"></div>${kostra(3)}`;
-      const [k, o, c] = await Promise.allSettled([nacti("katalog"), nacti("obsah"), state.cesko ? state.cesko : nacti("cesko")]);
+      const [k, o, c, cz] = await Promise.allSettled([nacti("katalog"), nacti("obsah"), state.cesko ? state.cesko : nacti("cesko"), nacti("cestina?filtr=sleva")]);
+      state.czSlevy = cz.status === "fulfilled" ? cz.value.hry || [] : [];
       state.katalog = k.status === "fulfilled" ? k.value : {};
       state.obsah = o.status === "fulfilled" ? o.value : {};
       if (c.status === "fulfilled") state.cesko = c.value;
@@ -894,7 +1097,8 @@
         <p class="home-perex">AI za tebe sbírá ceny, hry zdarma, zprávy a streamy z celého internetu.</p>
         <p class="home-shrnuti">${zdarmaVse.length ? `<a href="#hra-tydne"><b>${pl(zdarmaVse.length, "hra", "hry", "her")} zdarma</b></a>` : ""}
           ${maxSleva ? `<a href="#slevy">slevy až <b>−${maxSleva} %</b></a>` : ""}
-          ${hrane[0] ? `<a href="#hrane">nejhranější: <b>${esc(hrane[0].nazev)}</b></a>` : ""}</p></div>
+          ${hrane[0] ? `<a href="#hrane">nejhranější: <b>${esc(hrane[0].nazev)}</b></a>` : ""}
+          <a href="/cestina"><b>Má to češtinu?</b></a> <a href="/hlidac"><b>🔔 Hlídač cen</b></a></p></div>
 
       <div class="ai-stav" role="status"><span class="ai-jadro" aria-hidden="true"></span>
         <div><b>AI správce webu</b>
@@ -919,6 +1123,12 @@
         <div class="section-title">Největší slevy ${aiCip(state.slevyObchod === "gog" ? "GOG" : "Steam", k.cas)} ${prepinac("so", [["steam", "Steam"], ["gog", "GOG"]], state.slevyObchod)}</div>
         ${regal(slevy, {})}
       </section>
+
+      ${(state.czSlevy || []).length ? `<section class="sekce">
+        <div class="section-title">Ve slevě a česky · <a href="/cestina">Má to češtinu?</a></div>
+        ${regal(state.czSlevy.slice(0, 15), {})}
+        <p class="source-note">Hry s českými titulky nebo dabingem (podle Steamu), které jsou právě ve slevě. Chceš upozornit na slevu konkrétní hry? <a href="/hlidac">Hlídač cen</a></p>
+      </section>` : ""}
 
       <section id="hrane" class="sekce">
         <div class="section-title">Nejhranější na Steamu ${aiCip("Steam API", k.cas)}</div>
@@ -973,7 +1183,7 @@
   function route() {
     const casti = location.pathname.replace(/\/+$/, "").split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
     const sekce = casti[1] || "";
-    const tab = ["zive", "streameri", "streamer", "hry", "hra", "prehled", "porovnat", "report"].includes(sekce) ? "streameri" : sekce === "" ? "domu" : "novinky";
+    const tab = ["zive", "streameri", "streamer", "hry", "hra", "prehled", "porovnat", "report"].includes(sekce) ? "streameri" : ["", "cestina", "hlidac"].includes(sekce) ? "domu" : "novinky";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
     let p;
     if (sekce === "clanek") p = strankaClanek(casti[2] || "");
@@ -986,6 +1196,8 @@
     else if (sekce === "report") p = strankaReport(casti[2] || "");
     else if (sekce === "porovnat") p = strankaPorovnat();
     else if (sekce === "novinky") strankaNovinky();
+    else if (sekce === "cestina") p = strankaCestina();
+    else if (sekce === "hlidac") p = strankaHlidac();
     else p = strankaDomu();
     Promise.resolve(p).then(() => obarvi(app));
   }

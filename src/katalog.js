@@ -4,6 +4,8 @@
 // Endpointy jsou veřejné (stejné, které používají weby obchodů), ale neoficiální –
 // každý obchod se zpracovává zvlášť, takže výpadek jednoho nerozbije ostatní.
 
+import { zajistiSchemaHlidac, prikazyUlozHry, doplnSteamUdaje } from "./hlidac.js";
+
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const SCHEMA = `CREATE TABLE IF NOT EXISTS katalog (klic TEXT PRIMARY KEY, data TEXT NOT NULL, cas INTEGER NOT NULL)`;
 const NEJHRANEJSICH = 10; // kolik her z žebříčku Steamu doplnit o název (1 požadavek na hru)
@@ -138,6 +140,11 @@ export async function sberKatalogu(env) {
     }
   }
   prikazy.push(db.prepare("INSERT OR REPLACE INTO katalog (klic, data, cas) VALUES ('stav', ?, ?)").bind(JSON.stringify({ chyby }), ted));
+  // Hry ze Steamu jdou i do databáze her (čeština, historie cen, hlídač). Zápis jen při změně.
+  await zajistiSchemaHlidac(db);
+  const steamHry = casti.filter((c) => c.status === "fulfilled").flatMap((c) => Object.entries(c.value))
+    .filter(([k, v]) => k.startsWith("steam_") && Array.isArray(v)).flatMap(([, v]) => v);
+  prikazy.push(...prikazyUlozHry(db, steamHry, ted));
   await db.batch(prikazy);
   return { ulozeno: prikazy.length - 1, chyby };
 }
@@ -150,6 +157,13 @@ export async function apiKatalog(env) {
   for (const r of results) {
     try { out[r.klic] = JSON.parse(r.data); } catch { out[r.klic] = []; }
     if (r.klic === "stav") out.cas = new Date(r.cas).toISOString();
+  }
+  // Doplní češtinu a nejnižší cenu za 90 dní ke hrám ze Steamu.
+  const steamKlice = Object.keys(out).filter((k) => k.startsWith("steam_") && Array.isArray(out[k]));
+  const udaje = await doplnSteamUdaje(db, steamKlice.flatMap((k) => out[k].map((h) => h.id))).catch(() => new Map());
+  for (const k of steamKlice) for (const h of out[k]) {
+    const u = udaje.get(String(h.id));
+    if (u) { h.cestina = u.cestina; h.min90 = u.min90; }
   }
   return out;
 }

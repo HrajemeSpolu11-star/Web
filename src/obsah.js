@@ -1,8 +1,10 @@
 // Obsah od streamerů: videa z YouTube (veřejné RSS kanálu, bez klíče) a nejlepší klipy z Twitche za týden.
-// Cron "40 * * * *". Jeden běh: max 2 dohledání ID kanálu + 8 YouTube RSS + 8× Twitch /clips (+1 token) ≈ 19 požadavků.
+// Cron "40 * * * *". Jeden běh: max 2 dohledání ID kanálu + 8 YouTube RSS + 8× Twitch /clips (+1 token) ≈ 19 požadavků
+// + hlídač cen a čeština (src/hlidac.js): 3 požadavky na ceny + 12 na jazyky → celkem ≈ 34 z 50.
 // Zápisy: jen nová videa (INSERT OR IGNORE), klipy (max 40) a značky času obnovy (16) → ~1 500 řádků denně.
 import { token, helix, zajistiSchemaTwitch } from "./twitch.js";
 import { ZDROJE } from "./zdroje.js";
+import { sberHlidace } from "./hlidac.js";
 
 const NAZEV_ZDROJE = Object.fromEntries(ZDROJE.map((z) => [z.id, z.nazev]));
 
@@ -131,8 +133,9 @@ export async function sberObsahu(env) {
   await zajistiSchemaTwitch(db);
   await zajistiSchemaObsah(db);
   const ted = Date.now();
-  const [yt, kl] = await Promise.allSettled([youtube(env, db, ted), klipy(env, db, ted)]);
+  const [yt, kl, hl] = await Promise.allSettled([youtube(env, db, ted), klipy(env, db, ted), sberHlidace(env)]);
   return {
+    hlidac: hl.status === "fulfilled" ? hl.value : String(hl.reason?.message || hl.reason),
     youtube: yt.status === "fulfilled" ? yt.value : String(yt.reason?.message || yt.reason),
     klipy: kl.status === "fulfilled" ? kl.value : String(kl.reason?.message || kl.reason),
   };
