@@ -75,6 +75,10 @@ Nápad na později: IsThereAnyDeal API (zdarma s klíčem) pro ceny v dalších 
 
 - Hlídač cen `/hlidac`, Má to češtinu? `/cestina` (src/hlidac.js), karty ke sdílení (public/og, tools/og-obrazky.py, canvas v app.js).
 
+- Jazyky CZ/SK/EN: `public/js/jazyk.js` překládá rozhraní na stránce (obsah ne). Nové texty doplňovat do jeho slovníku.
+- Stav systému a deník AI `/stav` (src/denik.js), PWA (manifest, sw.js offline), 404.
+- Doménu uživatel řeší sám, až bude web hotový – nepřipomínat.
+
 ## Rozpracované / další možné kroky
 - Vlastní doména → Cloudflare Access pro admin (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ve `wrangler.jsonc`).
 - Konzolista.cz a BonusWeb – RSS se nepodařilo ověřit (Konzolista vrací chybu, BonusWeb blokuje).

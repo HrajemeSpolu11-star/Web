@@ -25,3 +25,4 @@ Majitel: Michal (GitHub `HrajemeSpolu11-star`). Komunikace **vždy česky**.
 - `public/` – statický web (SPA bez frameworku): `index.html`, `js/app.js`, `css/style.css`, admin v `public/admin/`.
 - `wrangler.jsonc` – nastavení Workeru, D1, Cronů, proměnných.
 - `docs/` – podrobná dokumentace.
+- `public/js/jazyk.js` – překlad rozhraní do SK/EN. **Každý nový text v rozhraní doplň i sem** (SLOVNIK nebo FRAZE).

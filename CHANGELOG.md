@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 14) – Přepínač jazyka CZ / SK / EN
+- V hlavičce přepínač **CZ · SK · EN** (pamatuje se v prohlížeči, `hp_jazyk`; návštěvník se slovenským prohlížečem dostane
+  napoprvé slovenštinu). Výchozí je čeština.
+- `public/js/jazyk.js`: web se vykresluje česky a skript přeloží texty rozhraní přímo na stránce (i texty doplněné později –
+  MutationObserver): slovník přesných textů (~300), vzory pro věty s čísly (deník AI, časy, počty), anglické zkratky čísel
+  (1,5 tis. → 1.5k, Kč → CZK), nadpis stránky, popisky polí a hlášky.
+- **Nepřekládá se obsah**: názvy her, jména streamerů, titulky streamů, zprávy a recenze z herních webů zůstávají v originále.
+- Dlouhé stránky O webu a Soukromí jsou zatím jen česky – v SK/EN mají nahoře upozornění.
+- Nové texty v rozhraní je potřeba doplnit do `SLOVNIK` nebo `FRAZE` v `public/js/jazyk.js` (jinak zůstanou česky).
+
 ## 2026-11-26 (odpoledne, 13) – Stav systému a deník AI, 404, aplikace na plochu, zálohy
 - **Deník AI a stav systému** (`/stav`, `src/denik.js`, tabulka `denik`, `/api/stav-systemu`): každá automatická úloha po
   doběhnutí zapíše jednu větu (např. „Na Twitchi našla 118 živých českých streamů…“) nebo chybu. Stránka ukazuje u úloh
