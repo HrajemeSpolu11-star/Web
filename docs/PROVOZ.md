@@ -26,3 +26,16 @@ Logy: Cloudflare → Workers & Pages → web → **Logs** (observability je zapn
 - **CHANGELOG.md** – po každé změně přidat záznam nahoru, nic nemazat.
 - **docs/PRO-NOVY-CHAT.md** – aktualizovat stav a rozhodnutí.
 - Data se uklízejí sama: RSS zprávy 30 dní, scéna 35 dní, push zprávy 2 dny.
+
+
+## Zálohy databáze (D1 Time Travel)
+- Cloudflare D1 si sám pamatuje stav databáze po minutách: **na Free plánu 7 dní zpět** (Paid 30 dní). Nic se nenastavuje.
+- Obnova (z počítače s Node.js, příkazy Wrangleru):
+  1. `npx wrangler d1 time-travel info herni-puls-db --timestamp="2026-11-26T10:00:00+01:00"` – zjistí záložku k času.
+  2. `npx wrangler d1 time-travel restore herni-puls-db --timestamp="2026-11-26T10:00:00+01:00"` – obnoví. Vrátí záložku, kterou jde obnovu vrátit zpět.
+- Úplná kopie mimo Cloudflare: `npx wrangler d1 export herni-puls-db --remote --output=zaloha.sql` (doporučeno jednou za čas, soubor do repa nedávat – jsou v něm odběry upozornění).
+
+## Hlídání chodu – stránka /stav
+- Každá automatická úloha (RSS, Twitch, Kick, katalog, obsah, psaní) po doběhnutí zapíše větu do tabulky `denik` (src/denik.js).
+- `/stav` ukazuje u každé úlohy Běží / Zpožděno / Stojí / Chyba podle stáří posledního záznamu a počet chyb za 24 h, pod tím deník AI.
+- Když něco stojí: podívej se do Cloudflare → Worker `web` → Logs, a do deníku (text chyby).

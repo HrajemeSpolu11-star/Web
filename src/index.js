@@ -17,6 +17,7 @@ import { infoHry } from "./hra-data.js";
 import { apiCestina, apiSteamHry, doplnSteamUdaje, prikazyUlozHry, zajistiSchemaHlidac } from "./hlidac.js";
 import { zajistiSchemaObsah } from "./obsah.js";
 import { denPraha } from "./psani.js";
+import { behUlohy, uklidDeniku, apiStavSystemu } from "./denik.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -319,6 +320,7 @@ async function verejneApi(request, env, ctx, url) {
       odpoved = json(await apiCestina(env, q, ["sleva", "zdarma", "dabing", "vse"].includes(f) ? f : ""), 200, q ? 3600 : 900);
     }
     else if (url.pathname === "/api/steam-hry") odpoved = json(await apiSteamHry(env, url.searchParams.get("ids")), 200, 300);
+    else if (url.pathname === "/api/stav-systemu") odpoved = json(await apiStavSystemu(env), 200, 60);
     else if (url.pathname === "/api/obsah") odpoved = json(await apiObsah(env), 200, 600);
     else if (url.pathname === "/api/katalog") {
       await zajistiSchemaTwitch(env.DB);
@@ -392,16 +394,36 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
+    // Každá úloha zapíše do deníku AI jednu větu (stránka /stav).
+    const pl = (n, a, b, c) => `${n} ${n === 1 ? a : n >= 2 && n <= 4 ? b : c}`;
     if (event.cron === CRON_KATALOG) {
-      ctx.waitUntil(sberKatalogu(env).then((v) => console.log("katalog:", JSON.stringify(v))).catch((e) => console.error("katalog:", e)));
+      ctx.waitUntil(behUlohy(env, "katalog", () => sberKatalogu(env), (v) =>
+        `Zkontrolovala obchody Steam, Epic a GOG – hry zdarma, slevy, žebříčky a hodnocení hráčů.${v.chyby.length ? ` Nedostupné: ${v.chyby.join("; ")}.` : ""}`));
     } else if (event.cron === CRON_OBSAH) {
-      ctx.waitUntil(sberObsahu(env).then((v) => console.log("obsah:", JSON.stringify(v))).catch((e) => console.error("obsah:", e)));
+      ctx.waitUntil(behUlohy(env, "obsah", () => sberObsahu(env), (v) => {
+        const h = typeof v.hlidac === "object" ? v.hlidac : {};
+        return `Zkontrolovala ceny ${pl(Number(h.ceny) || 0, "hry", "her", "her")} a češtinu u ${pl(Number(h.jazyky) || 0, "hry", "her", "her")}` +
+          `${Number(h.upozorneni) ? `, poslala ${pl(Number(h.upozorneni), "upozornění", "upozornění", "upozornění")} na slevy` : ""}` +
+          `, načetla ${pl(Number(v.klipy?.klipu) || 0, "klip", "klipy", "klipů")} a ${pl(Number(v.youtube?.videi) || 0, "video", "videa", "videí")}.`;
+      }));
     } else if (event.cron === CRON_TWITCH) {
-      ctx.waitUntil(Promise.allSettled([sberTwitch(env), sberKick(env)]));
+      const stav = async (klic) => { try { return JSON.parse((await env.DB.prepare("SELECT hodnota FROM nastaveni WHERE klic = ?").bind(klic).first())?.hodnota || "{}"); } catch { return {}; } };
+      ctx.waitUntil(Promise.allSettled([
+        behUlohy(env, "twitch", async () => { await sberTwitch(env); return stav("twitch_stav"); }, (s) => {
+          if (s.ok === false) throw new Error(s.chyba || "neznámá chyba");
+          return `Na Twitchi našla ${pl(s.zivych || 0, "živý český stream", "živé české streamy", "živých českých streamů")}, obnovila ${pl(s.profilu || 0, "profil", "profily", "profilů")}.`;
+        }),
+        behUlohy(env, "kick", async () => { await sberKick(env); return stav("kick_stav"); }, (s) => {
+          if (s.ok === false) throw new Error(s.chyba || "neznámá chyba");
+          return `Na Kicku našla ${pl(s.zivych || 0, "živý český stream", "živé české streamy", "živých českých streamů")}.`;
+        }),
+      ]));
     } else if (event.cron === CRON_PSANI) {
-      ctx.waitUntil(napisClanek(env).then((v) => console.log("psaní:", JSON.stringify(v))).catch((e) => console.error("psaní:", e)));
+      ctx.waitUntil(behUlohy(env, "psani", () => napisClanek(env), (v) => v?.id || v?.nadpis ? `Napsala článek: ${v.nadpis || v.id}.` : null));
     } else {
-      ctx.waitUntil(sber(env));
+      ctx.waitUntil(behUlohy(env, "rss", async () => { const v = await sber(env); await uklidDeniku(env.DB); return v; }, (v) =>
+        `Prošla ${pl(v.zdroju.length, "herní web", "herní weby", "herních webů")} (${v.zdroju.join(", ")}), našla ${pl(v.cerstvych, "čerstvou zprávu", "čerstvé zprávy", "čerstvých zpráv")}.` +
+        `${v.chybne.length ? ` Nedostupné: ${v.chybne.join(", ")}.` : ""}`));
     }
   },
 };

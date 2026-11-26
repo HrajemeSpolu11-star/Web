@@ -1,6 +1,19 @@
-// Service worker Herního pulsu – jen pro upozornění „je živě“. Nic necachuje.
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+// Service worker Herního pulsu: upozornění (živě, slevy) a stránka „Jsi offline“.
+// Data ani stránky se necachují – web vždy ukazuje aktuální čísla. Uložená je jen offline stránka a styly k ní.
+const OFFLINE = "hp-offline-v1";
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(OFFLINE).then((c) => c.addAll(["/offline.html", "/css/style.css"])).catch(() => {}));
+  self.skipWaiting();
+});
+self.addEventListener("activate", (e) => e.waitUntil((async () => {
+  for (const k of await caches.keys()) if (k !== OFFLINE) await caches.delete(k);
+  await self.clients.claim();
+})()));
+// Jen načtení stránky: když není síť, ukáže se offline stránka. Vše ostatní jde normálně na síť.
+self.addEventListener("fetch", (e) => {
+  if (e.request.mode !== "navigate") return;
+  e.respondWith(fetch(e.request).catch(async () => (await caches.match("/offline.html")) || Response.error()));
+});
 
 self.addEventListener("push", (e) => {
   e.waitUntil((async () => {
@@ -17,7 +30,7 @@ self.addEventListener("push", (e) => {
       let url = "/zive";
       try { const u = new URL(z.url, self.location.origin); if (u.origin === self.location.origin) url = u.pathname; } catch {}
       await self.registration.showNotification(String(z.titulek || "Herní puls").slice(0, 80), {
-        body: String(z.text || "").slice(0, 140), tag: url, data: { url }, icon: "/ikona.svg", badge: "/ikona.svg",
+        body: String(z.text || "").slice(0, 140), tag: url, data: { url }, icon: "/ikona-192.png", badge: "/ikona-192.png",
       });
     }
   })());

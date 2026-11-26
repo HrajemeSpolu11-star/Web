@@ -8,7 +8,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
-  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac)\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
+  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav)\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
     /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
@@ -30,6 +30,7 @@ async function metaProStranku(url, env) {
     else if (p === "/porovnat") m = { ...m, title: `Porovnat streamery | ${NAZEV}`, popis: "Porovnej dva české streamery vedle sebe: sledující, diváci, odvysílané hodiny a hry.", index: false };
     else if (p === "/hry") m = { ...m, title: `Co hraje Česko – nejsledovanější hry českých streamů | ${NAZEV}`, popis: "Žebříček her podle hodin sledování na českých streamech Twitch a Kick za posledních 7 dní. Co roste, co je nového a kdo co hraje." };
     else if (p === "/cestina") m = { ...m, title: `Má to češtinu? Hry s češtinou ve slevě a zdarma | ${NAZEV}`, popis: "Zjisti, jestli hra má české titulky nebo dabing, kolik stojí a jestli je ve slevě. Hry s češtinou ve slevě a zdarma na jednom místě." };
+    else if (p === "/stav") m = { ...m, title: `Stav systému a deník AI | ${NAZEV}`, popis: "Co AI, která provozuje Herní puls, právě dělá: přehled automatických úloh, jestli běží, a deník posledních akcí včetně chyb." };
     else if (p === "/hlidac") m = { ...m, title: `Hlídač cen her – upozornění na slevy | ${NAZEV}`, popis: "Vyber si hry a dostaneš upozornění, až budou na Steamu ve slevě nebo pod tvou cenou. Bez registrace a bez e-mailu." };
     else if (p.startsWith("/report")) {
       m = { ...m, title: `Týden na české herní scéně v číslech | ${NAZEV}`, popis: "Týdenní report české streamovací scény: hodiny sledování, nejsledovanější hry, rekordy, milníky a streameři, kteří nejvíc rostli." };

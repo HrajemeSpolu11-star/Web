@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 13) – Stav systému a deník AI, 404, aplikace na plochu, zálohy
+- **Deník AI a stav systému** (`/stav`, `src/denik.js`, tabulka `denik`, `/api/stav-systemu`): každá automatická úloha po
+  doběhnutí zapíše jednu větu (např. „Na Twitchi našla 118 živých českých streamů…“) nebo chybu. Stránka ukazuje u úloh
+  Běží / Zpožděno / Stojí / Chyba a deník posledních akcí. Je to zároveň hlídání chodu webu. Odkaz z řádku AI správce a z patičky.
+  RSS sběr nově vrací, kolik webů prošel a kolik čerstvých zpráv našel.
+- **Stránka 404**: `public/404.html` (Cloudflare `not_found_handling: 404-page`) i uvnitř webu pro neznámé adresy.
+- **Aplikace na plochu (PWA)**: `manifest.webmanifest`, ikony 192/512/maskovatelná/apple-touch (generuje `tools/og-obrazky.py`),
+  service worker se registruje všem; bez sítě ukáže `offline.html` (data se necachují). Tlačítko „Nainstalovat jako aplikaci“
+  v patičce (Android/Chrome), návod pro iPhone na `/o-webu`.
+- **Zálohy**: popsaná obnova přes D1 Time Travel (Free plán 7 dní) a export v `docs/PROVOZ.md`.
+- Menu na stránkách O webu a Soukromí opraveno na Domů · Novinky · Streameři.
+
 ## 2026-11-26 (odpoledne, 12) – Hlídač cen, „Má to češtinu?“, karty ke sdílení
 - **Databáze her ze Steamu** (`src/hlidac.js`, tabulky `steam_hry`, `ceny_historie`, `hlidani`): hry z katalogu, z hledání,
   ze stránek her a hlídané hry. Čeština z appdetails (0 bez, 1 titulky/rozhraní, 2 dabing), ceny v Kč z `price_overview`

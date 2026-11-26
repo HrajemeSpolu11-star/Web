@@ -295,6 +295,49 @@
     });
   }
 
+  // ---------- Stránka nenalezena (odkaz uvnitř webu) ----------
+  function stranka404() {
+    nastavTitulek("Stránka nenalezena");
+    app.innerHTML = `<div class="chyba-stranka"><p class="chyba-kod" aria-hidden="true">404</p><h1>Tuhle stránku AI nenašla</h1>
+      <p class="perex">Odkaz je asi starý nebo má překlep. Zkus začít tady:</p>
+      <div class="chyba-odkazy"><a class="btn-maly" href="/">Domů – hry zdarma a slevy</a><a class="btn-maly" href="/novinky">Herní novinky</a>
+      <a class="btn-maly" href="/zive">Kdo je živě</a><a class="btn-maly" href="/cestina">Má to češtinu?</a></div></div>`;
+  }
+
+  // ---------- Stav systému a deník AI ----------
+  const STAV_TXT = { ok: ["Běží", "st-ok"], zpozdeni: ["Zpožděno", "st-pozor"], stoji: ["Stojí", "st-chyba"], chyba: ["Chyba", "st-chyba"], neznamy: ["Čeká na první běh", "st-nic"] };
+  async function strankaStav() {
+    nastavTitulek("Stav systému a deník AI");
+    app.innerHTML = `<div class="cesko-head"><h1>Stav systému a deník AI</h1></div>${kostra(5)}`;
+    let d;
+    try { d = await nacti("stav-systemu"); } catch { app.innerHTML = `<p class="empty">Stav se nepodařilo načíst.</p>`; return; }
+    if (location.pathname.replace(/\/+$/, "") !== "/stav") return;
+    app.innerHTML = `<div class="cesko-head"><h1>Stav systému a deník AI</h1>
+        <p>Web provozuje AI. Tady je vidět, co právě dělá a jestli všechno běží – bez přikrášlování, včetně chyb.</p></div>
+      <div class="stav-souhrn ${d.vse_ok ? "st-ok" : "st-pozor"}"><span class="ai-jadro" aria-hidden="true"></span>
+        <b>${d.vse_ok ? "Všechno běží" : "Něco nejede, jak má"}</b><span>kontrola ${esc(hhmm(d.cas))}</span></div>
+      <div class="stav-ulohy">${d.ulohy.map((u) => { const [t, c] = STAV_TXT[u.stav] || STAV_TXT.neznamy; return `<div class="stav-u">
+          <div class="stav-u-h"><b>${esc(u.nazev)}</b><span class="stav-st ${c}">${t}</span></div>
+          <p>${esc(u.text || (u.interval == null ? "Běží jen v nastavené hodiny." : "Zatím bez záznamu."))}</p>
+          <span class="dim">${u.posledni ? `naposledy ${esc(kdy(new Date(u.posledni)))}` : ""}${u.interval ? ` · každých ${u.interval} min` : ""}${u.chyb24 ? ` · ${pl(u.chyb24, "chyba", "chyby", "chyb")} za 24 h` : ""}</span></div>`; }).join("")}</div>
+      <div class="section-title">Deník AI</div>
+      ${d.denik.length ? `<ol class="denik">${d.denik.map((z) => `<li class="${z.ok ? "" : "dn-chyba"}"><time>${esc(hhmm(z.cas))}</time>
+          <div><b>${esc(z.nazev)}</b><span>${esc(z.text)}</span></div></li>`).join("")}</ol>` : `<p class="dim">Deník se začne plnit s prvním během úloh (do 15 minut).</p>`}
+      <p class="source-note">Každá automatická úloha po doběhnutí zapíše jednu větu, co udělala. Deník se drží 7 dní.</p>`;
+  }
+
+  // ---------- Aplikace na plochu (PWA) ----------
+  let instalace = null;
+  addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); instalace = e; document.querySelectorAll(".instalovat").forEach((b) => b.hidden = false); });
+  document.querySelectorAll(".instalovat").forEach((b) => b.addEventListener("click", async () => {
+    if (!instalace) return;
+    instalace.prompt();
+    const { outcome } = await instalace.userChoice.catch(() => ({}));
+    if (outcome === "accepted") achievement("Nainstalováno", "Herní puls najdeš na ploše.");
+    instalace = null; b.hidden = true;
+  }));
+  if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+
   // Jemné 3D naklonění karet za kurzorem (jen počítač s myší).
   if (matchMedia("(pointer: fine)").matches) {
     document.addEventListener("pointermove", (e) => {
@@ -1100,11 +1143,11 @@
           ${hrane[0] ? `<a href="#hrane">nejhranější: <b>${esc(hrane[0].nazev)}</b></a>` : ""}
           <a href="/cestina"><b>Má to češtinu?</b></a> <a href="/hlidac"><b>🔔 Hlídač cen</b></a></p></div>
 
-      <div class="ai-stav" role="status"><span class="ai-jadro" aria-hidden="true"></span>
+      <a class="ai-stav" href="/stav" role="status"><span class="ai-jadro" aria-hidden="true"></span>
         <div><b>AI správce webu</b>
         <span>${k.cas ? `obchody zkontrolovány v ${esc(hhmm(k.cas))}, další kontrola v ${esc(hhmm(dalsiKontrola(25)))}` : "právě kontroluji obchody"}
         ${state.zive.cas ? ` · sleduji ${pl(state.zive.streamy.length, "živý stream", "živé streamy", "živých streamů")} (${esc(hhmm(state.zive.cas))})` : ""}
-        ${(() => { const n = new Set(state.clanky.map((c) => c.zdroje?.[0]?.nazev).filter(Boolean)).size; return n ? ` · čtu zprávy z ${pl(n, "webu", "webů", "webů")}` : ""; })()}</span></div></div>
+        ${(() => { const n = new Set(state.clanky.map((c) => c.zdroje?.[0]?.nazev).filter(Boolean)).size; return n ? ` · čtu zprávy z ${pl(n, "webu", "webů", "webů")}` : ""; })()} · <u>deník AI</u></span></div></a>
 
       ${hraTydne(k, tydne, zdarma.length ? "" : pristi)}
       ${zdarma.length ? `<section id="zdarma" class="sekce sekce-zdarma">
@@ -1183,7 +1226,7 @@
   function route() {
     const casti = location.pathname.replace(/\/+$/, "").split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
     const sekce = casti[1] || "";
-    const tab = ["zive", "streameri", "streamer", "hry", "hra", "prehled", "porovnat", "report"].includes(sekce) ? "streameri" : ["", "cestina", "hlidac"].includes(sekce) ? "domu" : "novinky";
+    const tab = ["zive", "streameri", "streamer", "hry", "hra", "prehled", "porovnat", "report"].includes(sekce) ? "streameri" : ["", "cestina", "hlidac", "stav"].includes(sekce) ? "domu" : ["novinky", "clanek"].includes(sekce) ? "novinky" : "";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
     let p;
     if (sekce === "clanek") p = strankaClanek(casti[2] || "");
@@ -1198,7 +1241,9 @@
     else if (sekce === "novinky") strankaNovinky();
     else if (sekce === "cestina") p = strankaCestina();
     else if (sekce === "hlidac") p = strankaHlidac();
-    else p = strankaDomu();
+    else if (sekce === "stav") p = strankaStav();
+    else if (sekce === "") p = strankaDomu();
+    else stranka404();
     Promise.resolve(p).then(() => obarvi(app));
   }
   function jdi(href) {

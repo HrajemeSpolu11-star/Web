@@ -128,4 +128,8 @@ export async function sber(env) {
   prikazy.push(db.prepare("DELETE FROM clanky WHERE datum < ?").bind(ted - UCHOVAT_DNI * 86400e3));
   // Všechny zápisy v jednom dávkovém dotazu = jeden požadavek do databáze.
   await db.batch(prikazy);
+  // Pro deník AI: kolik webů prošla, kolik čerstvých zpráv našla (nové i už známé) a kde byla chyba.
+  const chybne = fronta.filter((_, i) => vysledky[i].status === "rejected").map((z) => z.nazev || z.id);
+  const cerstvych = vysledky.reduce((a, v) => a + (v.status === "fulfilled" ? v.value.polozky.filter((p) => Number.isFinite(p.datum) && p.datum >= ted - MAX_STARI_H * 3600e3).length : 0), 0);
+  return { zdroju: fronta.map((z) => z.nazev || z.id), cerstvych, chybne };
 }

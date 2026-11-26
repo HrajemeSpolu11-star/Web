@@ -9,7 +9,9 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/", "/admin", "/admin/*", "/api/*"]
+    "run_worker_first": ["/", "/admin", "/admin/*", "/api/*"],
+    // Neexistující adresa → public/404.html se stavem 404.
+    "not_found_handling": "404-page"
   },
 
   "d1_databases": [

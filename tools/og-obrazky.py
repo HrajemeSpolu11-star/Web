@@ -102,3 +102,16 @@ OBRAZKY = [
 for o in OBRAZKY:
     obrazek(*o)
 print("hotovo:", ", ".join(o[0] for o in OBRAZKY))
+
+# Ikony aplikace (PWA): 192, 512, maskovatelná 512 (s okrajem) a apple-touch-icon 180.
+def ikona(soubor, velikost, okraj):
+    img = Image.new("RGBA", (velikost, velikost), BG)
+    v = Image.new("RGBA", (velikost, velikost), (0, 0, 0, 0))
+    sit(ImageDraw.Draw(v), velikost / 2, velikost / 2, velikost * (0.36 - okraj), 1)
+    img = Image.alpha_composite(img, v)
+    img.convert("RGB").save(f"{KOREN}/public/{soubor}", optimize=True)
+ikona("ikona-192.png", 192, 0)
+ikona("ikona-512.png", 512, 0)
+ikona("ikona-maskable-512.png", 512, 0.1)
+ikona("apple-touch-icon.png", 180, 0.02)
+print("ikony hotové")
