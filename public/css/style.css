@@ -135,3 +135,22 @@ main{max-width:960px;margin:0 auto;padding:16px}
 @media(prefers-reduced-motion:reduce){.pulse{animation:none}}
 .chip .cnt{display:inline-block;margin-left:6px;padding:0 6px;border-radius:8px;background:var(--line);font-size:11px;color:var(--text)}
 .chip.on .cnt{background:var(--bg);color:var(--text)}
+/* ---------- Platformy, hry, rozvrh, klipy ---------- */
+.pbadge{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;vertical-align:2px;color:#fff;background:#9146ff}
+.pb-kick{background:#53fc18;color:#0b1a03}
+.live-thumb .pbadge{position:absolute;right:8px;top:8px}
+.btn-kick{background:#53fc18;color:#0b1a03}
+.link{color:#9db4ff;text-decoration:underline;font-size:14px}
+.hra-ikona{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-weight:900;font-size:20px;color:#fff}
+.hra-hero{margin-top:10px;border-radius:16px;padding:28px 20px 22px;color:#fff}
+.hra-hero h1{margin:0 0 6px;font-size:28px;line-height:1.1;text-wrap:balance}
+.hra-hero p{margin:0;opacity:.85;font-size:14px}
+a.hra{display:block}
+.rozvrh{display:flex;flex-direction:column;gap:8px}
+.termin{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}
+.termin b{font-size:13px;color:#c6b3ff;text-transform:capitalize}
+.klipy{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.klip-thumb{position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:var(--card2)}
+.klip-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.klip-t{font-size:13px;font-weight:600;margin-top:6px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media(min-width:700px){.klipy{grid-template-columns:repeat(3,minmax(0,1fr))}}

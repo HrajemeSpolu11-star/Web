@@ -35,6 +35,8 @@
     "HODINY": "8,11,14,17,20",       // hodiny (pražský čas), kdy AI píše
     "GROQ_MODEL": "openai/gpt-oss-120b",
     "TWITCH_CLIENT_ID": "hadu9ietlu5cqblcmltkwr229377fk", // veřejné ID aplikace; tajný klíč je Secret TWITCH_CLIENT_SECRET
+    "KICK_CLIENT_ID": "",            // doplní se po vytvoření Kick aplikace; tajný klíč je Secret KICK_CLIENT_SECRET
+    "SITE_URL": "https://web.hrajemespolu11.workers.dev", // adresa webu (odkazy v Discord oznámeních); změní se s vlastní doménou
     "CF_MODEL": "@cf/google/gemma-3-12b-it",
     "ACCESS_TEAM_DOMAIN": "",        // doplní se po nastavení Cloudflare Access, např. "mojejmeno.cloudflareaccess.com"
     "ACCESS_AUD": ""                 // doplní se po nastavení Cloudflare Access (Application Audience tag)

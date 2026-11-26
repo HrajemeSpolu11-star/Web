@@ -2,6 +2,7 @@
 import { ZDROJE } from "./zdroje.js";
 import { zeptejSe } from "./ai.js";
 import { zajistiSchema } from "./sber.js";
+import { oznamClanek } from "./discord.js";
 
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const ZDROJ = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -176,5 +177,6 @@ export async function napisClanek(env, { vynutit = false } = {}) {
         den, ted, ted, zverejnit ? ted : null),
     ...tema.polozky.map((p) => db.prepare("INSERT OR IGNORE INTO pouzite (clanek_id, prispevek_id, cas) VALUES (?,?,?)").bind(p.id, id, ted)),
   ]);
+  if (zverejnit) await oznamClanek(env, { id, nadpis: cl.nadpis, perex: cl.perex });
   return { stav: zverejnit ? "zveřejněno" : "uloženo ke schválení", id, nadpis: cl.nadpis, problemy };
 }

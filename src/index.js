@@ -4,7 +4,10 @@ import { sber, zajistiSchema } from "./sber.js";
 import { napisClanek } from "./psani.js";
 import { overAdmina } from "./access.js";
 import { adminApi } from "./admin.js";
-import { sberTwitch, sberTwitchPokudStary, zajistiSchemaTwitch } from "./twitch.js";
+import { sberTwitch, sberTwitchPokudStary, zajistiSchemaTwitch, slugHry } from "./twitch.js";
+import { sberKick, kickNastaven } from "./kick.js";
+import { extraTwitch } from "./extra.js";
+import { jeStranka, vykresliStranku, sitemap, robots } from "./seo.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -96,7 +99,7 @@ async function apiClanek(id, env) {
 function naStreamera(r, ted) {
   const zive = !!(r.zive_cas && r.zive_cas > ted - ZIVE_PLATNOST);
   return {
-    login: r.login, jmeno: r.jmeno || r.login, profilovka: r.profilovka || "", partner: r.typ === "partner",
+    platforma: r.platforma || "twitch", login: r.login, jmeno: r.jmeno || r.login, profilovka: r.profilovka || "", partner: r.typ === "partner",
     sledujici: r.sledujici ?? null, max_divaku: r.max_divaku || 0, posledni_hra: r.posledni_hra || "",
     zive, divaci: zive ? r.zive_divaci : null, hra: zive ? r.zive_hra : null, titulek: zive ? r.zive_titulek : null,
     zacatek: zive ? r.zive_zacatek : null, nahled: zive && r.zive_nahled ? `${r.zive_nahled}?t=${Math.floor(r.zive_cas / 60e3)}` : "",
@@ -121,7 +124,9 @@ async function apiStreameri(url, env) {
   const razeni = ["sledujici", "divaci", "hodiny", "rust"].includes(p.get("razeni")) ? p.get("razeni") : "sledujici";
   const q = (p.get("q") || "").slice(0, 40).trim();
   const hra = (p.get("hra") || "").slice(0, 120).trim();
+  const platforma = ["twitch", "kick"].includes(p.get("platforma")) ? p.get("platforma") : "";
   const kde = [KVALITA], hod = [];
+  if (platforma) { kde.push("s.platforma = ?"); hod.push(platforma); }
   if (q) { kde.push("(s.jmeno LIKE ? OR s.login LIKE ?)"); hod.push(`%${q}%`, `%${q}%`); }
   if (hra) { kde.push("EXISTS (SELECT 1 FROM hry_streamera h WHERE h.user_id = s.id AND h.hra = ?)"); hod.push(hra); }
   const poradi = {
@@ -140,10 +145,11 @@ async function apiStreameri(url, env) {
   return json(results.map((r) => naStreamera(r, ted)), 200, results.length ? 60 : 0);
 }
 
-async function apiStreamer(login, env) {
-  if (!/^[a-z0-9_]{1,25}$/i.test(login)) return json({ chyba: "Neplatné jméno" }, 400);
+async function apiStreamer(platforma, login, env) {
+  if (!["twitch", "kick"].includes(platforma) || !/^[a-z0-9_-]{1,30}$/i.test(login)) return json({ chyba: "Neplatné jméno" }, 400);
   const ted = Date.now();
-  const r = await env.DB.prepare("SELECT * FROM streameri s WHERE s.login = ? AND s.skryty = 0").bind(login.toLowerCase()).first();
+  const r = await env.DB.prepare("SELECT * FROM streameri s WHERE s.platforma = ? AND s.login = ? AND s.skryty = 0 ORDER BY s.posledni_zive DESC LIMIT 1")
+    .bind(platforma, login.toLowerCase()).first();
   if (!r) return json({ chyba: "Nenalezeno" }, 404);
   const [sn, hry] = await env.DB.batch([
     env.DB.prepare("SELECT den, sledujici, max_divaku, minut FROM snimky WHERE user_id = ? AND den >= date('now', '-90 day') ORDER BY den").bind(r.id),
@@ -157,9 +163,49 @@ async function apiStreamer(login, env) {
     posledni_zive: r.posledni_zive ? new Date(r.posledni_zive).toISOString() : null,
     streamu: r.pocet_streamu || 0,
     hodin30: Math.round(sn.results.filter((x) => x.den >= od30).reduce((a, x) => a + (x.minut || 0), 0) / 60),
-    snimky: sn.results, hry: hry.results,
+    snimky: sn.results, hry: hry.results.map((h) => ({ ...h, slug: slugHry(h.hra) })),
     aktualizovano: { profil: r.profil_cas ? new Date(r.profil_cas).toISOString() : null, sledujici: r.sledujici_cas ? new Date(r.sledujici_cas).toISOString() : null },
   }, 200, 120);
+}
+
+// ---------- Hry ----------
+async function apiHry(env) {
+  const ted = Date.now();
+  const { results } = await env.DB.prepare(`
+    SELECT h.slug, h.nazev,
+      (SELECT COUNT(*) FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ?1 AND s.zive_hra = h.nazev) AS zive,
+      (SELECT COALESCE(SUM(s.zive_divaci), 0) FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ?1 AND s.zive_hra = h.nazev) AS divaci,
+      (SELECT COUNT(*) FROM hry_streamera x WHERE x.hra = h.nazev) AS streameru
+    FROM hry h WHERE h.posledni > ?2 ORDER BY divaci DESC, streameru DESC LIMIT 120`).bind(ted - ZIVE_PLATNOST, ted - 30 * 86400e3).all();
+  return json(results, 200, results.length ? 120 : 0);
+}
+
+async function apiHra(slug, env) {
+  if (!/^[a-z0-9-]{1,80}$/.test(slug)) return json({ chyba: "Neplatná hra" }, 400);
+  const ted = Date.now();
+  const h = await env.DB.prepare("SELECT slug, nazev FROM hry WHERE slug = ?").bind(slug).first();
+  if (!h) return json({ chyba: "Nenalezeno" }, 404);
+  const q = `%${h.nazev}%`;
+  const [zive, nejvic, rss, vl] = await env.DB.batch([
+    env.DB.prepare("SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? AND s.zive_hra = ? ORDER BY s.zive_divaci DESC LIMIT 50").bind(ted - ZIVE_PLATNOST, h.nazev),
+    env.DB.prepare(`SELECT s.*, x.minut AS minut_hra FROM hry_streamera x JOIN streameri s ON s.id = x.user_id
+                    WHERE x.hra = ? AND s.skryty = 0 ORDER BY x.minut DESC LIMIT 20`).bind(h.nazev),
+    env.DB.prepare("SELECT * FROM clanky WHERE nadpis LIKE ? ORDER BY datum DESC LIMIT 10").bind(q),
+    env.DB.prepare("SELECT * FROM prispevky WHERE stav = 'publikovano' AND (nadpis LIKE ? OR perex LIKE ?) ORDER BY publikovano DESC LIMIT 10").bind(q, q),
+  ]);
+  return json({
+    ...h,
+    zive: zive.results.map((r) => naStreamera(r, ted)),
+    nejvic: nejvic.results.map((r) => ({ ...naStreamera(r, ted), hodin: Math.round((r.minut_hra || 0) / 60) })),
+    clanky: [...vl.results.map(naPrispevek), ...rss.results.map(naClanek)].sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 12),
+  }, 200, 120);
+}
+
+async function apiExtra(platforma, login, env) {
+  if (platforma !== "twitch" || !/^[a-z0-9_]{1,25}$/i.test(login)) return json({ rozvrh: [], klipy: [] }, 200, 3600);
+  const r = await env.DB.prepare("SELECT id FROM streameri WHERE platforma = 'twitch' AND login = ? LIMIT 1").bind(login.toLowerCase()).first();
+  if (!r) return json({ rozvrh: [], klipy: [] }, 404);
+  return json(await extraTwitch(env, r.id), 200, 3600);
 }
 
 async function apiStav(env) {
@@ -179,9 +225,15 @@ async function apiStav(env) {
     twitch = { ...twitch, posledni_beh: posledni && { ...posledni, cas: new Date(posledni.cas).toISOString() },
       streameru_celkem: n.results[0]?.n || 0, streameru_na_webu: k.results[0]?.n || 0 };
   } catch { twitch.posledni_beh = "zatím neproběhl"; }
+  let kick = { nastaveno: kickNastaven(env) };
+  try {
+    const k = await env.DB.prepare("SELECT hodnota FROM nastaveni WHERE klic = 'kick_stav'").first();
+    if (k) { const v = JSON.parse(k.hodnota); kick.posledni_beh = { ...v, cas: new Date(v.cas).toISOString() }; }
+  } catch {}
   const stavy = Object.fromEntries(z.results.map((r) => [r.id, r]));
   return json({
     twitch,
+    kick,
     zprav_z_rss: c.results[0]?.n || 0,
     vlastnich_clanku: v.results[0]?.n || 0,
     zdroje: ZDROJE.map((zd) => ({
@@ -198,7 +250,7 @@ async function verejneApi(request, env, ctx, url) {
   if (request.method !== "GET" && request.method !== "HEAD") return json({ chyba: "Metoda není povolena" }, 405);
 
   // Když jsou data o streamerech starší než 10 min, stáhnou se hned z Twitche (na pozadí).
-  if (url.pathname === "/api/zive" || url.pathname === "/api/streameri") {
+  if (url.pathname === "/api/zive" || url.pathname === "/api/streameri" || url.pathname === "/api/hry") {
     ctx.waitUntil(sberTwitchPokudStary(env).catch((e) => console.error("twitch na vyžádání:", e)));
   }
 
@@ -215,7 +267,16 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/stav") odpoved = await apiStav(env);
     else if (url.pathname === "/api/zive") odpoved = await apiZive(env);
     else if (url.pathname === "/api/streameri") odpoved = await apiStreameri(url, env);
-    else if (url.pathname.startsWith("/api/streamer/")) odpoved = await apiStreamer(decodeURIComponent(url.pathname.slice(14)), env);
+    else if (url.pathname === "/api/hry") odpoved = await apiHry(env);
+    else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(decodeURIComponent(url.pathname.slice(9)), env);
+    else if (url.pathname.startsWith("/api/streamer-extra/")) {
+      const [plat, login] = url.pathname.slice(20).split("/").map(decodeURIComponent);
+      odpoved = await apiExtra(plat, login || "", env);
+    } else if (url.pathname.startsWith("/api/streamer/")) {
+      const casti = url.pathname.slice(14).split("/").map(decodeURIComponent);
+      // Staré adresy /api/streamer/:login = Twitch.
+      odpoved = casti.length === 1 ? await apiStreamer("twitch", casti[0], env) : await apiStreamer(casti[0], casti[1], env);
+    }
     else return json({ chyba: "Nenalezeno" }, 404);
   } catch (e) {
     if (/no such table/i.test(String(e))) {
@@ -258,12 +319,18 @@ export default {
     }
 
     if (url.pathname.startsWith("/api/")) return verejneApi(request, env, ctx, url);
+    if (url.pathname === "/robots.txt") return robots(request);
+    if (url.pathname === "/sitemap.xml") return sitemap(request, env);
+    if ((request.method === "GET" || request.method === "HEAD") && jeStranka(url.pathname)) {
+      try { await zajistiSchemaTwitch(env.DB); } catch {}
+      return vykresliStranku(request, env);
+    }
     return env.ASSETS.fetch(request);
   },
 
   async scheduled(event, env, ctx) {
     if (event.cron === CRON_TWITCH) {
-      ctx.waitUntil(sberTwitch(env));
+      ctx.waitUntil(Promise.allSettled([sberTwitch(env), sberKick(env)]));
     } else if (event.cron === CRON_PSANI) {
       ctx.waitUntil(napisClanek(env).then((v) => console.log("psaní:", JSON.stringify(v))).catch((e) => console.error("psaní:", e)));
     } else {

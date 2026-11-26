@@ -1,6 +1,7 @@
 // API administrace – volá se jen po úspěšném ověření přes Cloudflare Access.
 import { napisClanek, PLATFORMY, TYPY, noveId, denPraha } from "./psani.js";
 import { zajistiSchema } from "./sber.js";
+import { oznamClanek } from "./discord.js";
 
 const STAVY = new Set(["koncept", "publikovano", "zamitnuto"]);
 
@@ -84,6 +85,7 @@ export async function adminApi(request, env, ctx, uzivatel) {
         const pub = stav === "publikovano" ? (puvodni.publikovano || ted) : null;
         await db.prepare(`UPDATE prispevky SET nadpis=?, perex=?, text=?, platformy=?, typ=?, obrazek=?, zdroje=?, stav=?, upraveno=?, publikovano=?, poznamka=NULL WHERE id=?`)
           .bind(d.nadpis, d.perex, d.text, JSON.stringify(d.platformy), d.typ, d.obrazek || null, JSON.stringify(d.zdroje), stav, ted, pub, m[1]).run();
+        if (stav === "publikovano" && puvodni.stav !== "publikovano") ctx.waitUntil(oznamClanek(env, { id: m[1], nadpis: d.nadpis, perex: d.perex }));
         return json({ ok: true, id: m[1], stav });
       }
       const id = noveId();
@@ -91,14 +93,18 @@ export async function adminApi(request, env, ctx, uzivatel) {
                         VALUES (?,?,?,?,?,?,?,?,?, 'rucne', NULL, NULL, ?, ?, ?, ?)`)
         .bind(id, d.nadpis, d.perex, d.text, JSON.stringify(d.platformy), d.typ, d.obrazek || null, JSON.stringify(d.zdroje),
           stav, denPraha(ted), ted, ted, stav === "publikovano" ? ted : null).run();
+      if (stav === "publikovano") ctx.waitUntil(oznamClanek(env, { id, nadpis: d.nadpis, perex: d.perex }));
       return json({ ok: true, id, stav });
     }
 
     // Změna stavu (zveřejnit / stáhnout / zahodit).
     if (m && m[2]) {
       if (!STAVY.has(b.stav)) return json({ chyba: "Neplatný stav" }, 400);
+      const pred = await db.prepare("SELECT stav, nadpis, perex FROM prispevky WHERE id = ?").bind(m[1]).first();
+      if (!pred) return json({ chyba: "Nenalezeno" }, 404);
       await db.prepare(`UPDATE prispevky SET stav = ?, upraveno = ?, publikovano = CASE WHEN ? = 'publikovano' THEN COALESCE(publikovano, ?) ELSE NULL END WHERE id = ?`)
         .bind(b.stav, ted, b.stav, ted, m[1]).run();
+      if (b.stav === "publikovano" && pred.stav !== "publikovano") ctx.waitUntil(oznamClanek(env, { id: m[1], nadpis: pred.nadpis, perex: pred.perex }));
       return json({ ok: true });
     }
 

@@ -19,7 +19,8 @@ export const SCHEMA_TWITCH = [
      max_divaku INTEGER DEFAULT 0, posledni_hra TEXT, profil_cas INTEGER DEFAULT 0,
      skryty INTEGER DEFAULT 0, overeno INTEGER DEFAULT 0,
      zive_cas INTEGER, zive_hra TEXT, zive_titulek TEXT, zive_divaci INTEGER, zive_zacatek TEXT, zive_nahled TEXT)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_streameri_login ON streameri(login)`,
+  // Seznam her (slug pro adresy /hra/…).
+  `CREATE TABLE IF NOT EXISTS hry (slug TEXT PRIMARY KEY, nazev TEXT NOT NULL, posledni INTEGER)`,
   `CREATE INDEX IF NOT EXISTS idx_streameri_zive ON streameri(zive_cas)`,
   `CREATE TABLE IF NOT EXISTS snimky (
      user_id TEXT NOT NULL, den TEXT NOT NULL, sledujici INTEGER, max_divaku INTEGER DEFAULT 0,
@@ -29,12 +30,30 @@ export const SCHEMA_TWITCH = [
      PRIMARY KEY (user_id, hra))`,
 ];
 
+let migraceHotova = false;
 export async function zajistiSchemaTwitch(db) {
+  if (migraceHotova) return;
   await db.batch(SCHEMA_TWITCH.map((s) => db.prepare(s)));
+  // Migrace: sloupec platforma (twitch/kick). Index na login není unikátní – přejmenování účtů nesmí shodit zápis.
+  const { results } = await db.prepare("PRAGMA table_info(streameri)").all();
+  if (!results.some((c) => c.name === "platforma")) {
+    await db.batch([
+      db.prepare("ALTER TABLE streameri ADD COLUMN platforma TEXT NOT NULL DEFAULT 'twitch'"),
+      db.prepare("DROP INDEX IF EXISTS idx_streameri_login"),
+    ]);
+  }
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_streameri_plogin ON streameri(platforma, login)").run();
+  migraceHotova = true;
+}
+
+// Slug pro adresu hry: „Counter-Strike 2“ → „counter-strike-2“.
+export function slugHry(nazev) {
+  return String(nazev || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 }
 
 // App access token (client credentials). Uložený v D1, platí ~60 dní.
-async function token(env, obnovit = false) {
+export async function token(env, obnovit = false) {
   const db = env.DB;
   if (!obnovit) {
     const t = await db.prepare("SELECT hodnota, plati_do FROM nastaveni WHERE klic = 'twitch_token'").first();
@@ -53,7 +72,7 @@ async function token(env, obnovit = false) {
   return d.access_token;
 }
 
-async function helix(env, cesta, tok) {
+export async function helix(env, cesta, tok) {
   const r = await fetch(API + cesta, {
     headers: { "Client-Id": env.TWITCH_CLIENT_ID, Authorization: `Bearer ${tok}` },
     signal: AbortSignal.timeout(10000),
@@ -70,7 +89,7 @@ async function zaznamenejStav(db, stav) {
 
 // Spustí sběr hned, pokud poslední proběhl před víc než 10 minutami (zámek brání souběhu).
 export async function sberTwitchPokudStary(env) {
-  if (!env.TWITCH_CLIENT_ID || !env.TWITCH_CLIENT_SECRET) return;
+  if (!env.TWITCH_CLIENT_ID) return;
   const db = env.DB;
   await zajistiSchemaTwitch(db);
   const ted = Date.now();
@@ -80,7 +99,8 @@ export async function sberTwitchPokudStary(env) {
   const zamek = await db.prepare(`INSERT INTO nastaveni (klic, hodnota, plati_do) VALUES ('twitch_zamek', '', ?)
     ON CONFLICT(klic) DO UPDATE SET plati_do = excluded.plati_do WHERE nastaveni.plati_do < ?`).bind(ted + 120e3, ted).run();
   if (!zamek.meta?.changes) return;
-  await sberTwitch(env);
+  const { sberKick } = await import("./kick.js");
+  await Promise.allSettled([sberTwitch(env), sberKick(env)]);
 }
 
 export async function sberTwitch(env) {
@@ -121,6 +141,9 @@ export async function sberTwitch(env) {
         posledni_hra = COALESCE(NULLIF(excluded.posledni_hra, ''), streameri.posledni_hra)`);
     const snimek = db.prepare(`INSERT INTO snimky (user_id, den, max_divaku, minut) VALUES (?, ?, ?, ?)
       ON CONFLICT(user_id, den) DO UPDATE SET max_divaku = MAX(snimky.max_divaku, excluded.max_divaku), minut = snimky.minut + excluded.minut`);
+    const hraSeznam = db.prepare(`INSERT INTO hry (slug, nazev, posledni) VALUES (?, ?, ?)
+      ON CONFLICT(slug) DO UPDATE SET posledni = excluded.posledni`);
+    const videneHry = new Set();
     const hra = db.prepare(`INSERT INTO hry_streamera (user_id, hra, minut, posledni) VALUES (?, ?, ?, ?)
       ON CONFLICT(user_id, hra) DO UPDATE SET minut = hry_streamera.minut + excluded.minut, posledni = excluded.posledni`);
 
@@ -130,6 +153,8 @@ export async function sberTwitch(env) {
         upsert.bind(s.user_id, s.user_login, s.user_name, ted, ted, s.id, s.viewer_count || 0, s.game_name || "",
           ted, s.game_name || "", String(s.title || "").slice(0, 300), s.viewer_count || 0, s.started_at || null, nahled),
       );
+      const slug = slugHry(s.game_name);
+      if (slug && !videneHry.has(slug)) { videneHry.add(slug); prikazy.push(hraSeznam.bind(slug, s.game_name, ted)); }
       if ((s.viewer_count || 0) >= MIN_STATISTIKY) {
         prikazy.push(snimek.bind(s.user_id, den, s.viewer_count || 0, INTERVAL_MIN));
         if (s.game_name) prikazy.push(hra.bind(s.user_id, s.game_name, INTERVAL_MIN, ted));
@@ -139,7 +164,7 @@ export async function sberTwitch(env) {
 
     // 2) Obnova profilů (popis, profilovka, banner, typ účtu) – nové a starší než 24 h.
     const { results: kProfilu } = await db.prepare(
-      "SELECT id FROM streameri WHERE profil_cas < ? ORDER BY max_divaku DESC LIMIT ?").bind(ted - 86400e3, PROFILU_NA_BEH).all();
+      "SELECT id FROM streameri WHERE platforma = 'twitch' AND profil_cas < ? ORDER BY max_divaku DESC LIMIT ?").bind(ted - 86400e3, PROFILU_NA_BEH).all();
     if (kProfilu.length) {
       const d = await volej("/users?" + kProfilu.map((r) => "id=" + encodeURIComponent(r.id)).join("&"));
       const upd = db.prepare("UPDATE streameri SET login=?, jmeno=?, popis=?, profilovka=?, banner=?, typ=?, ucet_od=?, profil_cas=? WHERE id=?");
@@ -156,7 +181,7 @@ export async function sberTwitch(env) {
 
     // 3) Počet sledujících – nejdéle neaktualizované kanály, které splňují filtr kvality.
     const { results: kSled } = await db.prepare(
-      `SELECT id FROM streameri WHERE skryty = 0 AND max_divaku >= 5 AND (sledujici_cas IS NULL OR sledujici_cas < ?)
+      `SELECT id FROM streameri WHERE platforma = 'twitch' AND skryty = 0 AND max_divaku >= 5 AND (sledujici_cas IS NULL OR sledujici_cas < ?)
        ORDER BY sledujici_cas IS NOT NULL, sledujici_cas LIMIT ?`).bind(ted - 86400e3, SLEDUJICICH_NA_BEH).all();
     let sledujiciChyba = null;
     const sledPrikazy = [];

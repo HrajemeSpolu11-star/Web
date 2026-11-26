@@ -11,7 +11,10 @@ Automatický web s herními novinkami a přehledem českých a slovenských stre
 - `src/sber.js` – sběrač novinek (Cron každých 15 min, jen zprávy mladší 12 h)
 - `src/rss.js` – parser RSS/Atom
 - `src/zdroje.js` – seznam RSS zdrojů
-- `src/twitch.js` – sběr českých streamerů z Twitch API (každých 15 min)
+- `src/twitch.js`, `src/kick.js` – sběr českých streamerů z Twitche a Kicku (každých 15 min)
+- `src/extra.js` – rozvrh a klipy z Twitche
+- `src/seo.js` – skutečné adresy s meta tagy, `sitemap.xml`, `robots.txt`
+- `src/discord.js` – oznámení nových článků na Discord
 - `src/psani.js` – AI psaní článků (výběr tématu, kontrola faktů, 5 článků denně)
 - `src/ai.js` – volání AI (Groq, záloha Workers AI)
 - `src/admin.js`, `src/access.js` – admin API a ověření přihlášení přes Cloudflare Access
@@ -33,6 +36,8 @@ Worker nemá žádné npm závislosti. Stav sběru: `/api/stav`.
 
 ## Nastavení v Cloudflare (jednorázově)
 
+- **Secret `KICK_CLIENT_SECRET`** + `KICK_CLIENT_ID` ve `wrangler.jsonc`
+- **Secret `DISCORD_WEBHOOK_URL`** (nepovinné) – oznámení nových článků
 - **Secret `TWITCH_CLIENT_SECRET`** – Twitch aplikace (Client ID je ve `wrangler.jsonc`)
 - **Secret `GROQ_API_KEY`** – Worker → Settings → Variables and Secrets (nikdy ne do repozitáře)
 - **Cloudflare Access** pro `/admin` a `/api/admin/*` – pak doplnit `ACCESS_TEAM_DOMAIN` a `ACCESS_AUD` do `wrangler.jsonc`

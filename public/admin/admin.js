@@ -47,7 +47,7 @@
         <div class="tlacitka">
           <button class="adm-btn" data-akce="upravit" data-id="${esc(p.id)}">Upravit</button>
           ${p.stav === "publikovano"
-            ? `<a class="adm-btn" href="/#/clanek/${esc(p.id)}" target="_blank" rel="noopener">Zobrazit</a>
+            ? `<a class="adm-btn" href="/clanek/${esc(p.id)}" target="_blank" rel="noopener">Zobrazit</a>
                <button class="adm-btn" data-akce="koncept" data-id="${esc(p.id)}">Stáhnout z webu</button>`
             : `<button class="adm-btn adm-btn-primary" data-akce="publikovano" data-id="${esc(p.id)}">Zveřejnit</button>
                <button class="adm-btn" data-akce="zamitnuto" data-id="${esc(p.id)}">Zahodit</button>`}
