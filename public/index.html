@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Herní puls – herní novinky a čeští streameři</title>
 <meta name="description" content="Herní novinky a přehled českých streamerů z Twitche a Kicku – kdo je právě živě, žebříčky a profily.">
-<meta name="theme-color" content="#0d0f14">
+<meta name="theme-color" content="#16132e">
+<link rel="preload" href="/fonts/rubik-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -13,18 +14,14 @@
   <a href="/" class="logo"><span class="pulse"></span><span id="site-name">Herní puls</span></a>
   <nav class="tabs">
     <a href="/" data-tab="novinky">Novinky</a>
-    <a href="/zive" data-tab="zive">Živě <span class="dot" id="live-count"></span></a>
-    <a href="/streameri" data-tab="streameri">Streameři</a>
-    <a href="/hry" data-tab="hry">Hry</a>
+    <a href="/zive" data-tab="streameri">Streameři <span class="dot" id="live-count" aria-label="právě živě"></span></a>
   </nav>
 </header>
-
-<div class="demo-banner">Zkušební provoz – novinky i streameři jsou skutečná data, web se teprve plní.</div>
 
 <main id="app"><p class="loading">Načítám…</p></main>
 
 <footer class="foot">
-  <p>Novinky se sbírají automaticky z veřejných RSS kanálů herních webů. Každá zpráva odkazuje na původní článek.</p>
+  <p>Novinky sbíráme z veřejných RSS kanálů herních webů a každá zpráva odkazuje na původní článek. Údaje o streamerech jsou z oficiálních API Twitche a Kicku. Web je ve zkušebním provozu.</p>
   <p><a href="/soukromi.html">Soukromí a bezpečnost</a> · bez cookies, bez sledování</p>
   <p>© <span id="year"></span> <span class="site-name-foot">Herní puls</span></p>
 </footer>

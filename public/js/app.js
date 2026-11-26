@@ -129,6 +129,18 @@
       <text class="g-txt" x="${W - P}" y="14" text-anchor="end">${esc(num(max))}</text></svg>`;
   }
 
+  // Hlavička sekce Streameři: kdo je živě (bubliny) + podsekce Živě / Žebříček / Hry.
+  function hubHlava(aktivni) {
+    const { streamy } = state.zive;
+    const divaku = streamy.reduce((a, s) => a + (s.divaci || 0), 0);
+    const pod = [["zive", "/zive", "Živě"], ["zebricek", "/streameri", "Žebříček"], ["hry", "/hry", "Hry"]];
+    return `<div class="live-head"><h1>Čeští streameři</h1>
+        <p>${streamy.length ? `Právě ${streamy.length >= 2 && streamy.length <= 4 ? "vysílají" : "vysílá"} ${pl(streamy.length, "streamer", "streameři", "streamerů")} pro ${num(divaku)} diváků.` : "Teď nikdo nevysílá – mrkni na žebříček nebo hry."}</p></div>
+      ${streamy.length ? `<div class="stories" aria-label="Právě živě">${streamy.slice(0, 24).map((s) =>
+        `<a class="story${s.platforma === "kick" ? " kick" : ""}" href="${esc(profilUrl(s))}"><div class="ring">${av(s)}</div><b>${esc(s.jmeno)}</b><span>${num(s.divaci || 0)} diváků</span></a>`).join("")}</div>` : ""}
+      <nav class="hub-tabs">${pod.map(([k, h, t]) => `<a href="${h}" class="${k === aktivni ? "on" : ""}">${t}</a>`).join("")}</nav>`;
+  }
+
   // ---------- Stránky ----------
   function strankaNovinky() {
     nastavTitulek("");
@@ -142,7 +154,7 @@
     const hi = list.findIndex((c) => c.vlastni && Date.now() - datum(c) < 864e5);
     if (hi > 0) list.unshift(...list.splice(hi, 1));
     const zive = state.zive.streamy.slice(0, 4);
-    app.innerHTML = `
+    app.innerHTML = `<div class="news-head"><h1>Novinky</h1><p>Co je nového ve světě her – nejčerstvější zprávy nahoře.</p></div>
       <input class="search" id="q" type="search" placeholder="Hledat ve zprávách" value="${esc(state.hledat)}">
       <div class="chips">${platformy.map((p) => `<button class="chip${p === state.filtr ? " on" : ""}" data-f="${p}">${p}</button>`).join("")}</div>
       ${list.length ? `<div class="grid">${list.map(kartaClanku).join("")}</div>`
@@ -179,15 +191,13 @@
     nastavTitulek("Právě živě");
     const { streamy, hry, cas } = state.zive;
     const list = state.hraZive ? streamy.filter((s) => s.hra === state.hraZive) : streamy;
-    const divaku = streamy.reduce((a, s) => a + (s.divaci || 0), 0);
-    app.innerHTML = `<div class="live-head"><h1>Právě živě</h1>
-        <p class="dim">${pl(streamy.length, "český stream", "české streamy", "českých streamů")} · ${num(divaku)} diváků${cas ? ` · aktualizováno ${esc(kdy(new Date(cas)))}` : ""}</p></div>
+    app.innerHTML = `${hubHlava("zive")}
       ${hry.length ? `<div class="chips"><button class="chip${state.hraZive ? "" : " on"}" data-h="">Vše</button>${hry.map((h) =>
         `<button class="chip${state.hraZive === h.hra ? " on" : ""}" data-h="${esc(h.hra)}">${esc(h.hra)}<span class="cnt">${h.streamu}</span></button>`).join("")}</div>` : ""}
       ${state.hraZive ? `<p><a class="link" href="/hra/${esc(slug(state.hraZive))}">Vše o hře ${esc(state.hraZive)} →</a></p>` : ""}
       ${list.length ? `<div class="live-grid">${list.map(kartaZive).join("")}</div>`
         : `<p class="empty">Teď nikdo z českých streamerů nevysílá (nebo se seznam teprve načítá).</p>`}
-      <p class="source-note">Údaje z oficiálních API Twitche a Kicku, obnovují se každých 15 minut. Zahrnuty jsou streamy s jazykem nastaveným na češtinu.</p>`;
+      <p class="source-note">Data z oficiálních API Twitche a Kicku${cas ? `, naposledy ${esc(kdy(new Date(cas)))}` : ""}. Obnovují se každých 15 minut a zahrnují streamy s jazykem nastaveným na češtinu.</p>`;
     app.querySelectorAll("[data-h]").forEach((b) => b.onclick = () => { state.hraZive = b.dataset.h; strankaZive(); obarvi(app); });
   }
 
@@ -203,8 +213,7 @@
     if (location.pathname.replace(/\/+$/, "") !== "/streameri") return;
     const list = state.adresar[klic];
     const plat = { "": "Všechny platformy", twitch: "Twitch", kick: "Kick" };
-    app.innerHTML = `<div class="live-head"><h1>Čeští streameři</h1>
-        <p class="dim">Všichni čeští streameři z Twitche a Kicku. Kdo je právě živě, je nahoře.</p></div>
+    app.innerHTML = `${hubHlava("zebricek")}
       <input class="search" id="qs" type="search" placeholder="Hledat streamera" value="${esc(state.hledatS)}">
       <div class="chips">${Object.entries(plat).map(([k, v]) => `<button class="chip${k === state.platforma ? " on" : ""}" data-p="${k}">${v}</button>`).join("")}</div>
       <div class="chips">${Object.entries(RAZENI).map(([k, v]) => `<button class="chip${k === state.razeni ? " on" : ""}" data-r="${k}">${v}</button>`).join("")}</div>
@@ -287,7 +296,7 @@
       app.innerHTML = `<p class="loading">Načítám hry…</p>`;
       try { state.hry = await nacti("hry"); } catch { app.innerHTML = `<p class="empty">Hry se nepodařilo načíst.</p>`; return; }
     }
-    app.innerHTML = `<div class="live-head"><h1>Hry</h1><p class="dim">Co teď hrají čeští streameři. Klepni na hru pro detail.</p></div>
+    app.innerHTML = `${hubHlava("hry")}
       ${state.hry.length ? `<div class="slist">${state.hry.map((h) => { const [a, b] = barvaHry(h.slug); return `<a class="srow" href="/hra/${esc(h.slug)}">
           <div class="hra-ikona" data-a="${esc(a)}" data-b="${esc(b)}">${esc(h.nazev[0] || "?")}</div>
           <div class="info"><h3>${esc(h.nazev)}</h3><div class="sub">${h.zive ? `<span class="dot-live"></span>${pl(h.zive, "stream", "streamy", "streamů")} živě · ${num(h.divaci)} diváků` : "teď nikdo nevysílá"}</div></div>
@@ -317,7 +326,7 @@
   function route() {
     const casti = location.pathname.replace(/\/+$/, "").split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
     const sekce = casti[1] || "";
-    const tab = { zive: "zive", streameri: "streameri", streamer: "streameri", hry: "hry", hra: "hry" }[sekce] || "novinky";
+    const tab = ["zive", "streameri", "streamer", "hry", "hra"].includes(sekce) ? "streameri" : "novinky";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
     let p;
     if (sekce === "clanek") p = strankaClanek(casti[2] || "");
