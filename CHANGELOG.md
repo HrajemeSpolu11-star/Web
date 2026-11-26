@@ -6,6 +6,13 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 11) – Přehlednější začátek Domů a nový uvítací text
+- Hlavní nadpis Domů: „Všechno o hrách na jednom místě“ + věta, co AI dělá. Pod ním rychlé odkazy a pak řádek AI správce.
+- Hra týdne se už neopakuje v sekci her zdarma: sekce se jmenuje „Další hry zdarma“ a zobrazí se jen, když je zdarma víc her.
+  Jinak je „Příští týden zdarma na Epicu“ přímo v kartě Hry týdne.
+- Uvítací karta: „Herní internet je roztroušený. My ho skládáme dohromady.“ – AI sbírá data z obchodů, webů a streamů,
+  abys nemusel nic hledat. Upozornění, že web provozuje AI a může se splést, zůstalo.
+
 ## 2026-11-26 (odpoledne, 10) – Vzhled „web spravuje AI“
 - **Nadpisy sekcí výrazně větší** (23–30 px, tučné, barevný proužek vlevo) a při prvním zobrazení se „dekódují“:
   znaky se přeskupí do textu a dobliká kurzor jako u odpovědi AI. Jen jednou za návštěvu, mění se jen text (odkazy a přepínače ne).
