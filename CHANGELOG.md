@@ -6,6 +6,12 @@
 
 ---
 
+## 2026-11-26 (večer, 29) – Domů přehledněji: police obalů
+- „Brzy vyjde“ byl dlouhý seznam přes celou šířku → **police obalů** (10 her vedle sebe, na mobilu posuvná do strany,
+  štítek „dnes / zítra / za N dní“). Stejně „Dnes před lety vyšlo“ (až 8 her).
+- Pořadí na Domů: úvod s EKG → ranní přehled + hra týdne → Co je nového ve hrách → Brzy vyjde → zprávy (2 sloupce) →
+  nástroje → dnes před lety. Bloky se při chybějících datech roztáhnou, aby nezůstávala díra.
+
 ## 2026-11-26 (večer, 28) – Aktualizace her pro ~1 000 her, seznam přání ze Steamu
 - **Sledované hry** (tabulka `sledovane`, `sestavSledovane` 1× denně v Cronu psaní): 1 000 nejpopulárnějších her na Steamu
   podle IGDB (`popularity_types` → „Steam 24hr Peak Players“ → `popularity_primitives` → `external_games`), 100 nejhranějších

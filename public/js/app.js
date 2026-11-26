@@ -1876,7 +1876,7 @@
     nastavTitulek("");
     if (!state.domu) {
       app.innerHTML = `<section class="uvod"><h1>Hry mají tep.<br>My ho <em>měříme.</em></h1></section>${kostra(3)}`;
-      const [ra, vd, vy, ak, pa] = await Promise.allSettled([nacti("ranni"), nacti("vydani?limit=5"), nacti("vyroci"), state.akce ? state.akce : nacti("akce"), nacti("aktualizace"), nactiKatalog()]);
+      const [ra, vd, vy, ak, pa] = await Promise.allSettled([nacti("ranni"), nacti("vydani?limit=10"), nacti("vyroci"), state.akce ? state.akce : nacti("akce"), nacti("aktualizace"), nactiKatalog()]);
       const ok = (x) => (x.status === "fulfilled" ? x.value : null);
       state.domu = { ranni: ok(ra), vydani: ok(vd), vyroci: ok(vy), aktualizace: ok(pa) };
       if (ak.status === "fulfilled") state.akce = ak.value;
@@ -1892,7 +1892,7 @@
     const dnesRanni = ranni?.body?.length && ranni.den === new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
     const akce = (state.akce?.akce || [])[0];
     const zpravDnes = state.clanky.filter((c) => Date.now() - datum(c) < 864e5).length;
-    const brzy = (vydani?.hry || []).slice(0, 5);
+    const brzy = (vydani?.hry || []).slice(0, 10);
     // Nejdřív aktualizace se shrnutím, nejpopulárnější hry první; jedna hra jen jednou.
     const patche = (() => { const vid = new Set(); return [...(aktualizace?.polozky || [])].filter((p) => Date.now() - Date.parse(p.datum) < 7 * 864e5)
       .sort((a, b) => (b.stav === "hotovo") - (a.stav === "hotovo") || (a.poradi || 9999) - (b.poradi || 9999)).filter((p) => !vid.has(p.hra) && vid.add(p.hra)).slice(0, 4); })();
@@ -1906,19 +1906,16 @@
       </section>
 
       <div class="mozaika">
-        ${ranni?.body?.length ? `<section class="ranni-karta m7">
+        ${ranni?.body?.length ? `<section class="ranni-karta ${tydne ? "m7" : "m12"}">
             <header><span class="ai-stitek">Sestavila AI</span><h2><a href="/ranni">${dnesRanni ? "Ranní přehled" : "Poslední ranní přehled"}</a></h2><span class="dim">${esc(denCz(ranni.den))}</span></header>
             ${bodyRanni(ranni, 5)}
             <a class="dalsi-odkaz" href="/novinky">Všechny novinky</a>
           </section>` : ""}
 
-        ${brzy.length ? `<section class="blok ${ranni?.body?.length ? "m5" : "m12"}">
-          <div class="section-title">Brzy vyjde · <a href="/vydani">kalendář</a></div>
-          <div class="brzy">${brzy.map((h) => `<a class="brzy-h" ${h.steam_id ? `href="/hra/steam/${esc(h.steam_id)}"` : `href="/vydani"`}>
-              ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="brzy-bez"></div>`}
-              <div><b>${esc(h.nazev)}</b><span>${h.presne ? esc(datumVydani(h.datum)) : esc(h.human)}${h.cestina > 0 ? ` · <span class="cz">${h.cestina === 2 ? "CZ dabing" : "CZ texty"}</span>` : ""}</span>
-              ${h.presne ? `<span class="brzy-za">${esc(dnyDoVydani(h.datum))}</span>` : ""}</div></a>`).join("")}</div>
-        </section>` : ""}
+        ${tydne ? `<a class="hra-velka ${ranni?.body?.length ? "m5" : "m12"}" ${odkazHry(tydne)}>${https(tydne.obrazek) ? `<img src="${esc(tydne.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}
+          <div class="hv-t"><span class="hv-pill">${tydne.cena === 0 || tydne.do ? `Zdarma na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}${tydne.do ? ` · ${esc(zbyva(tydne.do))}` : ""}` : `Sleva −${Number(tydne.sleva) || 0} % na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}`}</span>
+            <h2>${esc(tydne.nazev)}</h2>
+            <p>Hra týdne${zdarmaVse.length > 1 ? ` · další ${pl(zdarmaVse.length - 1, "hra", "hry", "her")} zdarma` : ""}${maxSleva ? ` · slevy až −${maxSleva} %` : ""}</p></div></a>` : ""}
 
         ${patche.length ? `<section class="blok m12 domu-patche">
           <div class="section-title">Co je nového ve hrách · <a href="/aktualizace">všechny aktualizace</a></div>
@@ -1926,12 +1923,15 @@
           <p class="source-note">Oficiální poznámky vývojářů ze Steamu, česky vysvětlené AI. Klikni na hru pro detail.</p>
         </section>` : ""}
 
-        ${tydne ? `<a class="hra-velka m5" ${odkazHry(tydne)}>${https(tydne.obrazek) ? `<img src="${esc(tydne.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}
-          <div class="hv-t"><span class="hv-pill">${tydne.cena === 0 || tydne.do ? `Zdarma na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}${tydne.do ? ` · ${esc(zbyva(tydne.do))}` : ""}` : `Sleva −${Number(tydne.sleva) || 0} % na ${esc(OBCHOD[tydne.obchod] || tydne.obchod)}`}</span>
-            <h2>${esc(tydne.nazev)}</h2>
-            <p>Hra týdne${zdarmaVse.length > 1 ? ` · další ${pl(zdarmaVse.length - 1, "hra", "hry", "her")} zdarma` : ""}${maxSleva ? ` · slevy až −${maxSleva} %` : ""}</p></div></a>` : ""}
+        ${brzy.length ? `<section class="blok m12">
+          <div class="section-title">Brzy vyjde · <a href="/vydani">celý kalendář</a></div>
+          <div class="police">${brzy.map((h) => `<a class="obal" ${h.steam_id ? `href="/hra/steam/${esc(h.steam_id)}"` : `href="/vydani"`}>
+              ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="obal-bez">${esc(h.nazev[0])}</span>`}
+              ${h.presne ? `<span class="obal-cip">${esc(dnyDoVydani(h.datum).replace("vychází ", ""))}</span>` : ""}
+              <b>${esc(h.nazev)}</b><small>${h.presne ? esc(datumVydani(h.datum)) : esc(h.human)}${h.cestina > 0 ? ` · <span class="cz">${h.cestina === 2 ? "CZ dabing" : "CZ texty"}</span>` : ""}</small></a>`).join("")}</div>
+        </section>` : ""}
 
-        <section class="blok ${tydne ? "m7" : "m12"}">
+        <section class="blok m12">
           <div class="section-title">Nejnovější zprávy · <a href="/novinky">všechny</a></div>
           ${zpravy.length ? `<div class="rec-list">${zpravy.map((c) => `<a class="rec" href="/clanek/${esc(enc(c.id))}">
               ${https(c.obrazek) ? `<img src="${esc(c.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="rec-bez"></div>`}
@@ -1946,9 +1946,9 @@
 
         ${vyroci?.hry?.length ? `<section class="blok m12">
           <div class="section-title">Dnes před lety vyšlo</div>
-          <div class="vyroci">${vyroci.hry.slice(0, 4).map((h) => `<a class="vyr" ${h.steam ? `href="/hra/steam/${esc(h.steam)}"` : `href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer"`}>
-              ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyr-bez">${esc(h.nazev[0])}</div>`}
-              <span class="vyr-pred">před ${pl(Number(h.pred) || 0, "rokem", "lety", "lety")}</span><b>${esc(h.nazev)}</b><span class="dim">${Number(h.rok) || ""}</span></a>`).join("")}</div>
+          <div class="police">${vyroci.hry.slice(0, 8).map((h) => `<a class="obal" ${h.steam ? `href="/hra/steam/${esc(h.steam)}"` : `href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer"`}>
+              ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="obal-bez">${esc(h.nazev[0])}</span>`}
+              <span class="obal-cip">před ${pl(Number(h.pred) || 0, "rokem", "lety", "lety")}</span><b>${esc(h.nazev)}</b><small>${Number(h.rok) || ""}</small></a>`).join("")}</div>
         </section>` : ""}
       </div>
 

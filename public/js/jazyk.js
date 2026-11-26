@@ -403,6 +403,7 @@
     "Odebrat seznam": ["Odobrať zoznam", "Remove list"],
     "aktualizace mých her": ["aktualizácie mojich hier", "updates for my games"],
     "Seznam přání načten": ["Zoznam prianí načítaný", "Wishlist loaded"],
+    "celý kalendář": ["celý kalendár", "full calendar"], "dnes": ["dnes", "today"], "zítra": ["zajtra", "tomorrow"],
     "Nové hry": ["Nové hry", "New games"], "Nové platformy a plné verze": ["Nové platformy a plné verzie", "New platforms and full releases"],
     "Kategorie": ["Kategórie", "Categories"], "Upozornění jsou teď přeplněná, zkus to později.": ["Upozornenia sú teraz preplnené, skús to neskôr.", "Notifications are full right now, try again later."],
     "Všechny": ["Všetky", "All"], "Jen s češtinou": ["Len s češtinou", "Czech only"], "Jen s přesným datem": ["Len s presným dátumom", "Exact date only"],
@@ -454,6 +455,7 @@
 
   // ---------- Věty s čísly a proměnnými částmi: [vzor, slovensky, anglicky] ----------
   const FRAZE = [
+    [/^za (\d+) (?:den|dny|dní)$/, "o $1 dní", (m) => `in ${m[1]} day${+m[1] === 1 ? "" : "s"}`],
     [/^vychází za (\d+) (?:den|dny|dní)$/, "vychádza o $1 dní", (m) => `out in ${m[1]} day${+m[1] === 1 ? "" : "s"}`],
     [/^(.+) · (vychází dnes|vychází zítra|už vyšlo)$/, (m) => `${m[1]} · ${{ "vychází dnes": "vychádza dnes", "vychází zítra": "vychádza zajtra", "už vyšlo": "už vyšlo" }[m[2]]}`, (m) => `${m[1]} · ${{ "vychází dnes": "out today", "vychází zítra": "out tomorrow", "už vyšlo": "already out" }[m[2]]}`],
     [/^(.+) · vychází za (\d+) (?:den|dny|dní)$/, "$1 · vychádza o $2 dní", (m) => `${m[1]} · out in ${m[2]} day${+m[2] === 1 ? "" : "s"}`],
