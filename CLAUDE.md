@@ -26,3 +26,5 @@ Majitel: Michal (GitHub `HrajemeSpolu11-star`). Komunikace **vždy česky**.
 - `wrangler.jsonc` – nastavení Workeru, D1, Cronů, proměnných.
 - `docs/` – podrobná dokumentace.
 - `public/js/jazyk.js` – překlad rozhraní do SK/EN. **Každý nový text v rozhraní doplň i sem** (SLOVNIK nebo FRAZE).
+  Kontrola: `python3 tools/testovaci-server.py &` a `python3 tools/kontrola-prekladu.py en` (a `sk`) – vypíše, co zůstalo česky.
+  Data formátuj přes `LOC` (ne napevno "cs-CZ").

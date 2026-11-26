@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-11-26 (večer, 31) – Oprava: polovina webu v EN/SK zůstávala česky
+- Nové části webu neměly překlady v `jazyk.js` a věty poskládané z více kousků (např. řádek pod EKG) slovník nepoznal.
+  Doplněno ~150 textů a frází (Domů, aktualizace + slovníček, Co hrát, Rozjede se, Vyšší/nižší, Česká scéna, seznam přání,
+  systémové požadavky, popisky zdrojů…). Fragmenty kolem tučných čísel mají vlastní položky.
+- **Data a čísla podle jazyka**: `LOC` v `app.js` (cs-CZ / sk-SK / en-GB) místo napevno české lokalizace
+  („Thursday 26 November“ místo „čtvrtek 26. listopadu“). „před X min“ uvnitř vět → „X min ago“ / „pred X min“.
+- **Nové nástroje** `tools/testovaci-server.py` (web s ukázkovými daty) a `tools/kontrola-prekladu.py en|sk` (projde 28 stránek
+  a vypíše texty, které zůstaly česky). Spustit vždy, když přibudou texty v rozhraní.
+
 ## 2026-11-26 (večer, 30) – Stránka hry: poctivý popisek měření
 - „Hodin sledování za 7 dní“ → když měříme kratší dobu, „od <datum> (od té doby měříme)“ (podle nejstaršího dne v `statistiky.dny`).
 - Hra, která není na Steamu/GOGu/Epicu: věta nově zmiňuje hry jen pro konzole (např. GTA VI).

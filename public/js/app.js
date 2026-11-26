@@ -12,6 +12,8 @@
   const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " mil." : n >= 1e3 ? (Math.round(n / 100) / 10).toString().replace(".", ",") + " tis." : String(n ?? 0);
   const https = (u) => /^https:\/\//.test(String(u || "")) ? u : "";
   const enc = encodeURIComponent;
+  // Formát data a čísel podle zvoleného jazyka (CZ / SK / EN) – nastavuje jazyk.js.
+  const LOC = { sk: "sk-SK", en: "en-GB" }[window.HP_JAZYK] || "cs-CZ";
   // Česká množná čísla: 1 stream, 2–4 streamy, 5+ streamů.
   const pl = (n, a, b, c) => `${n} ${n === 1 ? a : n >= 2 && n <= 4 ? b : c}`;
 
@@ -89,7 +91,7 @@
   }
 
   // Stavový řádek AI: jen skutečné časy z dat (kdy se naposledy kontrolovalo), nic vymyšleného.
-  const hhmm = (d) => new Date(d).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" });
+  const hhmm = (d) => new Date(d).toLocaleTimeString(LOC, { hour: "2-digit", minute: "2-digit" });
   function dalsiKontrola(minuta) {
     const d = new Date(); d.setSeconds(0, 0);
     if (d.getMinutes() >= minuta) d.setHours(d.getHours() + 1);
@@ -388,7 +390,7 @@
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
   }
   // ---------- Ranní přehled (AI) ----------
-  const denCz = (den) => new Date(den + "T12:00:00Z").toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" });
+  const denCz = (den) => new Date(den + "T12:00:00Z").toLocaleDateString(LOC, { weekday: "long", day: "numeric", month: "long" });
   const bodyRanni = (r, max = 5) => `<ol class="ranni-body">${r.body.slice(0, max).map((b) => `<li><a href="/clanek/${esc(enc(b.clanek))}"><b>${esc(b.nadpis)}</b></a>
       <span>${esc(b.text)}</span><small class="dim">${esc(b.zdroj || "zdroj")}${b.jazyk === "cs" ? " · česky" : ""}</small></li>`).join("")}</ol>`;
   async function strankaRanni() {
@@ -408,7 +410,7 @@
         </article>`
         : `<p class="empty">Dnešní přehled ještě není hotový – AI ho skládá každé ráno po 6. hodině. Mezitím <a href="/novinky">všechny novinky</a>.</p>`}
       ${r.dny.length > 1 ? `<div class="section-title">Starší přehledy</div><div class="mini-seg">${r.dny.map((d) =>
-        `<a class="ms-b${d === r.den ? " on" : ""}" href="/ranni${d === r.dny[0] ? "" : `?den=${esc(d)}`}">${esc(new Date(d + "T12:00:00Z").toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }))}</a>`).join("")}</div>` : ""}`;
+        `<a class="ms-b${d === r.den ? " on" : ""}" href="/ranni${d === r.dny[0] ? "" : `?den=${esc(d)}`}">${esc(new Date(d + "T12:00:00Z").toLocaleDateString(LOC, { day: "numeric", month: "numeric" }))}</a>`).join("")}</div>` : ""}`;
   }
 
   // ---------- Aktualizace her ----------
@@ -687,14 +689,14 @@
         }
         setTimeout(vykresli, malyPohyb() ? 300 : 1100);
       });
-      const text = () => `Vyšší, nebo nižší? (${sada.nazev}) ${new Date(d.den + "T12:00:00Z").toLocaleDateString("cs-CZ")}: ${stav.odpovedi.filter(Boolean).length}/${kola.length}\n${stav.odpovedi.map((x) => (x ? "🟩" : "🟥")).join("")}\n${location.origin}/vyssi-nizsi`;
+      const text = () => `Vyšší, nebo nižší? (${sada.nazev}) ${new Date(d.den + "T12:00:00Z").toLocaleDateString(LOC)}: ${stav.odpovedi.filter(Boolean).length}/${kola.length}\n${stav.odpovedi.map((x) => (x ? "🟩" : "🟥")).join("")}\n${location.origin}/vyssi-nizsi`;
       const bs = document.getElementById("vn-sdilet");
       if (bs) bs.onclick = async () => {
         try { if (navigator.share) await navigator.share({ text: text() }); else { await navigator.clipboard.writeText(text()); achievement("Zkopírováno", "Výsledek máš ve schránce."); } } catch {}
       };
       const bo = document.getElementById("vn-obr");
       if (bo) bo.onclick = () => sdilejObrazek({ stitek: "Vyšší, nebo nižší?", nadpis: `${stav.odpovedi.filter(Boolean).length} z ${kola.length}`, odkaz: "/vyssi-nizsi",
-        radky: [[sada.nazev, new Date(d.den + "T12:00:00Z").toLocaleDateString("cs-CZ")], [stav.odpovedi.map((x) => (x ? "✓" : "✗")).join(" "), "moje odpovědi"]] });
+        radky: [[sada.nazev, new Date(d.den + "T12:00:00Z").toLocaleDateString(LOC)], [stav.odpovedi.map((x) => (x ? "✓" : "✗")).join(" "), "moje odpovědi"]] });
     };
     vykresli();
   }
@@ -717,7 +719,7 @@
     };
     tik(); tikac = setInterval(tik, 1000);
   }
-  const datumCasCz = (iso, celodenni) => new Date(iso).toLocaleString("cs-CZ", celodenni ? { day: "numeric", month: "numeric", year: "numeric" } : { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const datumCasCz = (iso, celodenni) => new Date(iso).toLocaleString(LOC, celodenni ? { day: "numeric", month: "numeric", year: "numeric" } : { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const TYP_AKCE = { vyprodej: "Výprodej", festival: "Festival her", prenos: "Přenos", vystava: "Veletrh" };
   const kartaTraileru = (v) => `<a class="hk vk" href="${esc(bezpecnaUrl(v.url))}" target="_blank" rel="noopener noreferrer">
       <div class="hk-obr vk-obr">${https(v.nahled) ? `<img src="${esc(v.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="obchod ob-yt">YouTube</span></div>
@@ -729,7 +731,7 @@
   // Kalendář vydání
   // IGDB i Steam znají u vydání jen DEN, ne hodinu (tu určuje vývojář a Steam ji v API nedává).
   // Proto žádný odpočet na minuty – jen „dnes / zítra / za N dní“. Datum je půlnoc UTC → bere se kalendářní den v UTC.
-  const datumVydani = (iso) => new Date(iso).toLocaleDateString("cs-CZ", { timeZone: "UTC" });
+  const datumVydani = (iso) => new Date(iso).toLocaleDateString(LOC, { timeZone: "UTC" });
   function dnyDoVydani(iso) {
     const den = new Date(iso).toISOString().slice(0, 10);
     const dnes = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
@@ -751,7 +753,7 @@
     const pocetPortu = vsechny.filter((h) => h.uz_vyslo).length;
     const mesice = new Map();
     for (const h of hry) {
-      const k = h.presne || /^[A-Za-z]{3} \d{4}$/.test(h.human) ? new Date(h.datum).toLocaleDateString("cs-CZ", { month: "long", year: "numeric" }) : (h.human || "Termín neznámý");
+      const k = h.presne || /^[A-Za-z]{3} \d{4}$/.test(h.human) ? new Date(h.datum).toLocaleDateString(LOC, { month: "long", year: "numeric" }) : (h.human || "Termín neznámý");
       (mesice.get(k) || mesice.set(k, []).get(k)).push(h);
     }
     const czTxt = (h) => h.cestina === 2 ? `<span class="cz cz-dabing">CZ dabing</span>` : h.cestina === 1 ? `<span class="cz">CZ texty</span>`
@@ -764,7 +766,7 @@
           ${https(h.obrazek) ? `<img class="vyd-obr" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyd-obr"></div>`}
           <div class="vyd-t">${h.steam_id ? `<a href="/hra/steam/${esc(h.steam_id)}"><b>${esc(h.nazev)}</b></a>` : `<b>${esc(h.nazev)}</b>`}
             <span class="vyd-datum">${h.presne ? esc(datumVydani(h.datum)) : esc(h.human)}${h.presne ? ` · ${esc(dnyDoVydani(h.datum))}` : ""}</span>
-            ${h.uz_vyslo ? `<p class="vyd-uz">${h.prvni ? `Hra už vyšla ${esc(new Date(h.prvni).toLocaleDateString("cs-CZ"))}` : "Hra už je k dispozici na Steamu"}${h.prvni && h.na_steamu ? " a je k dispozici na Steamu" : ""}. Tady jde o vydání ${(h.platformy || []).length ? `pro ${esc((h.platformy || []).join(", "))}` : "pro další platformu"}${/early|předběž/i.test(h.stav) ? "" : " nebo plnou verzi"}.</p>` : ""}
+            ${h.uz_vyslo ? `<p class="vyd-uz">${h.prvni ? `Hra už vyšla ${esc(new Date(h.prvni).toLocaleDateString(LOC))}` : "Hra už je k dispozici na Steamu"}${h.prvni && h.na_steamu ? " a je k dispozici na Steamu" : ""}. Tady jde o vydání ${(h.platformy || []).length ? `pro ${esc((h.platformy || []).join(", "))}` : "pro další platformu"}${/early|předběž/i.test(h.stav) ? "" : " nebo plnou verzi"}.</p>` : ""}
             <div class="hrad-meta">${czTxt(h)}${h.cestina_zdroj ? `<span class="dim vyd-zdroj">${esc(h.cestina_zdroj)}</span>` : ""}${(h.platformy || []).map((p) => `<span class="plat">${esc(p)}</span>`).join("")}</div>
             <div class="vyd-akce">${h.steam ? `<a class="btn-maly" href="${esc(bezpecnaUrl(h.steam))}" target="_blank" rel="noopener noreferrer">Steam</a>` : ""}
               ${h.igdb ? `<a class="btn-maly" href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer">IGDB</a>` : ""}
@@ -914,7 +916,7 @@
     if (m < 60) return `před ${m} min`;
     const h = Math.round(m / 60);
     if (h < 24) return `před ${h} h`;
-    return d.toLocaleDateString("cs-CZ");
+    return d.toLocaleDateString(LOC);
   }
   const slug = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 
@@ -1256,7 +1258,7 @@
     const stejny = (a, b) => a.toDateString() === b.toDateString();
     if (stejny(d, dnes)) return "Dnes";
     if (stejny(d, vcera)) return "Včera";
-    const t = d.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" });
+    const t = d.toLocaleDateString(LOC, { weekday: "long", day: "numeric", month: "long" });
     return t.charAt(0).toUpperCase() + t.slice(1);
   }
   function archivZprav(list) {
@@ -1266,7 +1268,7 @@
     return `<div class="archiv">${[...dny].map(([den, zpr]) => `<section class="archiv-den"><h2 class="archiv-nadpis">${esc(den)}</h2>
       <ul class="archiv-list">${zpr.map((c) => `<li><a href="/clanek/${esc(enc(c.id))}">
         ${https(c.obrazek) ? `<img src="${esc(c.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="archiv-bez" data-a="${esc((c.barva || [])[0] || "#444")}" data-b="${esc((c.barva || [])[1] || "#111")}">${esc((c.nadpis || "?")[0])}</span>`}
-        <span class="archiv-t"><b>${esc(c.nadpis)}</b><small>${c.vlastni ? "Herní puls" : esc(c.zdroje?.[0]?.nazev || "")}${ceskyClanek(c) && !c.vlastni ? " · česky" : ""} · ${esc(new Date(datum(c)).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }))}</small></span></a></li>`).join("")}</ul></section>`).join("")}</div>`;
+        <span class="archiv-t"><b>${esc(c.nadpis)}</b><small>${c.vlastni ? "Herní puls" : esc(c.zdroje?.[0]?.nazev || "")}${ceskyClanek(c) && !c.vlastni ? " · česky" : ""} · ${esc(new Date(datum(c)).toLocaleTimeString(LOC, { hour: "2-digit", minute: "2-digit" }))}</small></span></a></li>`).join("")}</ul></section>`).join("")}</div>`;
   }
   function strankaNovinky() {
     nastavTitulek("");
@@ -1415,9 +1417,9 @@
     try { s = await nacti(`streamer/${enc(platforma)}/${enc(login)}`); }
     catch { nastavTitulek("Streamer nenalezen"); app.innerHTML = `<p class="empty">Streamer nenalezen. <a href="/streameri">Zpět na seznam</a></p>`; return; }
     nastavTitulek(`${s.jmeno} – ${PLAT[s.platforma] || "Twitch"} streamer`);
-    const body = (s.snimky || []).filter((x) => x.sledujici != null).map((x) => ({ v: x.sledujici, d: new Date(x.den).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) }));
+    const body = (s.snimky || []).filter((x) => x.sledujici != null).map((x) => ({ v: x.sledujici, d: new Date(x.den).toLocaleDateString(LOC, { day: "numeric", month: "numeric" }) }));
     const maxHra = Math.max(1, ...(s.hry || []).map((h) => h.minut));
-    const datumCz = (d) => d ? new Date(d).toLocaleDateString("cs-CZ") : "–";
+    const datumCz = (d) => d ? new Date(d).toLocaleDateString(LOC) : "–";
     app.innerHTML = `<div class="profile">
       <a class="back" href="/streameri">← Všichni streameři</a>
       <div class="banner">${https(s.banner) ? `<img src="${esc(s.banner)}" alt="" referrerpolicy="no-referrer">` : ""}</div>
@@ -1484,7 +1486,7 @@
   function merenoOd(s) {
     if (!s.mereno_od) return "";
     const od = new Date(s.mereno_od + "T00:00:00");
-    return Date.now() - od < 30 * 864e5 ? od.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) : "";
+    return Date.now() - od < 30 * 864e5 ? od.toLocaleDateString(LOC, { day: "numeric", month: "numeric" }) : "";
   }
   const UCHOVANI = { partner: 60, affiliate: 14 };
 
@@ -1494,7 +1496,7 @@
     try { x = await nacti(`streamer-extra/${enc(s.platforma || "twitch")}/${enc(s.login)}`); } catch { return; }
     const el = document.getElementById("extra");
     if (!el) return;
-    const den = (d) => new Date(d).toLocaleString("cs-CZ", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+    const den = (d) => new Date(d).toLocaleString(LOC, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
     const v = x.vysilani;
     // Záznamy na Twitchi pokrývají i dobu před naším měřením → když dávají víc, ukážeme je (s uvedením zdroje).
     const dniZaznamu = Math.min(30, UCHOVANI[s.typ] || 7);
@@ -1521,7 +1523,7 @@
   const barvaHry = (s) => BARVY_HER[[...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 0) % BARVY_HER.length];
 
   // ---------- Co hraje Česko ----------
-  const datumCz = (d) => new Date(d + (String(d).length === 10 ? "T12:00:00" : "")).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric", year: "numeric" });
+  const datumCz = (d) => new Date(d + (String(d).length === 10 ? "T12:00:00" : "")).toLocaleDateString(LOC, { day: "numeric", month: "numeric", year: "numeric" });
   function zmenaStitek(h) {
     if (h.novinka) return `<span class="zm zm-nove">nové</span>`;
     if (h.zmena == null) return "";
@@ -1594,7 +1596,7 @@
         <div class="rep-dlazdice">
           <div><b>${esc(num(s.hodin))}</b><span>hodin sledování${s.zmena != null && s.hodin_pred ? ` <i class="${s.zmena >= 0 ? "zm-nahoru" : "zm-dolu"}">${s.zmena >= 0 ? "+" : ""}${s.zmena} %</i>` : ""}</span></div>
           <div><b>${esc(num(s.prumer_divaku))}</b><span>diváků v průměru</span></div>
-          <div><b>${esc(num(s.spicka?.divaci || 0))}</b><span>diváků ve špičce${s.spicka ? ` (${esc(new Date(s.spicka.cas).toLocaleString("cs-CZ", { weekday: "short", hour: "2-digit", minute: "2-digit" }))})` : ""}</span></div>
+          <div><b>${esc(num(s.spicka?.divaci || 0))}</b><span>diváků ve špičce${s.spicka ? ` (${esc(new Date(s.spicka.cas).toLocaleString(LOC, { weekday: "short", hour: "2-digit", minute: "2-digit" }))})` : ""}</span></div>
           <div><b>${esc(num(s.kanalu))}</b><span>aktivních kanálů</span></div>
         </div>
         ${s.hodin ? `<p class="rep-platformy"><span class="pbadge pb-twitch">Twitch</span> ${esc(num(s.hodin_twitch))} h · <span class="pbadge pb-kick">Kick</span> ${esc(num(s.hodin_kick))} h</p>` : ""}
@@ -1643,12 +1645,12 @@
     const obchody = [
       st && obchod("Steam", "ob-steam", st.url, cenaTxt(st) + (st.min90 != null && st.cena > 0 ? `<br><small>${st.cena <= st.min90 ? "nejnižší cena za 90 dní" : `nejníž za 90 dní ${esc(cena(st.min90, st.mena))}`}</small>` : "")),
       gog && obchod("GOG", "ob-gog", gog.url, cenaTxt(gog)),
-      ep && obchod("Epic Games", "ob-epic", ep.url, ep.zdarma_ted ? `<strong>Zdarma</strong> ${ep.do ? esc(zbyva(ep.do)) : ""}` : `zdarma od ${esc(new Date(ep.od).toLocaleDateString("cs-CZ"))}`),
+      ep && obchod("Epic Games", "ob-epic", ep.url, ep.zdarma_ted ? `<strong>Zdarma</strong> ${ep.do ? esc(zbyva(ep.do)) : ""}` : `zdarma od ${esc(new Date(ep.od).toLocaleDateString(LOC))}`),
     ].filter(Boolean);
     const fakta = [
       cz && ["Čeština (podle Steamu)", cz.dabing ? "✓ dabing i titulky" : cz.rozhrani ? "✓ texty (rozhraní nebo titulky)" : "✗ bez češtiny"],
       st?.hodnoceni && ["Hodnocení hráčů", `${hodnoceniHry(st)} <span class="dim">Steam</span>`],
-      gog?.hodnoceni && ["Hodnocení GOG", `${gog.hodnoceni.toLocaleString("cs-CZ")} / 5`],
+      gog?.hodnoceni && ["Hodnocení GOG", `${gog.hodnoceni.toLocaleString(LOC)} / 5`],
       st?.metacritic && ["Metacritic", String(st.metacritic)],
       st?.hraci_ted != null && ["Hraje právě teď", `${esc(num(st.hraci_ted))} hráčů na Steamu (celý svět)`],
       st?.vydani && [st.chysta_se ? "Vyjde" : "Vydáno", esc(st.vydani)],
@@ -1676,7 +1678,7 @@
 
       <div class="section-title">Na českých streamech</div>
       ${!h.slug ? `<p class="dim">Tuhle hru zatím nikdo z českých streamerů nevysílal (od začátku našeho měření). Jakmile ji někdo začne hrát, objeví se tu statistiky.</p>` : ""}
-      <div class="rep-dlazdice"><div><b>${esc(num(stat.hodin7 || 0))}</b><span>hodin sledování ${(() => { const od = stat.dny.map((d) => d.den).filter(Boolean).sort()[0]; const dni = od ? Math.round((Date.now() - Date.parse(od + "T12:00:00Z")) / 864e5) : 7; return od && dni < 6 ? `od ${esc(new Date(od + "T12:00:00Z").toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }))} (od té doby měříme)` : "za 7 dní"; })()}</span></div><div><b>${esc(num(stat.spicka7 || 0))}</b><span>diváků ve špičce</span></div></div>
+      <div class="rep-dlazdice"><div><b>${esc(num(stat.hodin7 || 0))}</b><span>hodin sledování ${(() => { const od = stat.dny.map((d) => d.den).filter(Boolean).sort()[0]; const dni = od ? Math.round((Date.now() - Date.parse(od + "T12:00:00Z")) / 864e5) : 7; return od && dni < 6 ? `od ${esc(new Date(od + "T12:00:00Z").toLocaleDateString(LOC, { day: "numeric", month: "numeric" }))} (od té doby měříme)` : "za 7 dní"; })()}</span></div><div><b>${esc(num(stat.spicka7 || 0))}</b><span>diváků ve špičce</span></div></div>
       ${stat.dny.length > 1 ? `<div class="sloupce" role="img" aria-label="Hodiny sledování po dnech">${stat.dny.map((d) => `<i data-h="${Math.round((d.hodin / maxDen) * 100)}" title="${esc(datumCz(d.den))}: ${d.hodin} h"></i>`).join("")}</div>
         <p class="source-note">Hodiny sledování po dnech za posledních 30 dní (od začátku měření).</p>` : ""}
       ${h.zive.length ? `<div class="section-title">Právě živě</div><div class="live-grid">${h.zive.map(kartaZive).join("")}</div>` : ""}
@@ -1686,7 +1688,7 @@
       <p class="source-note">Ceny, čeština, hodnocení a počet hráčů jsou přímo z obchodů Steam a GOG${h.info?.cas ? ` (stav ${esc(kdy(new Date(h.info.cas)))})` : ""}; vždy platí cena v obchodě. Hodiny na streamech měříme sami z API Twitche a Kicku. <a href="/o-webu#data">Jak počítáme</a></p>
     </div>`;
     const gc = document.getElementById("graf-cena");
-    if (gc) graf(gc, st.historie.map((x) => ({ v: x.cena, d: new Date(x.den + "T12:00:00").toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) })), "Vývoj ceny na Steamu");
+    if (gc) graf(gc, st.historie.map((x) => ({ v: x.cena, d: new Date(x.den + "T12:00:00").toLocaleDateString(LOC, { day: "numeric", month: "numeric" }) })), "Vývoj ceny na Steamu");
     // Rozjede se mi to? – když má návštěvník uložený počítač, výsledek se ukáže rovnou.
     const hwEl = document.getElementById("hw-hra"), pc = mujPc();
     if (hwEl && st?.pozadavky && (pc.gpu || pc.cpu || pc.ram)) nactiHw().then((H) => {
@@ -1715,7 +1717,7 @@
     const y = (v) => H - 24 - (v / max) * (H - 48);
     const cara = body.map((b, i) => `${x(i).toFixed(1)},${y(b.divaci).toFixed(1)}`).join(" ");
     const dny = [];
-    body.forEach((b, i) => { const d = new Date(b.cas); if (d.getHours() === 0) dny.push([i, d.toLocaleDateString("cs-CZ", { weekday: "short" })]); });
+    body.forEach((b, i) => { const d = new Date(b.cas); if (d.getHours() === 0) dny.push([i, d.toLocaleDateString(LOC, { weekday: "short" })]); });
     el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Počet diváků českých streamů za 7 dní">
       ${dny.map(([i]) => `<line class="g-grid" x1="${x(i)}" x2="${x(i)}" y1="12" y2="${H - 24}"></line>`).join("")}
       <polygon class="g-area" points="${x(0)},${H - 24} ${cara} ${x(body.length - 1)},${H - 24}"></polygon>
@@ -1733,7 +1735,7 @@
     const d = state.prehled, t = d.tyden;
     const mini = (list, f) => list.length ? `<div class="slist">${list.map((s, i) => `<a class="srow" href="${esc(profilUrl(s))}"><span class="rank">${i + 1}</span>${av(s)}
         <div class="info"><h3>${esc(s.jmeno)} ${platBadge(s)}</h3></div><div class="num"><b>${esc(f(s))}</b></div></a>`).join("")}</div>` : `<p class="dim">Zatím málo dat – vrať se za pár dní.</p>`;
-    const den = (iso) => new Date(iso).toLocaleString("cs-CZ", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+    const den = (iso) => new Date(iso).toLocaleString(LOC, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
     app.innerHTML = `${hubHlava("prehled")}
       <div class="section-title">Diváci českých streamů za 7 dní</div>
       ${d.graf.length >= 2 ? `<div class="graf" id="graf-scena"></div>` : `<p class="dim">Graf se začne plnit s každým během sběru (každých 15 minut).</p>`}
@@ -1806,7 +1808,7 @@
   function cena(c, mena) {
     if (c == null) return "";
     if (c === 0) return "Zdarma";
-    try { return new Intl.NumberFormat("cs-CZ", { style: "currency", currency: mena || "CZK", maximumFractionDigits: c % 1 ? 2 : 0 }).format(c); }
+    try { return new Intl.NumberFormat(LOC, { style: "currency", currency: mena || "CZK", maximumFractionDigits: c % 1 ? 2 : 0 }).format(c); }
     catch { return `${c} ${mena || ""}`; }
   }
   function zbyva(iso) {
