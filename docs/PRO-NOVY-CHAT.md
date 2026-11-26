@@ -65,6 +65,9 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 - `/` = Domů: herní katalog ze Steamu, Epicu a GOGu (`src/katalog.js`, Cron `25 * * * *`, `/api/katalog`). Novinky jsou na `/novinky`.
 - Menu: Domů · Novinky · Streameři. Uživatel chtěl na hlavní stránce obsah o hrách a herní scéně, ne o streamerech.
 
+- Domů má i Hru týdne, Recenze, Klipy týdne a Videa streamerů (`src/obsah.js`, Cron `40`). YouTube kanály se zadávají v adminu u streamera.
+- Všech 5 Cronů je obsazeno.
+
 ## Rozpracované / další možné kroky
 - Vlastní doména → Cloudflare Access pro admin (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ve `wrangler.jsonc`).
 - Konzolista.cz a BonusWeb – RSS se nepodařilo ověřit (Konzolista vrací chybu, BonusWeb blokuje).

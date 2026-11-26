@@ -23,9 +23,9 @@
   // Záložní AI model (Cloudflare Workers AI).
   "ai": { "binding": "AI" },
 
-  // */15 = novinky, "7" = psaní článků (jen v HODINY), "5,20,35,50" = streameři, "25" = herní katalog (Steam, Epic, GOG).
+  // */15 = novinky, "7" = psaní článků (jen v HODINY), "5,20,35,50" = streameři, "25" = herní katalog (Steam, Epic, GOG), "40" = videa z YouTube a klipy. Tím je 5 z 5 Cronů obsazeno.
   "triggers": {
-    "crons": ["*/15 * * * *", "7 * * * *", "5,20,35,50 * * * *", "25 * * * *"]
+    "crons": ["*/15 * * * *", "7 * * * *", "5,20,35,50 * * * *", "25 * * * *", "40 * * * *"]
   },
 
   // Nastavení. Tajné klíče (GROQ_API_KEY) sem NEPATŘÍ – ty jsou v Cloudflare jako Secret.

@@ -5,7 +5,7 @@
     clanky: [], zive: { streamy: [], hry: [] }, adresar: {}, hry: null,
     razeni: "sledujici", platforma: "", hledatS: "", hraZive: "", filtr: "Vše", hledat: "",
     kategorie: "", mali: false, udalost: null, prehled: null, zdrojNov: "", katNov: "",
-    katalog: null, slevyObchod: "steam", topObchod: "steam", noveBrzy: "nove",
+    katalog: null, obsah: null, slevyObchod: "steam", topObchod: "steam", noveBrzy: "nove",
   };
 
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -665,7 +665,37 @@
       <div class="hk-t"><b>${esc(h.nazev)}</b>
         ${odpocet ? `<span class="hk-odpocet">${esc(odpocet)}</span>` : ""}
         ${h.cena != null ? `<span class="hk-cena">${h.puvodni && h.puvodni > h.cena ? `<s>${esc(cena(h.puvodni, h.mena))}</s> ` : ""}<b>${esc(cena(h.cena, h.mena))}</b></span>` : ""}
-        ${h.hracu ? `<span class="hk-hraci">${esc(num(h.hracu))} hráčů</span>` : ""}</div></a>`;
+        ${h.hracu ? `<span class="hk-hraci">${esc(num(h.hracu))} hráčů</span>` : ""}${hodnoceniHry(h)}</div></a>`;
+  }
+  // Hodnocení hráčů ze Steamu – jen skutečná čísla ze Steamu, nic dopočítaného navíc.
+  const hodnoceniHry = (h) => h.hodnoceni ? `<span class="hk-hod${h.hodnoceni.kladne >= 80 ? " hod-dobre" : h.hodnoceni.kladne < 50 ? " hod-spatne" : ""}">👍 ${h.hodnoceni.kladne} % z ${esc(num(h.hodnoceni.recenzi))} recenzí</span>` : "";
+  const normNazev = (s) => String(s || "").toLowerCase().replace(/[™®©]/g, "").replace(/[^a-z0-9á-ž]+/g, " ").trim();
+  function kartaVidea(v, klip = false) {
+    return `<a class="hk vk" href="${esc(bezpecnaUrl(v.url))}" target="_blank" rel="noopener noreferrer">
+      <div class="hk-obr vk-obr">${https(v.nahled) ? `<img src="${esc(v.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+        <span class="obchod ${klip ? "ob-twitch" : "ob-yt"}">${klip ? "Klip" : "YouTube"}</span>${klip && v.delka ? `<span class="hk-sleva vk-delka">${v.delka} s</span>` : ""}</div>
+      <div class="hk-t"><b>${esc(v.nazev)}</b>
+        <span class="vk-autor">${av(v.streamer)}${esc(v.streamer.jmeno)}</span>
+        <span class="hk-hraci">${klip ? `${esc(num(v.zhlednuti || 0))} zhlédnutí · ` : ""}${esc(kdy(new Date(v.cas)))}</span></div></a>`;
+  }
+  function hraTydne(k) {
+    const h = (k.epic_zdarma || [])[0] || (k.steam_zdarma || [])[0] || (k.steam_slevy || [])[0];
+    if (!h) return "";
+    const n = normNazev(h.nazev);
+    const vsechnyHry = [...(k.steam_top || []), ...(k.steam_hrane || []), ...(k.steam_slevy || [])];
+    const hod = h.hodnoceni || vsechnyHry.find((x) => x.hodnoceni && normNazev(x.nazev) === n)?.hodnoceni;
+    const hrajou = n.length > 3 ? state.zive.streamy.filter((s) => s.hra && normNazev(s.hra) === n) : [];
+    const pise = n.length > 3 ? state.clanky.filter((c) => normNazev(c.nadpis).includes(n)).slice(0, 3) : [];
+    const proc = h.cena === 0 || h.do ? `Zdarma na ${OBCHOD[h.obchod] || h.obchod}${h.do ? ` – ${zbyva(h.do)}` : ""}` : `Sleva −${h.sleva} % na ${OBCHOD[h.obchod] || h.obchod}`;
+    return `<section class="sekce hra-tydne">
+      <a class="ht-obr" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}</a>
+      <div class="ht-t"><span class="ht-stitek">Hra týdne</span>
+        <h2><a href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">${esc(h.nazev)}</a></h2>
+        <p class="ht-proc">${esc(proc)}</p>
+        ${hod ? `<p>${hodnoceniHry({ hodnoceni: hod })} <span class="dim">(Steam)</span></p>` : ""}
+        <p>${hrajou.length ? `Právě ji hraje: ${hrajou.slice(0, 4).map((s) => `<a href="${esc(profilUrl(s))}">${esc(s.jmeno)}</a>`).join(", ")}` : `<span class="dim">Teď ji nikdo z českých streamerů nehraje.</span>`}</p>
+        ${pise.length ? `<p class="ht-pise">Píše se o ní: ${pise.map((c) => `<a href="/clanek/${esc(enc(c.id))}">${esc(c.nadpis)}</a>`).join(" · ")}</p>` : ""}
+      </div></section>`;
   }
   const regal = (list, opt) => list.length ? `<div class="regal">${list.map((h, i) => kartaHry(h, typeof opt === "function" ? opt(h, i) : opt)).join("")}</div>` : `<p class="dim">Teď tu nic není – obchody se načítají, zkus to za chvíli.</p>`;
   const prepinac = (id, volby, akt) => `<div class="mini-seg" role="group">${volby.map(([k, v]) => `<button type="button" class="ms-b${k === akt ? " on" : ""}" data-${id}="${k}">${v}</button>`).join("")}</div>`;
@@ -674,10 +704,13 @@
     nastavTitulek("");
     if (!state.katalog) {
       app.innerHTML = `<div class="home-head"><h1>Co je nového ve hrách</h1></div><div class="kostra kostra-banner"></div>${kostra(3)}`;
-      try { state.katalog = await nacti("katalog"); } catch { state.katalog = {}; }
+      const [k, o] = await Promise.allSettled([nacti("katalog"), nacti("obsah")]);
+      state.katalog = k.status === "fulfilled" ? k.value : {};
+      state.obsah = o.status === "fulfilled" ? o.value : {};
     }
     if (location.pathname !== "/" && location.pathname !== "") return;
     const k = state.katalog;
+    const o = state.obsah || {};
     const zdarma = [...(k.epic_zdarma || []), ...(k.steam_zdarma || [])];
     const slevy = state.slevyObchod === "gog" ? (k.gog_slevy || []) : (k.steam_slevy || []);
     const top = state.topObchod === "gog" ? (k.gog_trend || []) : (k.steam_top || []);
@@ -691,6 +724,7 @@
           ${maxSleva ? `<a href="#slevy">slevy až <b>−${maxSleva} %</b></a>` : ""}
           ${hrane[0] ? `<a href="#hrane">nejhranější: <b>${esc(hrane[0].nazev)}</b></a>` : ""}</p></div>
 
+      ${hraTydne(k)}
       <section id="zdarma" class="sekce sekce-zdarma">
         <div class="section-title">Hry zdarma</div>
         ${zdarma.length ? `<div class="regal regal-velky">${zdarma.map((h) => kartaHry(h, { velka: true, odpocet: h.do ? zbyva(h.do) : "trvale" })).join("")}</div>` : `<p class="dim">Teď žádná hra zdarma – podívej se na slevy.</p>`}
@@ -706,7 +740,7 @@
         <div class="section-title">Nejhranější na Steamu</div>
         ${hrane.length ? `<div class="slist">${hrane.slice(0, 10).map((h, i) => `<a class="srow" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
             <span class="rank">${i + 1}</span>${https(h.obrazek) ? `<img class="hra-cap" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="hra-cap"></div>`}
-            <div class="info"><h3>${esc(h.nazev)}</h3><div class="bar"><i data-w="${Math.round((h.hracu || 0) / Math.max(1, hrane[0].hracu || 1) * 100)}"></i></div></div>
+            <div class="info"><h3>${esc(h.nazev)}</h3>${hodnoceniHry(h)}<div class="bar"><i data-w="${Math.round((h.hracu || 0) / Math.max(1, hrane[0].hracu || 1) * 100)}"></i></div></div>
             <div class="num"><b>${esc(num(h.hracu || 0))}</b>hráčů</div></a>`).join("")}</div>
           <p class="source-note">Nejvyšší počet hráčů současně za poslední týden podle Steamu.</p>` : `<p class="dim">Žebříček se načítá.</p>`}
       </section>
@@ -719,6 +753,25 @@
       <section class="sekce">
         <div class="section-title">${state.noveBrzy === "brzy" ? "Brzy vyjde" : "Nově vydané"} ${prepinac("nb", [["nove", "Nové"], ["brzy", "Brzy"]], state.noveBrzy)}</div>
         ${regal(noveBrzy, {})}
+      </section>
+
+      <section id="recenze" class="sekce">
+        <div class="section-title">Recenze</div>
+        ${(o.recenze || []).length ? `<div class="rec-list">${o.recenze.slice(0, 8).map((r) => `<a class="rec" href="/clanek/${esc(enc(r.id))}">
+            ${https(r.obrazek) ? `<img src="${esc(r.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="rec-bez"></div>`}
+            <div><b>${esc(r.nadpis)}</b><span class="dim">${r.jazyk === "cs" ? "🇨🇿 " : ""}${esc(r.zdroj)} · ${esc(kdy(new Date(r.datum)))}</span></div></a>`).join("")}</div>
+          <p class="source-note">Recenze píšou redakce uvedených webů, u každé je odkaz na celý článek.</p>`
+          : `<p class="dim">Recenze se sbírají z herních webů – první se objeví, jakmile některý web vydá novou.</p>`}
+      </section>
+
+      <section class="sekce">
+        <div class="section-title">Klipy týdne</div>
+        ${(o.klipy || []).length ? `<div class="regal">${o.klipy.map((v) => kartaVidea(v, true)).join("")}</div><p class="source-note">Nejsledovanější klipy českých streamerů z Twitche za posledních 7 dní.</p>` : `<p class="dim">Klipy se načítají jednou za hodinu.</p>`}
+      </section>
+
+      <section class="sekce">
+        <div class="section-title">Nová videa streamerů</div>
+        ${(o.videa || []).length ? `<div class="regal">${o.videa.map((v) => kartaVidea(v)).join("")}</div><p class="source-note">Nejnovější videa z YouTube kanálů českých streamerů. Kliknutím se otevře YouTube.</p>` : `<p class="dim">Zatím tu nejsou žádná videa – YouTube kanály streamerů se postupně doplňují.</p>`}
       </section>
 
       <section class="sekce">

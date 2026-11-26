@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 7) – Hra týdne, recenze, klipy, videa z YouTube, hodnocení ze Steamu
+- **Hra týdne** nahoře na Domů: hra zdarma (jinak největší sleva) + hodnocení hráčů ze Steamu + kdo z českých streamerů ji
+  právě hraje + články, které o ní píšou.
+- **Recenze**: články označené jako recenze z českých i zahraničních webů (české první), odkaz na stránku článku.
+- **Klipy týdne**: nejsledovanější Twitch klipy českých streamerů za 7 dní (80 nejsledovanějších, 8 na běh, střídají se).
+- **Nová videa streamerů**: z veřejného RSS YouTube kanálu (bez klíče). Kanál se bere z odkazu „YouTube“ v adminu u streamera;
+  admin ukazuje, jestli se kanál podařilo najít. Shorts se nezobrazují.
+- **Hodnocení hráčů ze Steamu** (% kladných recenzí a počet) u nejhranějších a 8 nejprodávanějších her.
+- Nový soubor `src/obsah.js`, tabulky `videa`, `klipy`, `obsah_stav`, endpoint `/api/obsah`, Cron `40 * * * *` (**5 z 5 Cronů – žádný další už nejde přidat**).
+  Běh obsahu ≈ 19 požadavků, katalog teď ≈ 33 požadavků (limit 50).
+
 ## 2026-11-26 (odpoledne, 6) – Oprava: prázdný GOG
 - Sekce GOG byly prázdné. Nejpravděpodobnější příčina: GOG v Česku neprodává v korunách, takže dotaz s měnou CZK vracel chybu.
   GOG se teď načítá v eurech (ceny na webu jsou u GOGu v €, u Steamu dál v Kč).

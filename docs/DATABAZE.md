@@ -31,3 +31,8 @@ Ruční SQL není potřeba. Data si můžeš prohlédnout v Cloudflare → D1 �
 | `klic` | např. `steam_slevy`, `epic_zdarma`, `stav` |
 | `data` | JSON pole her (u `stav` objekt s chybami) |
 | `cas` | čas uložení (ms) |
+
+## `videa`, `klipy`, `obsah_stav` (src/obsah.js)
+- `videa`: id videa (Shorts s předponou `s:`), streamer_id, nazev, cas. Maže se po 60 dnech.
+- `klipy`: id, streamer_id, url, nazev, nahled, zhlednuti, delka, hra_id, cas. Maže se po 14 dnech.
+- `obsah_stav`: `yt:<streamer_id>` = ID YouTube kanálu nebo chyba (+ odkaz, ze kterého se hledal), `kl:<streamer_id>` = čas posledních klipů.

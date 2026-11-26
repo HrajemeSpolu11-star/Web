@@ -400,3 +400,31 @@ a.termin{color:inherit}
 .ms-b.on{background:var(--card2);color:var(--text)}
 .hra-cap{width:74px;height:35px;border-radius:8px;object-fit:cover;background:var(--card2);flex:none}
 @media(prefers-reduced-motion:reduce){.hk,.hk:active{transition:none;transform:none}}
+
+/* ---------- Domů: hra týdne, recenze, videa a klipy ---------- */
+.hra-tydne{display:grid;grid-template-columns:1fr;gap:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;margin-top:20px}
+.ht-obr{display:block;aspect-ratio:16/9;background:var(--card2)}
+.ht-obr img{width:100%;height:100%;object-fit:cover;display:block}
+.ht-t{padding:16px 18px 18px}
+.ht-t h2{margin:4px 0 2px;font-size:clamp(22px,5vw,28px);line-height:1.2}
+.ht-t p{margin:6px 0;font-size:15px}
+.ht-t p a{color:var(--accent);font-weight:600}
+.ht-stitek{display:inline-block;background:var(--accent2);color:#fff;font-weight:700;font-size:13px;padding:3px 10px;border-radius:999px}
+.ht-proc{color:var(--accent);font-weight:700}
+.ht-pise a{color:var(--text)!important;font-weight:500!important;text-decoration:underline;text-decoration-color:var(--line)}
+@media(min-width:760px){.hra-tydne{grid-template-columns:1.15fr 1fr}.ht-obr{aspect-ratio:auto;min-height:100%}}
+.hk-hod{font-size:13px;color:var(--muted)}
+.hod-dobre{color:#7fe0a0}.hod-spatne{color:#ff9a9a}
+.srow .hk-hod{display:block;margin:1px 0 3px}
+.rec-list{display:grid;gap:8px}
+@media(min-width:760px){.rec-list{grid-template-columns:1fr 1fr}}
+.rec{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px;transition:border-color .2s}
+.rec:hover{border-color:var(--accent2)}
+.rec img,.rec-bez{width:96px;height:60px;border-radius:10px;object-fit:cover;flex:none;background:var(--card2)}
+.rec b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:15px;line-height:1.3}
+.rec .dim{font-size:13px}
+.vk-obr{aspect-ratio:16/9}
+.ob-yt{box-shadow:inset 0 0 0 1px #ff4e45}.ob-twitch{box-shadow:inset 0 0 0 1px var(--twitch)}
+.vk-delka{background:rgba(22,19,46,.85);color:#fff;font-weight:600;font-size:12px}
+.vk-autor{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.vk-autor .av{width:20px;height:20px;font-size:11px}

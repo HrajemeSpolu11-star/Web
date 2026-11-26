@@ -1,5 +1,6 @@
 // Herní katalog z veřejných dat obchodů: Steam, Epic Games Store, GOG.
 // Obnovuje se jednou za hodinu (cron "25 * * * *"), výsledek se ukládá do D1 (tabulka katalog).
+// Jeden běh ≈ 33 požadavků: Steam 1 + hodnocení 8 + žebříček 1 + detaily 10 + hodnocení 10 + Epic 1 + GOG 2.
 // Endpointy jsou veřejné (stejné, které používají weby obchodů), ale neoficiální –
 // každý obchod se zpracovává zvlášť, takže výpadek jednoho nerozbije ostatní.
 
@@ -29,14 +30,28 @@ function steamPolozka(i) {
   };
 }
 
+// Hodnocení hráčů ze Steamu: procento kladných recenzí a jejich počet (1 požadavek na hru).
+async function hodnoceni(ids) {
+  const r = await Promise.allSettled(ids.map((id) =>
+    json(`https://store.steampowered.com/appreviews/${encodeURIComponent(id)}?json=1&language=all&purchase_type=all&num_per_page=0&filter=summary`)));
+  return ids.map((_, i) => {
+    const q = r[i].status === "fulfilled" ? r[i].value?.query_summary : null;
+    return q && q.total_reviews > 0 ? { kladne: Math.round((q.total_positive / q.total_reviews) * 100), recenzi: q.total_reviews } : null;
+  });
+}
+const HODNOTIT_TOP = 8;
+
 async function steam() {
   const d = await json("https://store.steampowered.com/api/featuredcategories?cc=cz&l=czech");
   const list = (k) => (d?.[k]?.items || []).filter((i) => i && i.id && i.name).map(steamPolozka);
   const slevy = list("specials");
+  const top = list("top_sellers").slice(0, 15);
+  const h = await hodnoceni(top.slice(0, HODNOTIT_TOP).map((t) => t.id));
+  h.forEach((x, i) => { if (x) top[i].hodnoceni = x; });
   return {
     steam_slevy: slevy.filter((i) => i.sleva > 0 && i.sleva < 100).slice(0, 20),
     steam_zdarma: slevy.filter((i) => i.sleva === 100).slice(0, 10),
-    steam_top: list("top_sellers").slice(0, 15),
+    steam_top: top,
     steam_nove: list("new_releases").slice(0, 15),
     steam_brzy: list("coming_soon").slice(0, 15),
   };
@@ -45,15 +60,17 @@ async function steam() {
 async function steamNejhranejsi() {
   const d = await json("https://api.steampowered.com/ISteamChartsService/GetMostPlayedGames/v1/");
   const ranks = (d?.response?.ranks || []).slice(0, NEJHRANEJSICH);
-  const detaily = await Promise.allSettled(ranks.map((r) =>
-    json(`https://store.steampowered.com/api/appdetails?appids=${encodeURIComponent(r.appid)}&cc=cz&l=czech&filters=basic`)));
+  const [detaily, hod] = await Promise.all([
+    Promise.allSettled(ranks.map((r) => json(`https://store.steampowered.com/api/appdetails?appids=${encodeURIComponent(r.appid)}&cc=cz&l=czech&filters=basic`))),
+    hodnoceni(ranks.map((r) => r.appid)),
+  ]);
   return {
     steam_hrane: ranks.map((r, i) => {
       const det = detaily[i].status === "fulfilled" ? detaily[i].value?.[r.appid]?.data : null;
       return {
         id: String(r.appid), poradi: r.rank, hracu: r.peak_in_game || r.concurrent_in_game || null,
         nazev: txt(det?.name || `Hra ${r.appid}`), obrazek: https(det?.header_image),
-        url: `https://store.steampowered.com/app/${encodeURIComponent(r.appid)}/`, obchod: "steam",
+        url: `https://store.steampowered.com/app/${encodeURIComponent(r.appid)}/`, obchod: "steam", hodnoceni: hod[i] || undefined,
       };
     }).filter((h) => !h.nazev.startsWith("Hra ")),
   };

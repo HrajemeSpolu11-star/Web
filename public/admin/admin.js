@@ -164,6 +164,7 @@
           <label><input type="checkbox" name="overeno" ${s.overeno ? "checked" : ""}> Ověřený</label>
         </div>
         <div class="adm-odkazy">${SITE.map(([k, n]) => `<label>${n}<input name="${k}" inputmode="url" placeholder="https://…" value="${esc(s.odkazy?.[k] || "")}"></label>`).join("")}</div>
+        ${s.youtube_stav ? `<p class="adm-autor">YouTube: ${s.youtube_stav.kanal ? `kanál nalezen (${esc(s.youtube_stav.kanal)}), videa se stahují` : esc(s.youtube_stav.chyba || "čeká na první načtení")}</p>` : s.odkazy?.youtube ? `<p class="adm-autor">YouTube: čeká na první načtení (do hodiny)</p>` : ""}
         <div class="tlacitka"><button class="adm-btn adm-btn-primary" type="submit">Uložit</button></div>
       </form>`).join("") : `<p class="empty">Nikoho jsme nenašli.</p>`;
   }
