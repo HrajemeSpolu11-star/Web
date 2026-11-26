@@ -6,6 +6,12 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 6) – Oprava: prázdný GOG
+- Sekce GOG byly prázdné. Nejpravděpodobnější příčina: GOG v Česku neprodává v korunách, takže dotaz s měnou CZK vracel chybu.
+  GOG se teď načítá v eurech (ceny na webu jsou u GOGu v €, u Steamu dál v Kč).
+- Trendy a slevy GOG se načítají každé zvlášť, výpadek jednoho nesmaže druhé. Slevy se řadí od největší a filtrují se až na našem webu.
+- Chyby sběru se v `katalog` → `stav` ukládají s názvem obchodu (např. „GOG: HTTP 403“).
+
 ## 2026-11-26 (odpoledne, 5) – Nové logo „AI jádro“
 - Logo EKG nahradila animovaná ikona umělé inteligence: šestiúhelníková neuronová síť. Uzly se postupně rozsvítí,
   signál doběhne do středu a jádro tepe („přemýšlí“). Po najetí myší tepe rychleji. Při omezení animací stojí.

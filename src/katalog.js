@@ -87,20 +87,20 @@ function gogPolozka(p) {
   return {
     id: String(p.id), nazev: txt(p.title), obrazek: https(p.coverHorizontal || p.coverVertical),
     url: https(p.storeLink) || (p.slug ? `https://www.gog.com/cs/game/${encodeURIComponent(p.slug)}` : "https://www.gog.com"),
-    cena: num(fin), puvodni: num(base), mena: fin?.currency || "CZK",
+    cena: num(fin), puvodni: num(base), mena: fin?.currency || "EUR",
     sleva: Math.abs(parseInt(String(p.price?.discount || fin?.discount || "0").replace(/[^0-9-]/g, ""), 10) || 0),
     obchod: "gog",
   };
 }
 async function gog() {
-  const zaklad = "https://catalog.gog.com/v1/catalog?productType=in:game,pack&countryCode=CZ&locale=cs-CZ&currencyCode=CZK&limit=15";
-  const [trend, slevy] = await Promise.all([
-    json(`${zaklad}&order=desc:trending`),
-    json(`${zaklad}&order=desc:discount&discounted=eq:true`),
-  ]);
+  // GOG neprodává v Kč – v Česku účtuje v eurech. currencyCode=CZK vracel chybu a obě sekce zůstaly prázdné.
+  const zaklad = "https://catalog.gog.com/v1/catalog?productType=in:game,pack&countryCode=CZ&locale=en-US&currencyCode=EUR&limit=48";
+  const [trend, slevy] = await Promise.allSettled([json(`${zaklad}&order=desc:trending`), json(`${zaklad}&order=desc:discount`)]);
+  if (trend.status === "rejected" && slevy.status === "rejected") throw new Error(`GOG: ${trend.reason?.message || trend.reason}`);
+  const seznam = (r) => (r.status === "fulfilled" ? r.value?.products || [] : []).map(gogPolozka).filter((p) => p.nazev);
   return {
-    gog_trend: (trend?.products || []).map(gogPolozka).filter((p) => p.nazev),
-    gog_slevy: (slevy?.products || []).map(gogPolozka).filter((p) => p.nazev && p.sleva > 0),
+    gog_trend: seznam(trend).slice(0, 15),
+    gog_slevy: seznam(slevy).filter((p) => p.sleva > 0).slice(0, 20),
   };
 }
 
@@ -108,11 +108,12 @@ export async function sberKatalogu(env) {
   const db = env.DB;
   await db.prepare(SCHEMA).run();
   const ted = Date.now();
+  const nazvy = ["Steam", "Steam žebříček", "Epic", "GOG"];
   const casti = await Promise.allSettled([steam(), steamNejhranejsi(), epic(), gog()]);
   const prikazy = [];
   const chyby = [];
-  for (const c of casti) {
-    if (c.status === "rejected") { chyby.push(String(c.reason?.message || c.reason).slice(0, 120)); continue; }
+  for (const [i, c] of casti.entries()) {
+    if (c.status === "rejected") { chyby.push(`${nazvy[i]}: ${String(c.reason?.message || c.reason).slice(0, 120)}`); continue; }
     for (const [klic, data] of Object.entries(c.value)) {
       // Prázdný výsledek nepřepíše starší data (obchod mohl mít výpadek).
       if (!Array.isArray(data) || (!data.length && klic !== "epic_brzy" && klic !== "steam_zdarma")) continue;
