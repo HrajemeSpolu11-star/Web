@@ -6,6 +6,11 @@
 
 ---
 
+## 2026-11-26 (večer, 27) – Oprava: falešný odpočet u vydání her
+- Kalendář vydání a „Brzy vyjde“ ukazovaly odpočet na sekundy do půlnoci UTC (např. „za 7 h 03 min“), i když IGDB ani Steam API
+  neznají hodinu vydání (Steam ji ukazuje jen na stránce obchodu). Teď jen „vychází dnes / zítra / za N dní“ a datum v UTC
+  (`datumVydani`, `dnyDoVydani`). Přesný odpočet zůstává jen u akcí s oficiálním časem.
+
 ## 2026-11-26 (večer, 26) – Dohasínající EKG v barvách platforem, archiv novinek
 - **EKG dohasíná jako fosfor na monitoru**: nová stopa svítí naplno, starší postupně slábne (destination-out každých 0,1 s,
   τ ≈ 1,5 s), okraje monitoru jsou měkce ztracené (maska).

@@ -630,6 +630,15 @@
       <div><b>${esc(z.nazev)}</b><span class="dim">${sStudiem ? `${esc(z.studio_nazev)} · ` : ""}${z.hra ? `${esc(z.hra)} · ` : ""}${z.druh === "steam" ? "oznámení na Steamu" : "oficiální blog"} · ${esc(kdy(new Date(z.cas)))}</span></div></a>`;
 
   // Kalendář vydání
+  // IGDB i Steam znají u vydání jen DEN, ne hodinu (tu určuje vývojář a Steam ji v API nedává).
+  // Proto žádný odpočet na minuty – jen „dnes / zítra / za N dní“. Datum je půlnoc UTC → bere se kalendářní den v UTC.
+  const datumVydani = (iso) => new Date(iso).toLocaleDateString("cs-CZ", { timeZone: "UTC" });
+  function dnyDoVydani(iso) {
+    const den = new Date(iso).toISOString().slice(0, 10);
+    const dnes = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
+    const n = Math.round((Date.parse(den + "T12:00:00Z") - Date.parse(dnes + "T12:00:00Z")) / 864e5);
+    return n <= 0 ? (n === 0 ? "vychází dnes" : "už vyšlo") : n === 1 ? "vychází zítra" : `vychází za ${pl(n, "den", "dny", "dní")}`;
+  }
   async function strankaVydani() {
     nastavTitulek("Kalendář vydání her – co vychází a jestli bude česky");
     const f = new URLSearchParams(location.search).get("f") || "vse";
@@ -657,7 +666,7 @@
         <div class="vydani">${list.map((h) => `<div class="vyd">
           ${https(h.obrazek) ? `<img class="vyd-obr" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyd-obr"></div>`}
           <div class="vyd-t">${h.steam_id ? `<a href="/hra/steam/${esc(h.steam_id)}"><b>${esc(h.nazev)}</b></a>` : `<b>${esc(h.nazev)}</b>`}
-            <span class="vyd-datum">${h.presne ? esc(new Date(h.datum).toLocaleDateString("cs-CZ")) : esc(h.human)}${h.presne && Date.parse(h.datum) > Date.now() ? ` · za <span data-odpocet="${esc(h.datum)}"></span>` : h.presne ? " · právě vychází" : ""}</span>
+            <span class="vyd-datum">${h.presne ? esc(datumVydani(h.datum)) : esc(h.human)}${h.presne ? ` · ${esc(dnyDoVydani(h.datum))}` : ""}</span>
             ${h.uz_vyslo ? `<p class="vyd-uz">${h.prvni ? `Hra už vyšla ${esc(new Date(h.prvni).toLocaleDateString("cs-CZ"))}` : "Hra už je k dispozici na Steamu"}${h.prvni && h.na_steamu ? " a je k dispozici na Steamu" : ""}. Tady jde o vydání ${(h.platformy || []).length ? `pro ${esc((h.platformy || []).join(", "))}` : "pro další platformu"}${/early|předběž/i.test(h.stav) ? "" : " nebo plnou verzi"}.</p>` : ""}
             <div class="hrad-meta">${czTxt(h)}${h.cestina_zdroj ? `<span class="dim vyd-zdroj">${esc(h.cestina_zdroj)}</span>` : ""}${(h.platformy || []).map((p) => `<span class="plat">${esc(p)}</span>`).join("")}</div>
             <div class="vyd-akce">${h.steam ? `<a class="btn-maly" href="${esc(bezpecnaUrl(h.steam))}" target="_blank" rel="noopener noreferrer">Steam</a>` : ""}
@@ -1808,8 +1817,8 @@
           <div class="section-title">Brzy vyjde · <a href="/vydani">kalendář</a></div>
           <div class="brzy">${brzy.map((h) => `<a class="brzy-h" ${h.steam_id ? `href="/hra/steam/${esc(h.steam_id)}"` : `href="/vydani"`}>
               ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="brzy-bez"></div>`}
-              <div><b>${esc(h.nazev)}</b><span>${h.presne ? esc(new Date(h.datum).toLocaleDateString("cs-CZ")) : esc(h.human)}${h.cestina > 0 ? ` · <span class="cz">${h.cestina === 2 ? "CZ dabing" : "CZ texty"}</span>` : ""}</span>
-              ${h.presne && Date.parse(h.datum) > Date.now() ? `<span class="brzy-za">za <span data-odpocet="${esc(h.datum)}"></span></span>` : ""}</div></a>`).join("")}</div>
+              <div><b>${esc(h.nazev)}</b><span>${h.presne ? esc(datumVydani(h.datum)) : esc(h.human)}${h.cestina > 0 ? ` · <span class="cz">${h.cestina === 2 ? "CZ dabing" : "CZ texty"}</span>` : ""}</span>
+              ${h.presne ? `<span class="brzy-za">${esc(dnyDoVydani(h.datum))}</span>` : ""}</div></a>`).join("")}</div>
         </section>` : ""}
 
         ${tydne ? `<a class="hra-velka m5" ${odkazHry(tydne)}>${https(tydne.obrazek) ? `<img src="${esc(tydne.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}

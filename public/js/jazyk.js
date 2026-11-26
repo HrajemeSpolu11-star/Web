@@ -379,6 +379,7 @@
     "Brzy vyjde": ["Čoskoro vyjde", "Coming soon"],
     "kalendář": ["kalendár", "calendar"],
     "Nové aktualizace her": ["Nové aktualizácie hier", "New game updates"],
+    "vychází dnes": ["vychádza dnes", "out today"], "vychází zítra": ["vychádza zajtra", "out tomorrow"], "už vyšlo": ["už vyšlo", "already out"],
     "Nové hry": ["Nové hry", "New games"], "Nové platformy a plné verze": ["Nové platformy a plné verzie", "New platforms and full releases"],
     "Kategorie": ["Kategórie", "Categories"], "Upozornění jsou teď přeplněná, zkus to později.": ["Upozornenia sú teraz preplnené, skús to neskôr.", "Notifications are full right now, try again later."],
     "Všechny": ["Všetky", "All"], "Jen s češtinou": ["Len s češtinou", "Czech only"], "Jen s přesným datem": ["Len s presným dátumom", "Exact date only"],
@@ -430,6 +431,9 @@
 
   // ---------- Věty s čísly a proměnnými částmi: [vzor, slovensky, anglicky] ----------
   const FRAZE = [
+    [/^vychází za (\d+) (?:den|dny|dní)$/, "vychádza o $1 dní", (m) => `out in ${m[1]} day${+m[1] === 1 ? "" : "s"}`],
+    [/^(.+) · (vychází dnes|vychází zítra|už vyšlo)$/, (m) => `${m[1]} · ${{ "vychází dnes": "vychádza dnes", "vychází zítra": "vychádza zajtra", "už vyšlo": "už vyšlo" }[m[2]]}`, (m) => `${m[1]} · ${{ "vychází dnes": "out today", "vychází zítra": "out tomorrow", "už vyšlo": "already out" }[m[2]]}`],
+    [/^(.+) · vychází za (\d+) (?:den|dny|dní)$/, "$1 · vychádza o $2 dní", (m) => `${m[1]} · out in ${m[2]} day${+m[2] === 1 ? "" : "s"}`],
     [/^(\d+)\/min$/, "$1/min", "$1/min"],
     [/^měřím tep (\d+) (?:živého streamu|živých streamů) \((\S+)\)$/, "meriam tep $1 živých streamov ($2)", "measuring the pulse of $1 live streams ($2)"],
     [/^Hra týdne · další (\d+) (?:hra|hry|her) zdarma(?: · slevy až −(\d+) %)?$/, (m) => `Hra týždňa · ďalšie ${m[1]} hry zadarmo${m[2] ? ` · zľavy až −${m[2]} %` : ""}`, (m) => `Game of the week · ${m[1]} more free${m[2] ? ` · deals up to −${m[2]} %` : ""}`],
