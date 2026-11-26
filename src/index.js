@@ -13,13 +13,13 @@ import { apiPrehled } from "./prehled.js";
 import { apiKatalog, sberKatalogu, sberKataloguPokudStary } from "./katalog.js";
 import { apiObsah, sberObsahu } from "./obsah.js";
 import { apiCesko, apiReport } from "./statistiky.js";
-import { infoHry } from "./hra-data.js";
+import { infoHry, infoHrySteam } from "./hra-data.js";
 import { apiCestina, apiSteamHry, doplnSteamUdaje, prikazyUlozHry, zajistiSchemaHlidac } from "./hlidac.js";
 import { zajistiSchemaObsah } from "./obsah.js";
 import { denPraha } from "./psani.js";
 import { behUlohy, uklidDeniku, apiStavSystemu } from "./denik.js";
 import { apiStudia, apiStudio, sberStudii } from "./studia.js";
-import { apiAkce } from "./akce.js";
+import { apiAkce, obnovObrazkyAkci } from "./akce.js";
 import { apiVydani, sberVydani } from "./vydani.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
@@ -208,9 +208,25 @@ async function apiHra(slug, env, ctx) {
   await zajistiSchemaObsah(env.DB);
   const h = await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE slug = ?").bind(slug).first();
   if (!h) return json({ chyba: "Nenalezeno" }, 404);
+  return hraOdpoved(env, ctx, h, infoHry(env, ctx, h.slug, h.nazev).catch(() => null), ted);
+}
+
+// Stránka libovolné hry ze Steamu (/hra/steam/:appid). Když ji někdo z Česka streamuje, přidají se statistiky ze streamů.
+async function apiHraSteam(id, env, ctx) {
+  if (!/^\d{1,10}$/.test(id)) return json({ chyba: "Neplatná hra" }, 400);
+  const ted = Date.now();
+  await zajistiSchemaTwitch(env.DB);
+  await zajistiSchemaObsah(env.DB);
+  const info = await infoHrySteam(env, ctx, id).catch(() => null);
+  if (!info?.steam?.nazev) return json({ chyba: "Nenalezeno" }, 404);
+  const tw = await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE nazev = ? COLLATE NOCASE LIMIT 1").bind(info.steam.nazev).first();
+  const h = tw || { slug: null, nazev: info.steam.nazev, twitch_id: null };
+  return hraOdpoved(env, ctx, h, Promise.resolve(info), ted, id);
+}
+
+async function hraOdpoved(env, ctx, h, infoP, ted, steamId = null) {
   const q = `%${h.nazev}%`;
   const od30 = new Date(ted - 30 * 86400e3).toISOString().slice(0, 10), od7 = denPraha(ted - 6 * 86400e3);
-  const infoP = infoHry(env, ctx, h.slug, h.nazev).catch(() => null);
   const [zive, nejvic, rss, vl, dny, klipy] = await env.DB.batch([
     env.DB.prepare("SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? AND s.zive_hra = ? ORDER BY s.zive_divaci DESC LIMIT 50").bind(ted - ZIVE_PLATNOST, h.nazev),
     env.DB.prepare(`SELECT s.*, x.minut AS minut_hra FROM hry_streamera x JOIN streameri s ON s.id = x.user_id
@@ -235,7 +251,7 @@ async function apiHra(slug, env, ctx) {
     } catch { /* nepovinné */ }
   }
   return json({
-    slug: h.slug, nazev: h.nazev,
+    slug: h.slug, nazev: h.nazev, steam_id: steamId || info?.steam?.id || null,
     info,
     statistiky: {
       hodin7: Math.round(tyden.reduce((a, d) => a + (d.dm || 0), 0) / 60),
@@ -349,6 +365,7 @@ async function verejneApi(request, env, ctx, url) {
       else ctx.waitUntil(sberKataloguPokudStary(env).catch((e) => console.error("katalog:", e)));
       odpoved = json(k, 200, k.cas ? 600 : 0);
     }
+    else if (url.pathname.startsWith("/api/hra-steam/")) odpoved = await apiHraSteam(url.pathname.slice(15), env, ctx);
     else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(decodeURIComponent(url.pathname.slice(9)), env, ctx);
     else if (url.pathname.startsWith("/api/streamer-extra/")) {
       const [plat, login] = url.pathname.slice(20).split("/").map(decodeURIComponent);
@@ -420,6 +437,7 @@ export default {
       ctx.waitUntil(behUlohy(env, "katalog", async () => {
         const v = await sberKatalogu(env);
         try { v.vydani = await sberVydani(env); } catch (e) { v.chyby.push(`IGDB: ${String(e.message || e).slice(0, 100)}`); }
+        await obnovObrazkyAkci(env.DB).catch((e) => v.chyby.push(`obrázky akcí: ${String(e.message || e).slice(0, 80)}`));
         return v;
       }, (v) => `Zkontrolovala obchody Steam, Epic a GOG – hry zdarma, slevy, žebříčky a hodnocení hráčů.` +
         `${v.vydani?.her ? ` Aktualizovala kalendář vydání (${pl(v.vydani.her, "hra", "hry", "her")}).` : ""}${v.chyby.length ? ` Nedostupné: ${v.chyby.join("; ")}.` : ""}`));

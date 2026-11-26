@@ -41,7 +41,11 @@ async function steam(nazev) {
   const cil = normNazev(nazev);
   const shoda = (hledani?.items || []).find((i) => i.type === "app" && normNazev(i.name) === cil);
   if (!shoda) return null;
-  const id = shoda.id;
+  return steamPodleId(shoda.id, shoda);
+}
+
+// Údaje o hře podle čísla na Steamu (appid) – jednoznačné, bez párování podle názvu.
+async function steamPodleId(id, shoda = {}) {
   const [det, rec, hraci] = await Promise.allSettled([
     json(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=cz&l=czech`),
     json(`https://store.steampowered.com/appreviews/${id}?json=1&language=all&purchase_type=all&num_per_page=0&filter=summary`),
@@ -51,7 +55,8 @@ async function steam(nazev) {
   const q = rec.status === "fulfilled" ? rec.value?.query_summary : null;
   const p = d?.price_overview;
   return {
-    id: String(id), url: `https://store.steampowered.com/app/${id}/`, nazev: d?.name || shoda.name,
+    id: String(id), url: `https://store.steampowered.com/app/${id}/`, nazev: d?.name || shoda.name || "",
+    vydavatele: (d?.publishers || []).slice(0, 2), typ: d?.type || "",
     obrazek: https(d?.header_image || shoda.tiny_image), popis: bezHtml(d?.short_description, 300),
     zdarma: !!d?.is_free,
     cena: p ? p.final / 100 : null, puvodni: p ? p.initial / 100 : null, sleva: p?.discount_percent || 0, mena: p?.currency || "CZK",
@@ -97,6 +102,31 @@ async function stahni(db, nazev) {
   const [s, g, e] = await Promise.allSettled([steam(nazev), gog(nazev), epic(db, nazev)]);
   const chyby = [s, g, e].filter((x) => x.status === "rejected").map((x) => String(x.reason?.message || x.reason).slice(0, 100));
   return { steam: s.value || null, gog: g.value || null, epic: e.value || null, chyby, cas: new Date().toISOString() };
+}
+
+// Stránka hry podle Steam ID: Steam podle čísla, GOG a Epic podle přesného názvu ze Steamu.
+async function stahniPodleId(db, id) {
+  const st = await steamPodleId(id);
+  if (!st?.nazev || (st.typ && st.typ !== "game")) return { steam: st?.nazev ? st : null, gog: null, epic: null, chyby: [], cas: new Date().toISOString() };
+  const [g, e] = await Promise.allSettled([gog(st.nazev), epic(db, st.nazev)]);
+  return { steam: st, gog: g.value || null, epic: e.value || null, chyby: [g, e].filter((x) => x.status === "rejected").map((x) => String(x.reason?.message || x.reason).slice(0, 100)), cas: new Date().toISOString() };
+}
+export async function infoHrySteam(env, ctx, id) {
+  if (!/^\d{1,10}$/.test(String(id))) return null;
+  const db = env.DB;
+  await db.prepare(SCHEMA).run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS katalog (klic TEXT PRIMARY KEY, data TEXT NOT NULL, cas INTEGER NOT NULL)").run();
+  const klic = `steam-${id}`;
+  const r = await db.prepare("SELECT data, cas FROM hra_info WHERE slug = ?").bind(klic).first();
+  const uloz = async () => {
+    const data = await stahniPodleId(db, id);
+    if (!data.steam && r) return JSON.parse(r.data);
+    if (data.steam) await db.prepare("INSERT OR REPLACE INTO hra_info (slug, data, cas) VALUES (?, ?, ?)").bind(klic, JSON.stringify(data), Date.now()).run();
+    return data;
+  };
+  if (!r) return uloz().catch(() => null);
+  if (Date.now() - r.cas > PLATNOST) ctx.waitUntil(uloz().catch((e) => console.error("hra_info steam:", e)));
+  try { return JSON.parse(r.data); } catch { return null; }
 }
 
 // Vrátí data z mezipaměti; chybějící stáhne hned, zastaralá obnoví na pozadí.

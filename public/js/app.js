@@ -169,6 +169,13 @@
   }
   const tlacitkoObrazek = (id) => `<button type="button" class="btn-maly" id="${id}">Sdílet jako obrázek</button>`;
 
+  // Odkaz na hru: hry ze Steamu mají vlastní stránku u nás (/hra/steam/ID), ostatní vedou do obchodu.
+  const steamIdHry = (h) => h.obchod === "steam" || /store\.steampowered\.com\/app\/\d+/.test(h.url || "") ? String(h.id || (/app\/(\d+)/.exec(h.url || "") || [])[1] || "") : "";
+  function odkazHry(h) {
+    const id = steamIdHry(h);
+    return /^\d+$/.test(id) ? `href="/hra/steam/${id}"` : `href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer"`;
+  }
+
   // ---------- Čeština a hlídač cen ----------
   // Čeština podle údajů na Steamu: 2 = dabing, 1 = titulky/rozhraní, 0 = bez češtiny, null = zatím neověřeno.
   function czStitek(h, uplny = false) {
@@ -223,8 +230,8 @@
     const minTxt = h.min90 != null && h.cena != null && h.cena > 0
       ? (h.cena <= h.min90 ? `<span class="min90 min-ok">nejnižší cena za 90 dní</span>` : `<span class="min90">nejníž za 90 dní: ${esc(cena(h.min90, h.mena))}</span>`) : "";
     return `<div class="hrad">
-      <a class="hrad-obr" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}</a>
-      <div class="hrad-t"><a href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer"><b>${esc(h.nazev)}</b></a>
+      <a class="hrad-obr" ${odkazHry({ ...h, obchod: "steam" })}>${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}</a>
+      <div class="hrad-t"><a ${odkazHry({ ...h, obchod: "steam" })}><b>${esc(h.nazev)}</b></a>
         <div class="hrad-meta">${czStitek(h, true)}${hodnoceniHry(h)}</div>
         <div class="hrad-cena">${cenaTxt} ${minTxt}</div>
         ${hlidac ? `<div class="hrad-cil">${(() => { const x = hlidane().find((y) => y.id === String(h.id)); return x?.cil != null ? `Upozorním, až bude pod ${esc(cena(x.cil, "CZK"))}` : "Upozorním na jakoukoliv slevu"; })()}</div>` : ""}
@@ -350,7 +357,7 @@
       ${hry.length ? [...mesice].map(([m, list]) => `<div class="section-title">${esc(m.charAt(0).toUpperCase() + m.slice(1))}</div>
         <div class="vydani">${list.map((h) => `<div class="vyd">
           ${https(h.obrazek) ? `<img class="vyd-obr" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="vyd-obr"></div>`}
-          <div class="vyd-t"><b>${esc(h.nazev)}</b>
+          <div class="vyd-t">${h.steam_id ? `<a href="/hra/steam/${esc(h.steam_id)}"><b>${esc(h.nazev)}</b></a>` : `<b>${esc(h.nazev)}</b>`}
             <span class="vyd-datum">${h.presne ? esc(new Date(h.datum).toLocaleDateString("cs-CZ")) : esc(h.human)}${h.presne && Date.parse(h.datum) > Date.now() ? ` · za <span data-odpocet="${esc(h.datum)}"></span>` : ""}</span>
             <div class="hrad-meta">${czTxt(h)}${h.cestina_zdroj ? `<span class="dim vyd-zdroj">${esc(h.cestina_zdroj)}</span>` : ""}${(h.platformy || []).map((p) => `<span class="plat">${esc(p)}</span>`).join("")}</div>
             <div class="vyd-akce">${h.steam ? `<a class="btn-maly" href="${esc(bezpecnaUrl(h.steam))}" target="_blank" rel="noopener noreferrer">Steam</a>` : ""}
@@ -370,6 +377,7 @@
     if (!location.pathname.startsWith("/akce")) return;
     app.innerHTML = `${hubHry("akce", "Akce a odpočty", "Výprodeje, herní přenosy a veletrhy – s přesným odpočtem podle oficiálních termínů.")}
       <div class="akce">${d.akce.map((a) => `<div class="akce-k akce-${esc(a.typ)}${a.bezi ? " bezi" : ""}">
+          <a class="akce-obr" href="${esc(bezpecnaUrl(a.web))}" target="_blank" rel="noopener noreferrer"><img src="${esc(https(a.obrazek) || `/og/akce-${a.typ}.png`)}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
           <span class="akce-typ">${esc(TYP_AKCE[a.typ] || a.typ)}</span>
           <h3>${esc(a.nazev)}</h3>
           <p class="akce-cas">${a.bezi ? `Právě probíhá · končí za <b data-odpocet="${esc(a.do)}"></b>` : `Začíná za <b data-odpocet="${esc(a.od)}"></b>`}</p>
@@ -377,7 +385,7 @@
           <p>${esc(a.popis)}</p>
           <div class="vyd-akce"><a class="btn-maly" href="${esc(bezpecnaUrl(a.web))}" target="_blank" rel="noopener noreferrer">Oficiální web</a>
             <a class="dim akce-zdroj" href="${esc(bezpecnaUrl(a.zdroj))}" target="_blank" rel="noopener noreferrer">zdroj termínu</a></div></div>`).join("")}
-        ${d.epic ? `<div class="akce-k akce-epic"><span class="akce-typ">Hra zdarma</span><h3>${esc(d.epic.nazev)}</h3>
+        ${d.epic ? `<div class="akce-k akce-epic">${https(d.epic.obrazek) ? `<a class="akce-obr" href="${esc(bezpecnaUrl(d.epic.url))}" target="_blank" rel="noopener noreferrer"><img src="${esc(d.epic.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>` : ""}<span class="akce-typ">Hra zdarma</span><h3>${esc(d.epic.nazev)}</h3>
           <p class="akce-cas">Zdarma na Epicu za <b data-odpocet="${esc(d.epic.od)}"></b></p><p class="dim">${esc(datumCasCz(d.epic.od))}</p>
           <div class="vyd-akce"><a class="btn-maly" href="${esc(bezpecnaUrl(d.epic.url))}" target="_blank" rel="noopener noreferrer">Obchod Epic</a></div></div>` : ""}</div>
       <div class="section-title">Ohlášené přenosy</div>
@@ -402,7 +410,8 @@
       <div class="mini-seg cz-filtry" role="group">${[["vse", "Všechna"], ["cz", "Česká studia"], ["platformy", "Platformy"]].map(([k, v]) =>
         `<a class="ms-b${k === f ? " on" : ""}" href="/studia${k === "vse" ? "" : `?f=${k}`}">${v}</a>`).join("")}</div>
       <div class="studia">${studia.map((s) => `<a class="studio-k" href="/studio/${esc(s.slug)}">
-          <div class="studio-h"><span class="studio-ini" aria-hidden="true">${esc(s.nazev[0])}</span><div><b>${esc(s.nazev)}</b>
+          ${https(s.nahled?.obrazek) ? `<div class="studio-obr"><img src="${esc(s.nahled.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer"></div>` : ""}
+          <div class="studio-h">${ikonaStudia(s)}<div><b>${esc(s.nazev)}</b>
           <span class="dim">${VLAJKY[s.zeme] || ""} ${s.typ === "platforma" ? "platforma" : s.typ === "vydavatel" ? "vydavatel" : "studio"}${s.polozek ? ` · ${pl(s.polozek, "novinka", "novinky", "novinek")}` : ""}</span></div></div>
           <p>${esc(s.popis)}</p></a>`).join("")}</div>
       ${d.videa.length ? `<div class="section-title">Nejnovější trailery a videa</div><div class="regal">${d.videa.map(kartaTraileru).join("")}</div>` : ""}
@@ -410,6 +419,10 @@
         : `<p class="dim">Novinky studií se načítají postupně – každé studio zhruba jednou za 3 hodiny.</p>`}
       <p class="source-note">Jen oficiální zdroje: YouTube kanály studií (ověřené podle názvu kanálu), jejich blogy a oznámení vývojářů na Steamu. Kliknutím otevřeš originál.</p>`;
   }
+  // Logo/ikona studia z jeho oficiálního webu (apple-touch-icon / icon); když není, první písmeno.
+  const ikonaStudia = (s, velke = false) => https(s.nahled?.ikona)
+    ? `<span class="studio-ini studio-logo${velke ? " velke" : ""}"><img src="${esc(s.nahled.ikona)}" alt="" loading="lazy" referrerpolicy="no-referrer"></span>`
+    : `<span class="studio-ini${velke ? " velke" : ""}" aria-hidden="true">${esc(s.nazev[0])}</span>`;
   async function strankaStudio(slug) {
     app.innerHTML = kostra(5);
     let s;
@@ -417,10 +430,13 @@
     nastavTitulek(`${s.nazev} – novinky, trailery a hry`);
     const videa = s.polozky.filter((p) => p.druh === "video"), zpravy = s.polozky.filter((p) => p.druh !== "video");
     app.innerHTML = `<div class="profile"><a class="back" href="/studia">← Studia a platformy</a>
-      <div class="studio-hlava"><span class="studio-ini velke" aria-hidden="true">${esc(s.nazev[0])}</span>
+      <div class="studio-hlava">${ikonaStudia(s, true)}
         <div><h1 class="m0">${esc(s.nazev)}</h1><p class="dim">${VLAJKY[s.zeme] || ""} ${esc(s.popis)}</p></div></div>
       <div class="vyd-akce"><a class="btn-maly" href="${esc(bezpecnaUrl(s.web))}" target="_blank" rel="noopener noreferrer">Oficiální web</a>
         ${s.youtube ? `<a class="btn-maly" href="${esc(bezpecnaUrl(s.youtube))}" target="_blank" rel="noopener noreferrer">YouTube</a>` : ""}</div>
+      ${s.nahled && (https(s.nahled.obrazek) || s.nahled.popis) ? `<a class="web-nahled" href="${esc(bezpecnaUrl(s.web))}" target="_blank" rel="noopener noreferrer">
+        ${https(s.nahled.obrazek) ? `<img src="${esc(s.nahled.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+        <div><span class="dim">${esc(new URL(s.web).hostname)}</span><b>${esc(s.nahled.titulek || s.nazev)}</b>${s.nahled.popis ? `<p>${esc(s.nahled.popis)}</p>` : ""}<span class="btn-maly">Otevřít web studia</span></div></a>` : ""}
       ${videa.length ? `<div class="section-title">Trailery a videa</div><div class="regal">${videa.map(kartaTraileru).join("")}</div>` : ""}
       <div class="section-title">Novinky a oznámení</div>
       ${zpravy.length ? `<div class="rec-list">${zpravy.map((z) => radekZpravy(z, false)).join("")}</div>` : `<p class="dim">Zatím nic – oficiální zdroje se kontrolují zhruba jednou za 3 hodiny.</p>`}
@@ -1028,13 +1044,13 @@
     };
   }
 
-  async function strankaHra(sl) {
+  async function strankaHra(sl, steamId = "") {
     app.innerHTML = `<div class="profile"><div class="kostra kostra-banner"></div>${kostra(4)}</div>`;
     let h;
-    try { h = await nacti("hra/" + enc(sl)); }
+    try { h = await nacti(steamId ? "hra-steam/" + enc(steamId) : "hra/" + enc(sl)); }
     catch { nastavTitulek("Hra nenalezena"); app.innerHTML = `<p class="empty">Hru jsme nenašli. <a href="/hry">Co hraje Česko</a></p>`; return; }
     nastavTitulek(`${h.nazev} – cena, čeština, hodnocení a čeští streameři`);
-    const [a, b] = barvaHry(h.slug);
+    const [a, b] = barvaHry(h.slug || slug(h.nazev));
     const st = h.info?.steam, gog = h.info?.gog, ep = h.info?.epic, stat = h.statistiky || { dny: [] };
     const cz = st?.cestina;
     const maxDen = Math.max(1, ...stat.dny.map((d) => d.hodin));
@@ -1057,7 +1073,7 @@
       st?.vyvojari?.length && ["Vývojář", esc(st.vyvojari.join(", "))],
     ].filter(Boolean);
     app.innerHTML = `<div class="profile">
-      <a class="back" href="/hry">← Co hraje Česko</a>
+      <a class="back" href="${h.slug ? "/hry" : "/vydani"}">${h.slug ? "← Co hraje Česko" : "← Hry"}</a>
       <div class="hra-hero${https(st?.obrazek) ? " s-obr" : ""}" data-a="${esc(a)}" data-b="${esc(b)}">
         ${https(st?.obrazek) ? `<img class="hra-hero-img" src="${esc(st.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}
         <div class="hra-hero-t"><h1>${esc(h.nazev)}</h1>
@@ -1075,6 +1091,7 @@
       ${!h.info ? `<p class="dim">Údaje z obchodů se načítají – zkus stránku obnovit za chvíli.</p>` : !st && !gog && !ep ? `<p class="dim">Tuhle hru jsme v obchodech Steam, GOG ani Epic pod stejným názvem nenašli (může jít o kategorii jako „Just Chatting“ nebo hru z jiného obchodu).</p>` : ""}
 
       <div class="section-title">Na českých streamech</div>
+      ${!h.slug ? `<p class="dim">Tuhle hru zatím nikdo z českých streamerů nevysílal (od začátku našeho měření). Jakmile ji někdo začne hrát, objeví se tu statistiky.</p>` : ""}
       <div class="rep-dlazdice"><div><b>${esc(num(stat.hodin7 || 0))}</b><span>hodin sledování za 7 dní</span></div><div><b>${esc(num(stat.spicka7 || 0))}</b><span>diváků ve špičce</span></div></div>
       ${stat.dny.length > 1 ? `<div class="sloupce" role="img" aria-label="Hodiny sledování po dnech">${stat.dny.map((d) => `<i data-h="${Math.round((d.hodin / maxDen) * 100)}" title="${esc(datumCz(d.den))}: ${d.hodin} h"></i>`).join("")}</div>
         <p class="source-note">Hodiny sledování po dnech za posledních 30 dní (od začátku měření).</p>` : ""}
@@ -1087,7 +1104,7 @@
     const gc = document.getElementById("graf-cena");
     if (gc) graf(gc, st.historie.map((x) => ({ v: x.cena, d: new Date(x.den + "T12:00:00").toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) })), "Vývoj ceny na Steamu");
     const ho = document.getElementById("hra-obr");
-    if (ho) ho.onclick = () => sdilejObrazek({ stitek: "Hra", nadpis: h.nazev, odkaz: `/hra/${h.slug}`,
+    if (ho) ho.onclick = () => sdilejObrazek({ stitek: "Hra", nadpis: h.nazev, odkaz: location.pathname,
       radky: [st?.cena != null && [st.zdarma || st.cena === 0 ? "Zdarma" : cena(st.cena, st.mena), st.sleva ? `na Steamu, sleva −${st.sleva} %` : "na Steamu"],
         cz && [cz.dabing ? "CZ dabing" : cz.rozhrani ? "CZ texty" : "Bez češtiny", "čeština podle Steamu"],
         st?.hodnoceni && [`${st.hodnoceni.kladne} %`, `kladných recenzí z ${num(st.hodnoceni.recenzi)}`],
@@ -1210,7 +1227,7 @@
   }
   const obchodStitek = (o) => `<span class="obchod ob-${esc(o)}">${esc(OBCHOD[o] || o)}</span>`;
   function kartaHry(h, { velka = false, odpocet = null, poradi = null } = {}) {
-    return `<a class="hk${velka ? " hk-velka" : ""}" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
+    return `<a class="hk${velka ? " hk-velka" : ""}" ${odkazHry(h)}>
       <div class="hk-obr">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
         ${obchodStitek(h.obchod)}${h.sleva > 0 ? `<span class="hk-sleva">−${h.sleva} %</span>` : ""}${poradi ? `<span class="hk-poradi">${poradi}</span>` : ""}</div>
       <div class="hk-t"><b>${esc(h.nazev)}</b>${czStitek(h)}
@@ -1239,9 +1256,9 @@
     const pise = n.length > 3 ? state.clanky.filter((c) => normNazev(c.nadpis).includes(n)).slice(0, 3) : [];
     const proc = h.cena === 0 || h.do ? `Zdarma na ${OBCHOD[h.obchod] || h.obchod}${h.do ? ` – ${zbyva(h.do)}` : ""}` : `Sleva −${h.sleva} % na ${OBCHOD[h.obchod] || h.obchod}`;
     return `<section id="hra-tydne" class="sekce hra-tydne">
-      <a class="ht-obr" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}</a>
+      <a class="ht-obr" ${odkazHry(h)}>${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}</a>
       <div class="ht-t"><span class="ht-stitek">Hra týdne</span>
-        <h2><a href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">${esc(h.nazev)}</a></h2>
+        <h2><a ${odkazHry(h)}>${esc(h.nazev)}</a></h2>
         <p class="ht-proc">${esc(proc)}</p>
         ${hod ? `<p>${hodnoceniHry({ hodnoceni: hod })} <span class="dim">(Steam)</span></p>` : ""}
         <p>${hrajou.length ? `Právě ji hraje: ${hrajou.slice(0, 4).map((s) => `<a href="${esc(profilUrl(s))}">${esc(s.jmeno)}</a>`).join(", ")}` : `<span class="dim">Teď ji nikdo z českých streamerů nehraje.</span>`}</p>
@@ -1320,7 +1337,7 @@
 
       <section id="hrane" class="sekce">
         <div class="section-title">Nejhranější na Steamu ${aiCip("Steam API", k.cas)}</div>
-        ${hrane.length ? `<div class="slist">${hrane.slice(0, 10).map((h, i) => `<a class="srow" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
+        ${hrane.length ? `<div class="slist">${hrane.slice(0, 10).map((h, i) => `<a class="srow" ${odkazHry(h)}>
             <span class="rank">${i + 1}</span>${https(h.obrazek) ? `<img class="hra-cap" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="hra-cap"></div>`}
             <div class="info"><h3>${esc(h.nazev)}</h3>${hodnoceniHry(h)}<div class="bar"><i data-w="${Math.round((h.hracu || 0) / Math.max(1, hrane[0].hracu || 1) * 100)}"></i></div></div>
             <div class="num"><b>${esc(num(h.hracu || 0))}</b>hráčů</div></a>`).join("")}</div>
@@ -1384,7 +1401,7 @@
     else if (sekce === "streameri") p = strankaStreameri();
     else if (sekce === "streamer") p = casti.length > 3 ? strankaStreamer(casti[2], casti[3]) : strankaStreamer("twitch", casti[2] || "");
     else if (sekce === "hry") p = strankaHry();
-    else if (sekce === "hra") p = strankaHra(casti[2] || "");
+    else if (sekce === "hra") p = casti[2] === "steam" ? strankaHra("", casti[3] || "") : strankaHra(casti[2] || "");
     else if (sekce === "prehled") p = strankaPrehled();
     else if (sekce === "report") p = strankaReport(casti[2] || "");
     else if (sekce === "porovnat") p = strankaPorovnat();

@@ -6,6 +6,7 @@
 // Sběr: v RSS Cronu (*/15) vždy 2 studia, nejdéle neobnovená první → každé studio zhruba jednou za 3 h. Max ~12 požadavků.
 import { idKanalu, parsujYoutube } from "./obsah.js";
 import { parsujFeed, textBezHtml } from "./rss.js";
+import { obnovNahledy, nactiNahledy } from "./nahled.js";
 
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const STUDII_NA_BEH = 2;
@@ -133,6 +134,8 @@ export async function sberStudii(env) {
   }
   prikazy.push(db.prepare("DELETE FROM studia_zpravy WHERE cas < ?").bind(ted - 120 * 86400e3));
   await db.batch(prikazy);
+  // Náhled oficiálního webu (obrázek, ikona, popis) – jednou za 7 dní, nejvýš 2 weby na běh.
+  await obnovNahledy(db, fronta.map((s) => s.web), 2).catch((e) => chyby.push(`náhled webu: ${e.message}`));
   return { studia: fronta.map((s) => s.nazev), polozek: novych, chyby };
 }
 
@@ -151,8 +154,9 @@ export async function apiStudia(env) {
     db.prepare("SELECT * FROM studia_zpravy WHERE druh <> 'video' ORDER BY cas DESC LIMIT 30"),
   ]);
   const p = Object.fromEntries(poc.results.map((r) => [r.studio, r]));
+  const nahledy = await nactiNahledy(db, STUDIA.map((s) => s.web)).catch(() => new Map());
   return {
-    studia: STUDIA.map((s) => ({ ...verejneStudio(s), polozek: p[s.slug]?.n || 0, posledni: p[s.slug]?.posledni ? new Date(p[s.slug].posledni).toISOString() : null })),
+    studia: STUDIA.map((s) => ({ ...verejneStudio(s), nahled: nahledy.get(s.web) || null, polozek: p[s.slug]?.n || 0, posledni: p[s.slug]?.posledni ? new Date(p[s.slug].posledni).toISOString() : null })),
     videa: vid.results.map(naPolozku), zpravy: zpr.results.map(naPolozku),
   };
 }
@@ -163,7 +167,8 @@ export async function apiStudio(env, slug) {
   const db = env.DB;
   await zajistiSchemaStudia(db);
   const { results } = await db.prepare("SELECT * FROM studia_zpravy WHERE studio = ? ORDER BY cas DESC LIMIT 60").bind(slug).all();
-  return { ...verejneStudio(s), polozky: results.map(naPolozku) };
+  const nahled = (await nactiNahledy(db, [s.web]).catch(() => new Map())).get(s.web) || null;
+  return { ...verejneStudio(s), nahled, polozky: results.map(naPolozku) };
 }
 // Pro kalendář akcí a předplatné: novinky platforem podle klíčových slov v titulku.
 export async function zpravyPlatforem(db, re, limit = 8) {

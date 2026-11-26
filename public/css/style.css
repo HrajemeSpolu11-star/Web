@@ -626,3 +626,25 @@ a.ai-stav u{text-decoration-color:var(--line)}
 .poz-sloupce ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;color:var(--muted)}
 .poz-sloupce li{margin:3px 0}
 @media(max-width:420px){.tabs{gap:2px}.tabs a{padding:8px 9px;font-size:13.5px}}
+
+/* ---------- Obrázky akcí, loga a náhledy webů studií ---------- */
+.akce-obr{display:block;margin:-16px -18px 12px;aspect-ratio:1200/630;background:var(--card2);overflow:hidden}
+.akce-obr img{width:100%;height:100%;object-fit:cover;display:block}
+.studio-k{display:flex;flex-direction:column;overflow:hidden}
+.studio-obr{margin:-12px -14px 10px;aspect-ratio:1200/630;background:var(--card2);overflow:hidden}
+.studio-obr img{width:100%;height:100%;object-fit:cover;display:block}
+.studio-logo{background:#fff;padding:4px;overflow:hidden}
+.studio-logo img{width:100%;height:100%;object-fit:contain;display:block;border-radius:8px}
+.web-nahled{display:grid;grid-template-columns:1fr;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;margin:6px 0 4px;transition:border-color .2s}
+.web-nahled:hover{border-color:var(--accent)}
+.web-nahled img{width:100%;aspect-ratio:1200/630;object-fit:cover;display:block;background:var(--card2)}
+.web-nahled>div{padding:12px 16px 16px;display:flex;flex-direction:column;gap:4px}
+.web-nahled b{font-size:17px}
+.web-nahled p{margin:2px 0 8px;color:var(--muted);font-size:14px}
+.web-nahled .btn-maly{align-self:flex-start}
+@media(min-width:760px){.web-nahled{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.web-nahled img{height:100%}}
+/* Nic nesmí roztáhnout stránku do šířky (dlouhá slova, URL, mřížky). */
+#app{min-width:0;max-width:100%;overflow-x:clip}
+.akce>*,.studia>*,.rec-list>*,.vydani>*,.hrady>*,.stav-ulohy>*,.grid>*,.slist>*{min-width:0}
+.rec>div,.vyd-t,.hrad-t,.studio-h>div,.akce-k,.studio-k p,.hk-t{min-width:0;overflow-wrap:anywhere}
+.hub-tabs{max-width:100%}

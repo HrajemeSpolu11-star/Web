@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 18) – Stránka pro každou hru, obrázky akcí, loga a náhledy webů studií
+- **Každá hra ze Steamu má vlastní stránku** `/hra/steam/<číslo hry>` (`/api/hra-steam/:id`): cena a sleva, čeština (podle Steamu),
+  hodnocení, hráči teď, vývoj ceny, PC požadavky, GOG a Epic podle přesného názvu. Když hru streamuje někdo z Česka, přidají
+  se statistiky ze streamů, klipy a kdo ji hraje (spárování podle názvu s Twitch kategorií). Hra se páruje podle čísla na
+  Steamu, ne podle názvu. Mezipaměť `hra_info` pod klíčem `steam-<id>` (12 h).
+  Odkazy z katalogu, slev, hry týdne, nejhranějších, Má to češtinu?, hlídače a kalendáře vydání teď vedou na tuto stránku
+  (dřív přímo do obchodu). SEO: titulek a popis s cenou a češtinou, obrázek ze Steamu, 300 her v sitemap.
+- **Obrázky u akcí**: z náhledu oficiálního webu akce (og:image), jinak vlastní obrázek podle typu (`public/og/akce-*.png`,
+  generuje `tools/og-obrazky.py`). Hra zdarma na Epicu s obrázkem hry.
+- **Studia: logo a náhled webu** (`src/nahled.js`): z hlavičky oficiálního webu studia se vezme ikona (apple-touch-icon),
+  obrázek pro sdílení, titulek a krátký popis – jako náhled odkazu v Discordu. Čte se jen hlavička stránky, obnova 1× za 7 dní
+  (2 weby na běh studií). Na stránce studia karta „Otevřít web studia“.
+- **Oprava**: stránky Akce a Studia mohly přetékat do šířky (karty uříznuté vpravo) – mřížky a dlouhé texty se už nezvětšují nad šířku displeje.
+
 ## 2026-11-26 (odpoledne, 17) – Opravy podle druhého auditu (ChatGPT)
 - **Push fronta bez ztrát**: jedno oznámení = max. 4 zprávy; service worker si vyzvedne jen zprávy, ke kterým už push odešel,
   a server smaže přesně ty vydané. Zbytek čeká na další push. Každé upozornění má vlastní značku (`tag`), takže se v telefonu

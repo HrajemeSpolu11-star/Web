@@ -115,3 +115,21 @@ ikona("ikona-512.png", 512, 0)
 ikona("ikona-maskable-512.png", 512, 0.1)
 ikona("apple-touch-icon.png", 180, 0.02)
 print("ikony hotové")
+
+# Obrázky pro akce bez vlastního obrázku (800×420): jednoduchý motiv podle typu akce.
+def obrazek_akce(soubor, stitek, motiv, barva):
+    W2, H2 = 800, 420
+    img = Image.new("RGBA", (W2, H2), BG)
+    zar = Image.new("RGBA", (W2, H2), (0, 0, 0, 0)); dz = ImageDraw.Draw(zar)
+    dz.ellipse([380, -160, 980, 440], fill=barva + (90,)); dz.ellipse([-200, 220, 300, 640], fill=(155, 92, 255, 60))
+    img = Image.alpha_composite(img, zar.filter(ImageFilter.GaussianBlur(90)))
+    v = Image.new("RGBA", (W2, H2), (0, 0, 0, 0)); sit(ImageDraw.Draw(v), 610, 210, 150, 0.35)
+    img = Image.alpha_composite(img, v); d = ImageDraw.Draw(img)
+    d.text((60, 120), motiv, font=ImageFont.truetype(TUCNY, 130), fill=barva + (255,))
+    d.text((60, 300), stitek, font=ImageFont.truetype(TUCNY, 44), fill=TEXT)
+    img.convert("RGB").save(f"{KOREN}/public/og/akce-{soubor}.png", optimize=True)
+obrazek_akce("vyprodej", "Výprodej", "−%", (255, 192, 77))
+obrazek_akce("festival", "Festival her", "DEMO", (127, 224, 160))
+obrazek_akce("prenos", "Přenos", "LIVE", (155, 92, 255))
+obrazek_akce("vystava", "Veletrh", "EXPO", (102, 192, 244))
+print("obrázky akcí hotové")

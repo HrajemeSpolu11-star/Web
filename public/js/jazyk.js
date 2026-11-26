@@ -261,6 +261,8 @@
     "Systémové požadavky (PC)": ["Systémové požiadavky (PC)", "System requirements (PC)"], "Minimální": ["Minimálne", "Minimum"], "Doporučené": ["Odporúčané", "Recommended"], "Podle stránky hry na Steamu.": ["Podľa stránky hry na Steame.", "From the game's Steam page."],
     "probíhá · končí za": ["prebieha · končí o", "live · ends in"], "za": ["o", "in"], "Právě probíhá · končí za": ["Práve prebieha · končí o", "Live now · ends in"], "Začíná za": ["Začína o", "Starts in"],
     "Zdarma na Epicu za": ["Zadarmo na Epicu o", "Free on Epic in"], "teď": ["teraz", "now"],
+    "Otevřít web studia": ["Otvoriť web štúdia", "Visit studio website"], "← Hry": ["← Hry", "← Games"],
+    "Tuhle hru zatím nikdo z českých streamerů nevysílal (od začátku našeho měření). Jakmile ji někdo začne hrát, objeví se tu statistiky.": ["Túto hru zatiaľ nikto z českých streamerov nevysielal (od začiatku nášho merania). Keď ju niekto začne hrať, objavia sa tu štatistiky.", "No Czech streamer has played this game yet (since we started measuring). Stats will appear once someone does."],
     "Teď nejsi připojený k internetu": ["Teraz nie si pripojený na internet", "You're offline"], "Nainstalováno": ["Nainštalované", "Installed"], "Herní puls najdeš na ploše.": ["Herní puls nájdeš na ploche.", "Find Herní puls on your home screen."],
   };
 

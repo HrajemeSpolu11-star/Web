@@ -3,6 +3,10 @@
 // Ohlášené přenosy (State of Play, Nintendo Direct…) a novinky předplatného se berou z oficiálních
 // kanálů platforem (src/studia.js), hra zdarma na Epicu z katalogu.
 import { zpravyPlatforem } from "./studia.js";
+import { obnovNahledy, nactiNahledy } from "./nahled.js";
+
+// Obrázky akcí: z náhledu oficiálního webu (og:image). Obnovuje Cron katalogu.
+export const obnovObrazkyAkci = (db) => obnovNahledy(db, AKCE.map((a) => a.web), 4);
 
 // Časy v UTC. Steam začíná a končí v 10:00 tichomořského času (PST = 18:00 UTC, PDT = 17:00 UTC).
 export const AKCE = [
@@ -27,8 +31,9 @@ export const AKCE = [
 export async function apiAkce(env) {
   const db = env.DB;
   const ted = Date.now();
+  const nahledy = await nactiNahledy(db, AKCE.map((a) => a.web)).catch(() => new Map());
   const akce = AKCE.filter((a) => Date.parse(a.do || a.od) + (a.do ? 0 : 86400e3) > ted)
-    .map((a) => ({ ...a, bezi: Date.parse(a.od) <= ted }))
+    .map((a) => ({ ...a, bezi: Date.parse(a.od) <= ted, obrazek: nahledy.get(a.web)?.obrazek || "" }))
     .sort((a, b) => Date.parse(a.od) - Date.parse(b.od));
   const [prenosy, predplatne] = await Promise.all([
     zpravyPlatforem(db, /state of play|nintendo direct|games showcase|xbox showcase|partner preview|developer direct/i, 6).catch(() => []),

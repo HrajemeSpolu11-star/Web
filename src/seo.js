@@ -11,7 +11,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
   return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia)\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
-    /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
+    /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/hra\/steam\/\d{1,10}\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
 async function metaProStranku(url, env) {
@@ -61,6 +61,15 @@ async function metaProStranku(url, env) {
       else m = { ...m, typ: "profile", obrazek: r.profilovka || og("streameri"), velky: !r.profilovka,
         title: `${r.jmeno} – ${PLATFORMA[plat]} streamer, statistiky a rozvrh | ${NAZEV}`,
         popis: zkrat(r.popis || `${r.jmeno} je český streamer na platformě ${PLATFORMA[plat]}${r.posledni_hra ? `, naposledy hrál ${r.posledni_hra}` : ""}. Sledující, rekord diváků, odvysílané hodiny a nejhranější hry.`, 160) };
+    } else if (p.startsWith("/hra/steam/")) {
+      const i = await db.prepare("SELECT data FROM hra_info WHERE slug = ?").bind(`steam-${p.slice(11)}`).first().catch(() => null);
+      let st = null;
+      try { st = i ? JSON.parse(i.data).steam : null; } catch { /* nic */ }
+      m = { ...m, title: `${st?.nazev || "Hra"} – cena, čeština, hodnocení | ${NAZEV}`,
+        popis: st ? zkrat(`${st.nazev}: ${[st.cestina ? (st.cestina.dabing ? "český dabing" : st.cestina.rozhrani ? "český text" : "bez češtiny") : "",
+          st.zdarma ? "zdarma" : st.cena != null ? `${st.cena.toLocaleString("cs-CZ")} Kč na Steamu${st.sleva ? ` (−${st.sleva} %)` : ""}` : "",
+          st.hodnoceni ? `${st.hodnoceni.kladne} % kladných recenzí` : ""].filter(Boolean).join(", ")}. Ceny, historie cen, hodnocení a čeští streameři.`, 160)
+          : "Cena, čeština, hodnocení hráčů a historie ceny hry.", obrazek: /^https:\/\//.test(st?.obrazek || "") ? st.obrazek : m.obrazek };
     } else if (p.startsWith("/hra/")) {
       const r = await db.prepare("SELECT nazev FROM hry WHERE slug = ?").bind(decodeURIComponent(p.slice(5))).first();
       if (!r) m = { ...m, title: `Hra nenalezena | ${NAZEV}`, index: false, status: 404 };
@@ -139,6 +148,9 @@ export async function sitemap(request, env) {
     const d = (ms) => ms ? new Date(ms).toISOString().slice(0, 10) : ted;
     for (const r of st.results) adresy.push([`/streamer/${r.platforma}/${encodeURIComponent(r.login)}`, d(r.posledni_zive), "daily"]);
     for (const r of hry.results) adresy.push([`/hra/${encodeURIComponent(r.slug)}`, d(r.posledni), "daily"]);
+    // Hry ze Steamu s ověřenou češtinou (nejvíc recenzovaných 300).
+    const sh = await db.prepare("SELECT id FROM steam_hry WHERE cestina IS NOT NULL ORDER BY COALESCE(recenzi, 0) DESC LIMIT 300").all().catch(() => ({ results: [] }));
+    for (const r of sh.results) adresy.push([`/hra/steam/${r.id}`, ted, "weekly"]);
     for (const r of cl.results) adresy.push([`/clanek/${r.id}`, d(r.t), "weekly"]);
   } catch (e) { console.warn("sitemap:", e); }
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
