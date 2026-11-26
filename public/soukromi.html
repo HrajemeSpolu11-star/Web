@@ -14,13 +14,42 @@
 </header>
 <main class="article">
   <h1>Soukromí a bezpečnost</h1>
-  <p class="perex">Tenhle web o tobě nic neukládá a nikoho nesleduje.</p>
+  <p class="perex">Nemáme účty, cookies, reklamy ani sledování. Ukládáme jen to, co je nutné pro funkce, které si sám zapneš – a tady přesně píšeme co.</p>
   <div class="text">
-    <p><b>Žádné cookies ani sledování.</b> Web nepoužívá cookies, analytické nástroje, reklamy ani sledovací kódy třetích stran.</p>
-    <p><b>Žádné účty.</b> Nemusíš se registrovat a web po tobě nežádá žádné osobní údaje.</p>
-    <p><b>Hosting.</b> Web běží na síti Cloudflare. Ta kvůli ochraně proti útokům zpracovává běžné technické údaje (např. IP adresu) podle svých pravidel ochrany soukromí.</p>
-    <p><b>Odkazy jinam.</b> Odkazy na zdrojové články a kanály streamerů vedou na cizí weby, které mají vlastní pravidla.</p>
-    <p><b>Streameři.</b> Profily obsahují jen veřejné informace o tvorbě. Pokud chceš svůj profil upravit nebo odstranit, napiš přes <a href="https://github.com/HrajemeSpolu11-star/web/issues" rel="noopener noreferrer">GitHub</a>.</p>
+    <h2>Co neděláme</h2>
+    <p>Web nepoužívá cookies, analytické nástroje, reklamy ani sledovací kódy. Nemusíš se registrovat a po tobě nežádáme jméno, e-mail ani jiné osobní údaje.</p>
+
+    <h2>Co si pamatuje jen tvůj prohlížeč</h2>
+    <p>V úložišti prohlížeče (localStorage) – nikdy se neposílá na náš server, dokud nezapneš upozornění:</p>
+    <ul>
+      <li><b>oblíbení streameři</b> (<code>hp_oblibeni</code>) – seznam kanálů, které sis označil hvězdičkou,</li>
+      <li><b>stav upozornění</b> (<code>hp_push</code>) – jestli máš zapnutá upozornění,</li>
+      <li><b>uvítací karta</b> (<code>hp_uvitani</code>) – že už jsi ji zavřel.</li>
+    </ul>
+    <p>Smažeš je vymazáním dat webu v nastavení prohlížeče.</p>
+
+    <h2>Upozornění (jen když je zapneš)</h2>
+    <p>Když zapneš upozornění na oblíbené streamery, uložíme na serveru (databáze Cloudflare D1):</p>
+    <ul>
+      <li><b>adresu odběru</b>, kterou vytvoří tvůj prohlížeč u své push služby (Google, Mozilla, Apple nebo Microsoft) – podle ní ti můžeme poslat upozornění; neobsahuje tvé jméno ani e-mail,</li>
+      <li><b>seznam oblíbených streamerů</b> – abychom věděli, o kom ti dát vědět,</li>
+      <li><b>čekající upozornění</b> (jméno streamera, hra, odkaz) – mažou se nejpozději po 2 dnech.</li>
+    </ul>
+    <p><b>Účel:</b> jen posílání upozornění, že tvůj oblíbený streamer začal vysílat. Nic dalšího s tím neděláme a nikomu to nepředáváme.
+      <b>Doba uchování:</b> dokud upozornění nevypneš. Vypnutím (stejné tlačítko na profilu streamera) se odběr i seznam smažou hned.
+      Smažeme je i sami, když push služba ohlásí, že odběr už neplatí. Samotné upozornění neobsahuje žádný text – prohlížeč si ho po doručení vyzvedne přímo z našeho webu.</p>
+
+    <h2>Obrázky z jiných serverů</h2>
+    <p>Obrázky her, profilovky streamerů a náhledy videí se načítají přímo ze serverů Steamu, GOGu, Epicu, Twitche, Kicku a YouTube. Ty při tom vidí tvou IP adresu (jako u každého obrázku na internetu), ale nedostanou informaci, ze které stránky přicházíš.</p>
+
+    <h2>Hosting</h2>
+    <p>Web běží na síti Cloudflare. Ta kvůli provozu a ochraně proti útokům zpracovává běžné technické údaje (např. IP adresu) podle svých pravidel ochrany soukromí.</p>
+
+    <h2>Odkazy jinam</h2>
+    <p>Odkazy na zdrojové články, obchody a kanály streamerů vedou na cizí weby, které mají vlastní pravidla.</p>
+
+    <h2>Streameři</h2>
+    <p>Profily obsahují jen veřejné informace o tvorbě z oficiálních API Twitche a Kicku. Pokud chceš svůj profil upravit nebo odstranit, napiš přes <a href="https://github.com/HrajemeSpolu11-star/Web/issues" rel="noopener noreferrer">GitHub</a>.</p>
   </div>
 </main>
 </body>

@@ -1,7 +1,7 @@
 // Sběr českých streamerů z oficiálního Twitch API (Helix).
 // Všechna čísla pocházejí přímo z Twitche – nic se neodhaduje ani negeneruje.
 import { denPraha } from "./psani.js";
-import { SCHEMA_PREHLED, prikazScena, prikazMilnik, vyhodnotZmeny, nactiPredchozi, prikazyHryDen } from "./prehled.js";
+import { SCHEMA_PREHLED, prikazScena, prikazMilnik, vyhodnotZmeny, nactiPredchozi, prikazyHryDen, rezervujMinuty } from "./prehled.js";
 import { SCHEMA_PUSH, zaradUpozorneni, odesliFrontu } from "./push.js";
 
 const API = "https://api.twitch.tv/helix";
@@ -12,7 +12,6 @@ const SLEDUJICICH_NA_BEH = 15;    // obnova počtu sledujících (1 požadavek n
 const ROZVRHU_NA_BEH = 5;         // obnova rozvrhů pro kalendář (1 požadavek na kanál)
 const PUSH_NA_BEH = 10;           // max. odeslaných upozornění za běh (limit 50 požadavků na běh)
 const ZIVE_PLATNOST = 25 * 60e3;
-const INTERVAL_MIN = 15;
 const MIN_STATISTIKY = 3;         // statistiky (snímky, hry) jen od 3 diváků – šetří denní limit zápisů D1
 
 export const SCHEMA_TWITCH = [
@@ -143,7 +142,9 @@ export async function sberTwitch(env) {
     // Předchozí stav (kdo byl živě, rekordy) – pro upozornění a milníky.
     const predchozi = await nactiPredchozi(db, "twitch", ted, ZIVE_PLATNOST);
     const zmeny = vyhodnotZmeny(db, ted, predchozi, streamy, (s) => s.user_id, "twitch");
-    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "twitch", streamy), ...prikazyHryDen(db, ted, "twitch", streamy, (s) => s.game_name, INTERVAL_MIN)];
+    // Skutečně uplynulé minuty od minulého započteného běhu (0 = souběžný běh, statistiky nenavyšuje).
+    const minut = await rezervujMinuty(db, "twitch", ted);
+    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "twitch", streamy), ...prikazyHryDen(db, ted, "twitch", streamy, (s) => s.game_name, minut)];
     const upsert = db.prepare(`
       INSERT INTO streameri (id, login, jmeno, prvni_videno, posledni_zive, posledni_stream, pocet_streamu, max_divaku, posledni_hra,
         zive_cas, zive_hra, zive_titulek, zive_divaci, zive_zacatek, zive_nahled)
@@ -172,8 +173,8 @@ export async function sberTwitch(env) {
       const slug = slugHry(s.game_name);
       if (slug && !videneHry.has(slug)) { videneHry.add(slug); prikazy.push(hraSeznam.bind(slug, s.game_name, ted, s.game_id ? String(s.game_id) : null)); }
       if ((s.viewer_count || 0) >= MIN_STATISTIKY) {
-        prikazy.push(snimek.bind(s.user_id, den, s.viewer_count || 0, INTERVAL_MIN));
-        if (s.game_name) prikazy.push(hra.bind(s.user_id, s.game_name, INTERVAL_MIN, ted));
+        prikazy.push(snimek.bind(s.user_id, den, s.viewer_count || 0, minut));
+        if (s.game_name && minut) prikazy.push(hra.bind(s.user_id, s.game_name, minut, ted));
       }
     }
     if (prikazy.length) await db.batch(prikazy);

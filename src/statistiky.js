@@ -1,9 +1,11 @@
 // Vlastní statistiky české scény z dat, která sami sbíráme z oficiálních API Twitche a Kicku:
 //  • „Co hraje Česko“ – žebříček her podle hodin sledování za posledních 7 dní, srovnání s předchozími 7 dny.
 //  • Týdenní report – pondělí až neděle (pražský čas), souhrn, hry, streameři, rekordy a milníky.
-// Hodiny sledování = součet diváků v každém 15min měření × 15 min. Stejnou metodu používají i zahraniční statistické weby.
+// Hodiny sledování = součet diváků v každém měření × skutečně uplynulé minuty od předchozího (max. 15).
+// Stejnou metodu používají i zahraniční statistické weby. Souběžné běhy se nezapočítají dvakrát (rezervujMinuty).
 import { denPraha } from "./psani.js";
 import { slugHry } from "./twitch.js";
+import { BEZ_KATEGORIE } from "./prehled.js";
 
 const DEN = 86400e3;
 const posunDne = (den, n) => new Date(Date.parse(den + "T12:00:00Z") + n * DEN).toISOString().slice(0, 10);
@@ -45,7 +47,7 @@ async function zacatekDat(db) {
 function dotazHry(db, od, doDen, limit) {
   return db.prepare(`SELECT hra, SUM(divako_minut) AS dm, SUM(minut) AS m, MAX(max_divaku) AS spicka,
       SUM(CASE WHEN platforma = 'kick' THEN divako_minut ELSE 0 END) AS dm_kick
-    FROM hry_den WHERE den BETWEEN ? AND ? GROUP BY hra ORDER BY dm DESC LIMIT ?`).bind(od, doDen, limit);
+    FROM hry_den WHERE den BETWEEN ? AND ? AND hra <> ? GROUP BY hra ORDER BY dm DESC LIMIT ?`).bind(od, doDen, BEZ_KATEGORIE, limit);
 }
 
 function sestavHry(ted, pred, streameru) {
@@ -101,8 +103,9 @@ export async function apiReport(env, naStreamera, tydenId) {
   const probiha = po === aktualniPondeli;
 
   const [sc, scP, spicka, kanaly, kanalyP, h, hp, sStr, top, hodinyStr, rust, udal] = await db.batch([
-    db.prepare("SELECT platforma, SUM(divaci) AS d, COUNT(DISTINCT cas) AS mereni FROM scena WHERE cas >= ? AND cas < ? GROUP BY platforma").bind(odMs, doMs),
-    db.prepare("SELECT SUM(divaci) AS d FROM scena WHERE cas >= ? AND cas < ?").bind(predOdMs, odMs),
+    db.prepare(`SELECT platforma, SUM(divako_minut) AS dm, (SELECT COUNT(DISTINCT cas) FROM scena WHERE cas >= ?3 AND cas < ?4) AS mereni
+      FROM hry_den WHERE den BETWEEN ?1 AND ?2 GROUP BY platforma`).bind(po, ne, odMs, doMs),
+    db.prepare("SELECT SUM(divako_minut) AS dm FROM hry_den WHERE den BETWEEN ? AND ?").bind(predPo, predNe),
     db.prepare("SELECT cas, SUM(divaci) AS d, SUM(streamu) AS s FROM scena WHERE cas >= ? AND cas < ? GROUP BY cas ORDER BY d DESC LIMIT 1").bind(odMs, doMs),
     db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky WHERE den BETWEEN ? AND ?").bind(po, ne),
     db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky WHERE den BETWEEN ? AND ?").bind(predPo, predNe),
@@ -121,9 +124,9 @@ export async function apiReport(env, naStreamera, tydenId) {
       WHERE u.cas >= ? AND u.cas < ? AND s.skryty = 0 ORDER BY u.hodnota DESC LIMIT 12`).bind(odMs, doMs),
   ]);
 
-  const div = Object.fromEntries(sc.results.map((r) => [r.platforma, r.d || 0]));
-  const celkemDm = ((div.twitch || 0) + (div.kick || 0)) * 15;
-  const predDm = (scP.results[0]?.d || 0) * 15;
+  const div = Object.fromEntries(sc.results.map((r) => [r.platforma, r.dm || 0]));
+  const celkemDm = (div.twitch || 0) + (div.kick || 0);
+  const predDm = scP.results[0]?.dm || 0;
   const mereni = Math.max(0, ...sc.results.map((r) => r.mereni || 0));
   const hry = sestavHry(h.results, hp.results, new Map(sStr.results.map((r) => [r.hra, r.n])));
   const sp = spicka.results[0];
@@ -131,7 +134,7 @@ export async function apiReport(env, naStreamera, tydenId) {
 
   const souhrn = {
     hodin: hodin(celkemDm), hodin_pred: hodin(predDm), zmena: zmenaPct(celkemDm, predDm),
-    hodin_twitch: hodin((div.twitch || 0) * 15), hodin_kick: hodin((div.kick || 0) * 15),
+    hodin_twitch: hodin(div.twitch || 0), hodin_kick: hodin(div.kick || 0),
     prumer_divaku: mereni ? Math.round(celkemDm / 15 / mereni) : 0,
     spicka: sp ? { divaci: sp.d, streamu: sp.s, cas: new Date(sp.cas).toISOString() } : null,
     kanalu: kanaly.results[0]?.n || 0, kanalu_pred: kanalyP.results[0]?.n || 0,

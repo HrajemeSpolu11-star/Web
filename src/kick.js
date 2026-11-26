@@ -2,12 +2,11 @@
 // Zapne se sám, jakmile je nastaven KICK_CLIENT_ID (wrangler.jsonc) a Secret KICK_CLIENT_SECRET.
 import { denPraha } from "./psani.js";
 import { zajistiSchemaTwitch, slugHry } from "./twitch.js";
-import { prikazScena, vyhodnotZmeny, nactiPredchozi, prikazyHryDen } from "./prehled.js";
+import { prikazScena, vyhodnotZmeny, nactiPredchozi, prikazyHryDen, rezervujMinuty } from "./prehled.js";
 import { zaradUpozorneni } from "./push.js";
 
 const API = "https://api.kick.com/public/v1";
 const JAZYK = "cs";
-const INTERVAL_MIN = 15;
 const MIN_STATISTIKY = 3;
 const PROFILU_NA_BEH = 25;
 
@@ -80,7 +79,8 @@ export async function sberKick(env) {
 
     const predchozi = await nactiPredchozi(db, "kick", ted, 25 * 60e3);
     const zmeny = vyhodnotZmeny(db, ted, predchozi, streamy, (s) => "k" + s.broadcaster_user_id, "kick");
-    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "kick", streamy), ...prikazyHryDen(db, ted, "kick", streamy, (s) => s.category?.name, INTERVAL_MIN)];
+    const minut = await rezervujMinuty(db, "kick", ted);
+    const prikazy = [...zmeny.prikazy, prikazScena(db, ted, "kick", streamy), ...prikazyHryDen(db, ted, "kick", streamy, (s) => s.category?.name, minut)];
     const videneHry = new Set();
     for (const s of streamy) {
       const id = "k" + s.broadcaster_user_id;
@@ -92,8 +92,8 @@ export async function sberKick(env) {
       const slug = slugHry(nazevHry);
       if (slug && !videneHry.has(slug)) { videneHry.add(slug); prikazy.push(hraSeznam.bind(slug, nazevHry, ted)); }
       if ((s.viewer_count || 0) >= MIN_STATISTIKY) {
-        prikazy.push(snimek.bind(id, den, s.viewer_count || 0, INTERVAL_MIN));
-        if (nazevHry) prikazy.push(hra.bind(id, nazevHry, INTERVAL_MIN, ted));
+        prikazy.push(snimek.bind(id, den, s.viewer_count || 0, minut));
+        if (nazevHry && minut) prikazy.push(hra.bind(id, nazevHry, minut, ted));
       }
     }
     if (prikazy.length) await db.batch(prikazy);

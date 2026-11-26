@@ -17,21 +17,39 @@ export const SCHEMA_PREHLED = [
   `CREATE INDEX IF NOT EXISTS idx_hry_den_den ON hry_den(den)`,
 ];
 
+// Kolik minut má tento běh započítat do statistik (odvysílané minuty, hodiny sledování).
+// Počítá se skutečně uplynulý čas od posledního započteného běhu dané platformy (max. 15 min – co se dělo
+// při výpadku, nevíme, tak to nedomýšlíme). Rezervace je atomická: když dva běhy (Cron a sběr na vyžádání)
+// proběhnou zároveň, započítá se jen jeden. Vrací 0 = tento běh statistiky nenavyšuje.
+export async function rezervujMinuty(db, platforma, ted) {
+  const klic = `beh_${platforma}`;
+  await db.prepare("INSERT OR IGNORE INTO nastaveni (klic, hodnota, plati_do) VALUES (?, '', ?)").bind(klic, ted - 15 * 60e3).run();
+  const r = await db.prepare("SELECT plati_do FROM nastaveni WHERE klic = ?").bind(klic).first();
+  const pred = r?.plati_do || 0;
+  const minut = Math.min(15, Math.floor((ted - pred) / 60e3));
+  if (minut < 1) return 0;
+  const u = await db.prepare("UPDATE nastaveni SET plati_do = ? WHERE klic = ? AND plati_do = ?").bind(minut === 15 ? ted : pred + minut * 60e3, klic, pred).run();
+  return u.meta?.changes ? minut : 0;
+}
+
 // Jeden zápis na hru a běh: součet diváků, počet streamů. Bere všechny streamy (i s 0 diváky), ať je to přesné.
+// Streamy bez kategorie jdou pod BEZ_KATEGORIE – v žebříčku her se nezobrazí, ale počítají se do celkových hodin.
+export const BEZ_KATEGORIE = "(bez kategorie)";
 export function prikazyHryDen(db, ted, platforma, streamy, nazevHry, intervalMin) {
+  if (!intervalMin) return [];
   const souhrn = new Map();
   for (const s of streamy) {
-    const hra = String(nazevHry(s) || "").slice(0, 120);
-    if (!hra) continue;
+    const hra = String(nazevHry(s) || "").slice(0, 120) || BEZ_KATEGORIE;
     const x = souhrn.get(hra) || { divaci: 0, streamu: 0 };
     x.divaci += s.viewer_count || 0; x.streamu++;
     souhrn.set(hra, x);
   }
   const den = denPraha(ted), slot = casBehu(ted);
+  // Dvojímu započtení brání rezervujMinuty() – sem chodí jen běh, který minuty dostal.
   const st = db.prepare(`INSERT INTO hry_den (den, hra, platforma, divako_minut, minut, max_divaku, max_streamu, slot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(den, hra, platforma) DO UPDATE SET
-      divako_minut = hry_den.divako_minut + CASE WHEN hry_den.slot = excluded.slot THEN 0 ELSE excluded.divako_minut END,
-      minut = hry_den.minut + CASE WHEN hry_den.slot = excluded.slot THEN 0 ELSE excluded.minut END,
+      divako_minut = hry_den.divako_minut + excluded.divako_minut,
+      minut = hry_den.minut + excluded.minut,
       max_divaku = MAX(hry_den.max_divaku, excluded.max_divaku), max_streamu = MAX(hry_den.max_streamu, excluded.max_streamu),
       slot = excluded.slot`);
   return [...souhrn].map(([hra, x]) => st.bind(den, hra, platforma, x.divaci * intervalMin, x.streamu * intervalMin, x.divaci, x.streamu, slot));

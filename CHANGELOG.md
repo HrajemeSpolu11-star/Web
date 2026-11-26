@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-11-26 (odpoledne, 9) – Opravy podle externího auditu (ChatGPT)
+- **Push upozornění se už neztrácí**: síťová chyba, 429 a 5xx = zpráva zůstane ve frontě a zkusí se znovu (dřív se označila
+  jako odeslaná). 404/410/403 = zaniklý odběr se smaže. Fronta bere nejstarší zprávy první; označí se jen zprávy z doby odeslání.
+- **Přesné minuty a hodiny sledování**: místo pevných 15 min se počítá skutečně uplynulý čas od posledního započteného běhu
+  (max. 15 min) s atomickou rezervací – Cron a sběr na vyžádání už nezapočítají stejný čas dvakrát. Týká se `snimky.minut`,
+  `hry_streamera.minut` a `hry_den`. Report týdne bere celkové hodiny z `hry_den` (dřív `scena` × 15).
+  Streamy bez kategorie se počítají do celku, v žebříčku her se nezobrazují.
+- **Bezpečné stahování článků pro AI**: jen https a jen doména webu, ze kterého zpráva přišla, i u přesměrování (max. 3 kroky).
+- **AI psaní má zámek** (5 min): plánované a ruční psaní neběží zároveň → žádné duplicitní téma ani překročený limit.
+- **Stránka Soukromí přepsána podle skutečnosti**: co je v localStorage, co se ukládá při zapnutí upozornění (adresa odběru,
+  oblíbení, čekající zprávy max. 2 dny), účel, doba uchování, jak smazat, obrázky z cizích serverů.
+- Dokumentace: počet RSS zdrojů (19), popis souběžných běhů, přesnosti statistik a push fronty v `docs/ARCHITEKTURA.md`.
+- Neměněno záměrně: rozvrh psaní je už v pražském čase (`hodinaPraha`) a Cron běží každou hodinu → letní čas nic neposune.
+  Automatické testy a GitHub Actions se podle pravidel projektu nepřidávají.
+
 ## 2026-11-26 (odpoledne, 8) – Vlastní statistiky: Co hraje Česko, report týdne, stránka hry s daty obchodů
 - **Nové měření `hry_den`**: každých 15 min se u každé hry sečtou diváci a streamy (Twitch i Kick, všechny streamy).
   Z toho hodiny sledování, minuty vysílání a špičky po dnech. Ochrana proti dvojímu započtení (slot 15 min).

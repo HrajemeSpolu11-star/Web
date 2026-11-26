@@ -63,13 +63,21 @@ async function vapidHlavicka(env, endpoint) {
 }
 
 // Odešle prázdný push. Vrací false, pokud odběr už neplatí (má se smazat).
+// Výsledek: "ok" = doručeno push službě, "neplatny" = odběr zanikl (404/410/403) → smazat,
+// "znovu" = dočasná chyba (síť, 429, 5xx…) → zpráva zůstane ve frontě a zkusí se v dalším běhu (max. 2 dny).
 async function posliPush(env, endpoint) {
-  const r = await fetch(endpoint, {
-    method: "POST",
-    headers: { Authorization: await vapidHlavicka(env, endpoint), TTL: "3600", Urgency: "normal", "Content-Length": "0" },
-    signal: AbortSignal.timeout(8000),
-  });
-  return !(r.status === 404 || r.status === 410);
+  let r;
+  try {
+    r = await fetch(endpoint, {
+      method: "POST",
+      headers: { Authorization: await vapidHlavicka(env, endpoint), TTL: "3600", Urgency: "normal", "Content-Length": "0" },
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch (e) { console.warn("push síť:", e); return "znovu"; }
+  if (r.ok) return "ok";
+  if (r.status === 404 || r.status === 410 || r.status === 403) return "neplatny";
+  console.warn("push HTTP", r.status);
+  return "znovu";
 }
 
 // Zavolá sběr po zjištění, kdo právě začal vysílat. noveZive = [{ klic: "twitch:login", jmeno, hra }]
@@ -100,13 +108,15 @@ export async function zaradUpozorneni(env, noveZive) {
 export async function odesliFrontu(env, max = 10) {
   const db = env.DB;
   await zajistiSchemaPush(db);
-  const { results } = await db.prepare(`SELECT DISTINCT o.id, o.endpoint FROM push_zpravy z JOIN push_odbery o ON o.id = z.odber_id
-    WHERE z.odeslano = 0 LIMIT ?`).bind(max).all();
+  // Nejstarší čekající zprávy první, ať odběr s opakovanou chybou neblokuje ostatní.
+  const { results } = await db.prepare(`SELECT o.id, o.endpoint, MIN(z.id) AS prvni, MAX(z.id) AS posledni FROM push_zpravy z JOIN push_odbery o ON o.id = z.odber_id
+    WHERE z.odeslano = 0 GROUP BY o.id ORDER BY prvni LIMIT ?`).bind(max).all();
   for (const o of results) {
-    let platny = true;
-    try { platny = await posliPush(env, o.endpoint); } catch (e) { console.warn("push:", e); }
-    if (platny) await db.prepare("UPDATE push_zpravy SET odeslano = 1 WHERE odber_id = ?").bind(o.id).run();
-    else await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(o.id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(o.id)]);
+    let vysledek;
+    try { vysledek = await posliPush(env, o.endpoint); } catch (e) { console.warn("push:", e); vysledek = "znovu"; }
+    // Označíme jen zprávy, které existovaly před odesláním – nové počkají na další oznámení.
+    if (vysledek === "ok") await db.prepare("UPDATE push_zpravy SET odeslano = 1 WHERE odber_id = ? AND odeslano = 0 AND id <= ?").bind(o.id, o.posledni).run();
+    else if (vysledek === "neplatny") await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(o.id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(o.id)]);
   }
   // Úklid: staré zprávy (přes 2 dny) smazat.
   await db.prepare("DELETE FROM push_zpravy WHERE cas < ?").bind(Date.now() - 2 * 86400e3).run();

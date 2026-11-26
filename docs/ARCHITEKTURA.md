@@ -58,3 +58,19 @@ Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?
 - API: jen GET (kromě push a adminu), SQL přes `bind()`, validace vstupů, mezipaměť.
 - Admin: JWT z Cloudflare Access ověřené ve Workeru (podpis RS256, aud, iss, exp) + kontrola Origin a hlavičky `X-Admin` proti CSRF.
 - Push: povolené jen endpointy známých push služeb (ochrana proti SSRF), max. 100 oblíbených na odběr.
+
+## Souběžné běhy a přesnost statistik (od 2026-11-26)
+- Sběr Twitch/Kick běží z Cronu (`5,20,35,50`) i na vyžádání (`sberTwitchPokudStary`, když je poslední sběr starší než 10 min).
+  Živá data (kdo vysílá) se jen přepisují, takže souběh nevadí.
+- **Minuty a hodiny sledování** (`snimky.minut`, `hry_streamera.minut`, `hry_den`) se navyšují o **skutečně uplynulý čas**
+  od posledního započteného běhu (max. 15 min) – `rezervujMinuty()` v `src/prehled.js`, klíč `nastaveni.beh_twitch` / `beh_kick`.
+  Rezervace je atomická (`UPDATE … WHERE plati_do = předchozí`), dva souběžné běhy tedy nezapočítají stejný čas dvakrát.
+- **AI psaní** má zámek `nastaveni.psani_zamek` (5 min) – plánované a ruční spuštění neběží zároveň.
+  Rozvrh `HODINY` se porovnává s pražskou hodinou (`hodinaPraha`) a Cron běží každou hodinu, takže letní/zimní čas nevadí.
+- **Stahování textu článků pro AI** jen přes https a jen z domény webu, odkud zpráva přišla (i u přesměrování, max. 3 kroky).
+
+## Fronta push upozornění
+- `zaradUpozorneni()` vloží zprávu do `push_zpravy`, `odesliFrontu()` (v každém běhu Twitch sběru, max. 10 odběrů) pošle
+  prázdný push; service worker si text vyzvedne z `/api/push/zpravy`.
+- Výsledek odeslání: 2xx = odesláno; 404/410/403 = odběr zanikl → smaže se; síťová chyba, 429, 5xx = **zůstane ve frontě**
+  a zkusí se znovu v dalším běhu. Zprávy starší 2 dnů se mažou.

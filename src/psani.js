@@ -54,10 +54,27 @@ export function vyberTema(clanky, ted = Date.now()) {
 }
 
 // Stáhne text článku ze zdroje (jen odstavce, max ~6000 znaků).
-async function textStranky(url) {
+// Stahujeme jen https stránky z domény webu, ze kterého RSS pochází (i u přesměrování, max. 3 kroky).
+// Podvržená adresa v RSS tak nemůže Worker poslat jinam.
+const domena = (host) => host.toLowerCase().split(".").slice(-2).join(".");
+function povolenaAdresa(url, zdrojId) {
   try {
-    const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(10000) });
-    if (!r.ok || !(r.headers.get("content-type") || "").includes("html")) return "";
+    const u = new URL(url), z = ZDROJ[zdrojId];
+    if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443") || !z) return false;
+    return domena(u.hostname) === domena(new URL(z.url).hostname);
+  } catch { return false; }
+}
+async function textStranky(url, zdrojId) {
+  try {
+    let r, adresa = url;
+    for (let krok = 0; krok < 4; krok++) {
+      if (!povolenaAdresa(adresa, zdrojId)) return "";
+      r = await fetch(adresa, { headers: { "User-Agent": UA, Accept: "text/html" }, redirect: "manual", signal: AbortSignal.timeout(10000) });
+      if (r.status < 300 || r.status >= 400) break;
+      adresa = new URL(r.headers.get("location") || "", adresa).href;
+      r = null;
+    }
+    if (!r || !r.ok || !(r.headers.get("content-type") || "").includes("html")) return "";
     let vClanku = "", vsude = "";
     const rw = new HTMLRewriter()
       .on("article p", { text(t) { if (vClanku.length < 6000) vClanku += t.text + (t.lastInTextNode ? "\n" : ""); } })
@@ -128,6 +145,16 @@ export async function napisClanek(env, { vynutit = false } = {}) {
   const hodiny = String(env.HODINY || "8,11,14,17,20").split(",").map((h) => parseInt(h, 10));
   if (!vynutit && !hodiny.includes(hodinaPraha(ted))) return { stav: "mimo rozvrh" };
 
+  // Zámek: plánované a ruční psaní nesmí běžet zároveň (stejné téma dvakrát, překročený limit).
+  await db.prepare("CREATE TABLE IF NOT EXISTS nastaveni (klic TEXT PRIMARY KEY, hodnota TEXT, plati_do INTEGER)").run();
+  const zamek = await db.prepare(`INSERT INTO nastaveni (klic, hodnota, plati_do) VALUES ('psani_zamek', '', ?)
+    ON CONFLICT(klic) DO UPDATE SET plati_do = excluded.plati_do WHERE nastaveni.plati_do < ?`).bind(ted + 5 * 60e3, ted).run();
+  if (!zamek.meta?.changes) return { stav: "psaní už běží" };
+  try { return await napisClanekBezZamku(env, db, ted, limit, vynutit); }
+  finally { await db.prepare("UPDATE nastaveni SET plati_do = 0 WHERE klic = 'psani_zamek'").run(); }
+}
+
+async function napisClanekBezZamku(env, db, ted, limit, vynutit) {
   const den = denPraha(ted);
   const dnes = await db.prepare("SELECT COUNT(*) AS n FROM prispevky WHERE autor = 'ai' AND den = ?").bind(den).first();
   if ((dnes?.n || 0) >= (vynutit ? MAX_ZA_DEN_TVRDY : limit)) return { stav: "denní limit splněn" };
@@ -144,7 +171,7 @@ export async function napisClanek(env, { vynutit = false } = {}) {
   if (!tema) return { stav: "žádné nové téma" };
 
   const polozky = tema.polozky.slice(0, 4);
-  const texty = await Promise.all(polozky.slice(0, 2).map((p) => textStranky(p.url)));
+  const texty = await Promise.all(polozky.slice(0, 2).map((p) => textStranky(p.url, p.zdroj_id)));
   const podklady = polozky.map((p, i) =>
     `[Zdroj ${i + 1}: ${ZDROJ[p.zdroj_id]?.nazev || p.zdroj_id}]\nNadpis: ${p.nadpis}\nShrnutí: ${p.perex || ""}` +
     (texty[i] ? `\nText článku:\n${texty[i]}` : "")).join("\n\n");
