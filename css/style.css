@@ -71,3 +71,6 @@ main{max-width:960px;margin:0 auto;padding:16px}
 .empty{color:var(--muted);text-align:center;padding:30px}
 .foot{max-width:960px;margin:30px auto 0;padding:20px 16px 40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
 @media(min-width:700px){.hero{grid-column:span 2}}
+.article-cover{margin-top:12px;border-radius:14px;overflow:hidden}
+.m0{margin:0}
+.foot a{color:var(--text);text-decoration:underline}

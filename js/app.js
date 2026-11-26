@@ -6,6 +6,26 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " mil." : n >= 1e3 ? Math.round(n / 100) / 10 + " tis." : String(n);
 
+  // Bezpečnost: barvy pouze ve tvaru #abc / #aabbcc, odkazy pouze http(s).
+  const barva = (v, zaloha) => /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(v)) ? v : zaloha;
+  function bezpecnaUrl(u) {
+    try {
+      const x = new URL(u, location.href);
+      return x.protocol === "https:" || x.protocol === "http:" ? x.href : "#";
+    } catch { return "#"; }
+  }
+  // Barvy se nastavují přes JS (CSSOM), takže CSP může zakázat inline styly.
+  function obarvi(root) {
+    root.querySelectorAll("[data-a]").forEach((el) => {
+      el.style.background = `linear-gradient(135deg,${barva(el.dataset.a, "#444")},${barva(el.dataset.b, "#111")})`;
+    });
+    root.querySelectorAll("[data-col]").forEach((el) => {
+      const c = barva(el.dataset.col, "#888888");
+      el.style.background = c + "33";
+      el.style.color = c;
+    });
+  }
+
   function datum(c) {
     if (c.datum) return new Date(c.datum);
     return new Date(Date.now() - (c.pred_hodinami || 0) * 3600e3);
@@ -28,7 +48,7 @@
 
   function cover(c, glyph) {
     const [a, b] = c.barva || ["#444", "#111"];
-    return `<div class="cover" style="background:linear-gradient(135deg,${a},${b})">
+    return `<div class="cover" data-a="${esc(a)}" data-b="${esc(b)}">
       <span class="glyph">${esc(glyph)}</span><span class="type">${esc(c.typ || "")}</span></div>`;
   }
   const pfs = (list) => (list || []).map((p) => `<span class="pf pf-${esc(p)}">${esc(p)}</span>`).join("");
@@ -41,7 +61,7 @@
   }
 
   function avatar(s, extra = "") {
-    return `<div class="avatar${s.zive ? " live" : ""} ${extra}" style="background:${esc(s.barva)}33;color:${esc(s.barva)}">${esc(s.jmeno[0])}</div>`;
+    return `<div class="avatar${s.zive ? " live" : ""} ${extra}" data-col="${esc(s.barva)}">${esc(String(s.jmeno || "?")[0])}</div>`;
   }
   function radekStreamera(s) {
     return `<a class="streamer" href="#/streamer/${esc(s.id)}">
@@ -66,6 +86,7 @@
       ${zive.length ? `<div class="section-title">Právě živě</div><div class="grid">${zive.map(radekStreamera).join("")}</div>` : ""}`;
     app.querySelectorAll(".chip").forEach((b) => b.onclick = () => { state.filtr = b.dataset.f; strankaNovinky(); });
     const inp = document.getElementById("q");
+    obarvi(app);
     inp.oninput = () => { state.hledat = inp.value; const pos = inp.selectionStart; strankaNovinky(); const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos); };
   }
 
@@ -75,12 +96,12 @@
     const streameri = state.streameri.filter((s) => (s.hry || []).some((h) => c.nadpis.includes(h)));
     app.innerHTML = `<article class="article">
       <a class="back" href="#/">← Zpět na novinky</a>
-      <div style="margin-top:12px;border-radius:14px;overflow:hidden">${cover(c, c.nadpis[0])}</div>
+      <div class="article-cover">${cover(c, c.nadpis[0])}</div>
       <h1>${esc(c.nadpis)}</h1>
       <div class="meta">${pfs(c.platformy)}<span>· ${kdy(datum(c))}</span></div>
       <p class="perex">${esc(c.perex)}</p>
       <div class="text">${(c.text || []).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
-      <div class="sources"><b>Zdroje:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(z.url)}" target="_blank" rel="noopener">${esc(z.nazev)}</a>`).join(", ")}
+      <div class="sources"><b>Zdroje:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer nofollow">${esc(z.nazev)}</a>`).join(", ")}
         <div class="ai-note">Článek napsala automaticky AI ze zpráv uvedených zdrojů.</div></div>
       ${streameri.length ? `<div class="section-title">Kdo tuhle hru streamuje</div><div class="grid">${streameri.map(radekStreamera).join("")}</div>` : ""}
     </article>`;
@@ -105,7 +126,7 @@
     const clanky = state.clanky.filter((c) => (s.hry || []).some((h) => c.nadpis.includes(h)));
     app.innerHTML = `<div class="article">
       <a class="back" href="#/streameri">← Všichni streameři</a>
-      <div class="profile-head">${avatar(s)}<div><h1 style="margin:0">${esc(s.jmeno)}</h1>
+      <div class="profile-head">${avatar(s)}<div><h1 class="m0">${esc(s.jmeno)}</h1>
         <span class="plat plat-${esc(s.platforma)}">${esc(s.platforma)}</span> <span class="back">${s.jazyk === "sk" ? "slovensky" : "česky"}</span></div></div>
       <div class="stats">
         <div class="stat"><b>${num(s.sledujici)}</b><span>sledujících</span></div>
@@ -126,6 +147,7 @@
     else if (sekce === "streameri") strankaStreameri();
     else if (sekce === "streamer") strankaStreamer(decodeURIComponent(id));
     else strankaNovinky();
+    obarvi(app);
   }
 
   async function start() {
