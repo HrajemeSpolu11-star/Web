@@ -8,7 +8,7 @@ const MAX_STRAN = 6;              // max. 600 živých streamů na jeden běh
 const PROFILU_NA_BEH = 100;       // obnova profilů (1 požadavek)
 const SLEDUJICICH_NA_BEH = 20;    // obnova počtu sledujících (1 požadavek na kanál)
 const INTERVAL_MIN = 15;
-const MIN_DIVAKU = 3;             // menší streamy se neukládají (šetří denní limit zápisů D1)
+const MIN_STATISTIKY = 3;         // statistiky (snímky, hry) jen od 3 diváků – šetří denní limit zápisů D1
 
 export const SCHEMA_TWITCH = [
   `CREATE TABLE IF NOT EXISTS nastaveni (klic TEXT PRIMARY KEY, hodnota TEXT, plati_do INTEGER)`,
@@ -68,6 +68,21 @@ async function zaznamenejStav(db, stav) {
     .bind(JSON.stringify({ ...stav, cas: Date.now() })).run();
 }
 
+// Spustí sběr hned, pokud poslední proběhl před víc než 10 minutami (zámek brání souběhu).
+export async function sberTwitchPokudStary(env) {
+  if (!env.TWITCH_CLIENT_ID || !env.TWITCH_CLIENT_SECRET) return;
+  const db = env.DB;
+  await zajistiSchemaTwitch(db);
+  const ted = Date.now();
+  const st = await db.prepare("SELECT hodnota FROM nastaveni WHERE klic = 'twitch_stav'").first();
+  const posledni = st ? JSON.parse(st.hodnota).cas || 0 : 0;
+  if (ted - posledni < 10 * 60e3) return;
+  const zamek = await db.prepare(`INSERT INTO nastaveni (klic, hodnota, plati_do) VALUES ('twitch_zamek', '', ?)
+    ON CONFLICT(klic) DO UPDATE SET plati_do = excluded.plati_do WHERE nastaveni.plati_do < ?`).bind(ted + 120e3, ted).run();
+  if (!zamek.meta?.changes) return;
+  await sberTwitch(env);
+}
+
 export async function sberTwitch(env) {
   const db = env.DB;
   if (!env.TWITCH_CLIENT_ID || !env.TWITCH_CLIENT_SECRET) return;
@@ -110,14 +125,15 @@ export async function sberTwitch(env) {
       ON CONFLICT(user_id, hra) DO UPDATE SET minut = hry_streamera.minut + excluded.minut, posledni = excluded.posledni`);
 
     for (const s of streamy) {
-      if ((s.viewer_count || 0) < MIN_DIVAKU) continue;
       const nahled = String(s.thumbnail_url || "").replace("{width}", "440").replace("{height}", "248");
       prikazy.push(
         upsert.bind(s.user_id, s.user_login, s.user_name, ted, ted, s.id, s.viewer_count || 0, s.game_name || "",
           ted, s.game_name || "", String(s.title || "").slice(0, 300), s.viewer_count || 0, s.started_at || null, nahled),
-        snimek.bind(s.user_id, den, s.viewer_count || 0, INTERVAL_MIN),
       );
-      if (s.game_name) prikazy.push(hra.bind(s.user_id, s.game_name, INTERVAL_MIN, ted));
+      if ((s.viewer_count || 0) >= MIN_STATISTIKY) {
+        prikazy.push(snimek.bind(s.user_id, den, s.viewer_count || 0, INTERVAL_MIN));
+        if (s.game_name) prikazy.push(hra.bind(s.user_id, s.game_name, INTERVAL_MIN, ted));
+      }
     }
     if (prikazy.length) await db.batch(prikazy);
 

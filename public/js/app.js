@@ -287,6 +287,13 @@
     if (clanky.status === "fulfilled" && Array.isArray(clanky.value)) state.clanky = clanky.value;
     addEventListener("hashchange", route);
     route();
+    // Pokud ještě nejsou data o streamerech, zkus to znovu za 25 s (web je mezitím stáhne z Twitche).
+    if (!state.zive.streamy.length) setTimeout(async () => {
+      await nactiZive();
+      state.adresar = {};
+      const sekce = (location.hash || "#/").split("/")[1] || "";
+      if (sekce === "zive" || sekce === "streameri") route();
+    }, 25000);
     // Živé streamy se obnovují každé 2 minuty (jen pokud je stránka vidět).
     setInterval(async () => {
       if (document.hidden) return;

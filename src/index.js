@@ -4,7 +4,7 @@ import { sber, zajistiSchema } from "./sber.js";
 import { napisClanek } from "./psani.js";
 import { overAdmina } from "./access.js";
 import { adminApi } from "./admin.js";
-import { sberTwitch, zajistiSchemaTwitch } from "./twitch.js";
+import { sberTwitch, sberTwitchPokudStary, zajistiSchemaTwitch } from "./twitch.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
 const ZDROJ_PODLE_ID = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -111,7 +111,8 @@ async function apiZive(env) {
     env.DB.prepare(`SELECT zive_hra AS hra, SUM(zive_divaci) AS divaci, COUNT(*) AS streamu FROM streameri
                     WHERE skryty = 0 AND zive_cas > ? AND zive_hra <> '' GROUP BY zive_hra ORDER BY divaci DESC LIMIT 12`).bind(ted - ZIVE_PLATNOST),
   ]);
-  return json({ streamy: st.results.map((r) => naStreamera(r, ted)), hry: hry.results, cas: new Date(ted).toISOString() }, 200, 60);
+  // Prázdný výsledek se necachuje, aby se data ukázala hned po prvním sběru.
+  return json({ streamy: st.results.map((r) => naStreamera(r, ted)), hry: hry.results, cas: new Date(ted).toISOString() }, 200, st.results.length ? 60 : 0);
 }
 
 async function apiStreameri(url, env) {
@@ -136,7 +137,7 @@ async function apiStreameri(url, env) {
     FROM streameri s WHERE ${kde.join(" AND ")}
     ORDER BY (s.zive_cas > ?) DESC, ${poradi} LIMIT 300`;
   const { results } = await env.DB.prepare(sql).bind(...hod, ted - ZIVE_PLATNOST).all();
-  return json(results.map((r) => naStreamera(r, ted)), 200, 120);
+  return json(results.map((r) => naStreamera(r, ted)), 200, results.length ? 60 : 0);
 }
 
 async function apiStreamer(login, env) {
@@ -196,6 +197,11 @@ async function apiStav(env) {
 async function verejneApi(request, env, ctx, url) {
   if (request.method !== "GET" && request.method !== "HEAD") return json({ chyba: "Metoda není povolena" }, 405);
 
+  // Když jsou data o streamerech starší než 10 min, stáhnou se hned z Twitche (na pozadí).
+  if (url.pathname === "/api/zive" || url.pathname === "/api/streameri") {
+    ctx.waitUntil(sberTwitchPokudStary(env).catch((e) => console.error("twitch na vyžádání:", e)));
+  }
+
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
   const klic = new Request(url.toString(), { method: "GET" });
@@ -219,7 +225,7 @@ async function verejneApi(request, env, ctx, url) {
     console.error(e);
     return json({ chyba: "Interní chyba" }, 500);
   }
-  if (odpoved.status === 200) ctx.waitUntil(cache.put(klic, odpoved.clone()));
+  if (odpoved.status === 200 && /max-age/.test(odpoved.headers.get("Cache-Control") || "")) ctx.waitUntil(cache.put(klic, odpoved.clone()));
   return odpoved;
 }
 
