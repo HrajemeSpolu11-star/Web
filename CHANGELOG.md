@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-11-27 – Oprava: série her byla useknutá (končila starými díly)
+- Příčina: seznam dílů série se seřadil od nejstaršího a pak se usekl na prvních 24 (stránka hry ze Steamu) / 30 (databáze)
+  → u dlouhých sérií (Resident Evil) chyběly všechny novější díly a série „končila“ rokem 2011.
+- Teď se bere celá série (až 120 dílů), bez portů na jiné platformy a bez zdvojení (stejný název ve stejném roce).
+  Remake, remaster a rozšířená verze jsou označené. Na stránce je vidět posledních 12 dílů a „Zobrazit celou sérii“;
+  každý díl vede na svůj profil v databázi. Společná funkce `serieZKolekce()` v `src/igdb-hra.js`.
+- Uložená data se starou sérií se obnoví (`v: 3` u stránek ze Steamu na pozadí, `v: 2` v databázi hned).
+
 ## 2026-11-27 – Databáze v horní liště, bohatá karta hry
 - **Lišta**: nová položka **Databáze** (na počítači; na mobilu je v sekci Hry – spodní lišta má 5 míst). Menu se na
   vlastní řádek přesouvá až pod 1460 px.

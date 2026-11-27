@@ -1364,3 +1364,5 @@ html.bez-posunu{overflow:hidden}
 .db-zive .zivy-bod{width:9px;height:9px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgba(255,61,127,.2);animation:pulse 1.6s infinite}
 .db-stat .puvod{white-space:normal}
 .db-steam-odkaz{margin:8px 0 0;font-size:14px}.db-steam-odkaz a{color:var(--accent);font-weight:700}
+.serie li small{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 7px}
+.serie-cela{margin-top:8px}.serie-cela summary{cursor:pointer;color:var(--accent);font-weight:700;padding:6px 0}

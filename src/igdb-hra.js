@@ -70,11 +70,29 @@ function hraciZModu(mm) {
     online_koop_max: max("onlinecoopmax"), offline_koop_max: max("offlinecoopmax"), online_max: max("onlinemax"), offline_max: max("offlinemax") };
 }
 
+// Série z kolekce IGDB: celá (dřív se omylem ukazovalo jen prvních 24 nejstarších dílů), bez portů a bez zdvojení
+// (stejný název ve stejném roce = jen jiná platforma). Remake/remaster/rozšířená verze jsou označené.
+const TYP_DILU = { 4: "samostatné rozšíření", 8: "remake", 9: "remaster", 10: "rozšířená verze" };
+export function serieZKolekce(kol, jeTato) {
+  if (!kol?.games?.length || kol.games.length < 2) return null;
+  const vid = new Set(), hry = [];
+  for (const x of kol.games) {
+    const typ = x?.game_type ?? x?.category ?? 0;
+    if (!x?.name || !HLAVNI.has(typ)) continue;
+    const r = rok(x.first_release_date), k = `${String(x.name).toLowerCase()}|${r}`;
+    if (vid.has(k)) continue;
+    vid.add(k);
+    hry.push({ nazev: String(x.name).slice(0, 100), slug: x.slug || "", rok: r, typ: TYP_DILU[typ] || "", tato: !!jeTato(x) });
+  }
+  hry.sort((a, b) => (a.rok || 9999) - (b.rok || 9999) || a.nazev.localeCompare(b.nazev));
+  return hry.length > 1 ? { nazev: String(kol.name || "").slice(0, 100), celkem: hry.length, hry: hry.slice(0, 120) } : null;
+}
+
 const POLE_HRY = `fields name,slug,first_release_date,game_modes.name,player_perspectives.name,themes.name,
   multiplayer_modes.onlinecoop,multiplayer_modes.offlinecoop,multiplayer_modes.lancoop,multiplayer_modes.splitscreen,multiplayer_modes.splitscreenonline,
   multiplayer_modes.onlinecoopmax,multiplayer_modes.offlinecoopmax,multiplayer_modes.onlinemax,multiplayer_modes.offlinemax,
   dlcs.name,dlcs.first_release_date,expansions.name,expansions.first_release_date,
-  collections.name,collections.games.name,collections.games.first_release_date,collections.games.TYP,franchises.name`;
+  collections.name,collections.games.name,collections.games.slug,collections.games.first_release_date,collections.games.TYP,franchises.name`;
 
 async function stahniPas(env, stav, { appid, nazev }) {
   let id = null;
@@ -87,31 +105,25 @@ async function stahniPas(env, stav, { appid, nazev }) {
     const cil = normNazev(nazev);
     id = (d || []).find((g) => normNazev(g.name) === cil)?.id || null;
   }
-  if (!id) return { nenalezeno: true, v: 2 };
+  if (!id) return { nenalezeno: true, v: 3 };
   const zaklad = POLE_HRY.replace(/\s+/g, " ").replace(/\s*,\s*/g, ",");
   const [g] = await igdb(env, stav, "games", [
     `${zaklad.replace("TYP", "game_type")}; where id = ${id};`,
     `${zaklad.replace("TYP", "category")}; where id = ${id};`,
     `fields name,slug,first_release_date,game_modes.name,player_perspectives.name,themes.name,dlcs.name,expansions.name,collections.name; where id = ${id};`,
   ]);
-  if (!g) return { nenalezeno: true, v: 2 };
+  if (!g) return { nenalezeno: true, v: 3 };
   let ttb = null;
   try {
     const [t] = await igdb(env, stav, "game_time_to_beats", [`fields hastily,normally,completely,count; where game_id = ${id};`]);
     if (t && (t.count || 0) >= 3) ttb = { rychle: t.hastily || null, bezne: t.normally || null, vse: t.completely || null, hlasu: t.count };
   } catch { /* nepovinné */ }
-  const kolekce = (g.collections || [])[0];
-  const serie = kolekce?.games?.length > 1 ? {
-    nazev: String(kolekce.name || "").slice(0, 100),
-    hry: kolekce.games.filter((x) => x?.name && (x.game_type == null && x.category == null ? true : HLAVNI.has(x.game_type ?? x.category)))
-      .map((x) => ({ nazev: String(x.name).slice(0, 100), rok: rok(x.first_release_date), tato: x.id === id }))
-      .sort((a, b) => (a.rok || 9999) - (b.rok || 9999)).slice(0, 24),
-  } : null;
+  const serie = serieZKolekce((g.collections || [])[0], (x) => x.id === id);
   const dlc = [...(g.expansions || []).map((x) => ({ ...x, druh: "rozsireni" })), ...(g.dlcs || []).map((x) => ({ ...x, druh: "dlc" }))]
     .filter((x) => x?.name).map((x) => ({ nazev: String(x.name).slice(0, 100), rok: rok(x.first_release_date), druh: x.druh }))
     .sort((a, b) => (b.rok || 0) - (a.rok || 0)).slice(0, 16);
   return {
-    v: 2, igdb_id: id, slug: g.slug || "", url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
+    v: 3, igdb_id: id, slug: g.slug || "", url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
     serie, dlc, dlc_celkem: (g.expansions || []).length + (g.dlcs || []).length,
     dna: {
       pohled: preloz(PERSPEKTIVY, g.player_perspectives), rezimy: preloz(REZIMY, g.game_modes), temata: preloz(TEMATA, g.themes),
@@ -129,8 +141,8 @@ export async function pasZIgdb(env, ctx, { appid, nazev }) {
   if (klic.length < 3) return null;
   const r = await db.prepare("SELECT data, cas FROM igdb_hry WHERE klic = ?").bind(klic).first();
   const stary = r ? (() => { try { return JSON.parse(r.data); } catch { return null; } })() : null;
-  // v2 (27. 11.): starší záznamy vznikly s chybným dotazem (chyběla mezera za „fields“) → obnovit hned na pozadí.
-  if (stary && Date.now() - r.cas < PLATNOST && stary.v === 2) return stary;
+  // v3 (27. 11.): celá série; v2: starší záznamy vznikly s chybným dotazem (chyběla mezera za „fields“) → obnovit hned na pozadí.
+  if (stary && Date.now() - r.cas < PLATNOST && stary.v === 3) return stary;
   const obnov = async () => {
     const stav = { tok: await token(env), obnoveno: false };
     const d = await stahniPas(env, stav, { appid, nazev });

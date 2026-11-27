@@ -631,6 +631,7 @@
     "Novinky o hře": ["Novinky o hre", "News about the game"],
     "Pulsometr, ceny a kde hrát": ["Pulzomer, ceny a kde hrať", "Pulse, prices and where to play"],
     "Stránka hry ze Steamu – historie cen, srovnání": ["Stránka hry zo Steamu – história cien, porovnanie", "Steam game page – price history, comparison"],
+    "remake": ["remake", "remake"], "remaster": ["remaster", "remaster"], "rozšířená verze": ["rozšírená verzia", "expanded edition"], "samostatné rozšíření": ["samostatné rozšírenie", "standalone expansion"],
     "Nové hry": ["Nové hry", "New games"], "Nové platformy a plné verze": ["Nové platformy a plné verzie", "New platforms and full releases"],
     "Kategorie": ["Kategórie", "Categories"], "Upozornění jsou teď přeplněná, zkus to později.": ["Upozornenia sú teraz preplnené, skús to neskôr.", "Notifications are full right now, try again later."],
     "Všechny": ["Všetky", "All"], "Jen s češtinou": ["Len s češtinou", "Czech only"], "Jen s přesným datem": ["Len s presným dátumom", "Exact date only"],
@@ -682,6 +683,7 @@
 
   // ---------- Věty s čísly a proměnnými částmi: [vzor, slovensky, anglicky] ----------
   const FRAZE = [
+    [/^Zobrazit celou sérii \((\d+) (?:hra|hry|her)\)$/, "Zobraziť celú sériu ($1 hier)", "Show the whole series ($1 games)"], [/^\((\d+) (?:hra|hry|her)\)$/, "($1 hier)", "($1 games)"],
     [/^kladných recenzí na Steamu \((.+)\)$/, "kladných recenzií na Steame ($1)", "positive Steam reviews ($1)"], [/^hodnocení kritiků \((\d+) (?:recenze|recenzí)\)$/, "hodnotenie kritikov ($1 recenzií)", "critic score ($1 reviews)"],
     [/^hodnocení hráčů IGDB \((.+)\)$/, "hodnotenie hráčov IGDB ($1)", "IGDB player score ($1)"], [/^a dalších (\d+)$/, "a ďalších $1", "and $1 more"],
     [/^Údaje o hře jsou z databáze IGDB(?: \(stav (.+)\))?\.$/, (m) => `Údaje o hre sú z databázy IGDB${m[1] ? ` (stav ${m[1]})` : ""}.`, (m) => `Game data comes from the IGDB database${m[1] ? ` (as of ${m[1].replace(/^před /, "")} ago)` : ""}.`],

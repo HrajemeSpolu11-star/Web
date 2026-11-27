@@ -6,7 +6,7 @@
 // max. PREKLADU_DENNE za den (šetří limit Workers AI); každé číslo v překladu musí být i v originálu.
 // Nic se nedomýšlí: co IGDB nemá, na stránce není.
 import { token } from "./twitch.js";
-import { igdb, uvoz, PERSPEKTIVY, REZIMY, TEMATA } from "./igdb-hra.js";
+import { igdb, uvoz, PERSPEKTIVY, REZIMY, TEMATA, serieZKolekce } from "./igdb-hra.js";
 import { zeptejSe } from "./ai.js";
 import { zajistiSchemaHlidac } from "./hlidac.js";
 import { normNazev } from "./hra-data.js";
@@ -113,7 +113,7 @@ function zpracuj(g) {
   }
   const kol = (g.collections || [])[0];
   return {
-    slug: g.slug, nazev: String(g.name || "").slice(0, 200), url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
+    v: 2, slug: g.slug, nazev: String(g.name || "").slice(0, 200), url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
     popis_en: String(g.summary || "").slice(0, 4000), pribeh_en: String(g.storyline || "").slice(0, 6000),
     vydano: Number.isFinite(g.first_release_date) ? g.first_release_date * 1000 : null,
     obal: obr(g.cover?.image_id, "t_cover_big"), pozadi: obr((g.artworks || [])[0]?.image_id || (g.screenshots || [])[0]?.image_id, "t_1080p"),
@@ -128,8 +128,7 @@ function zpracuj(g) {
     hraci: g.rating_count ? { skore: Math.round(g.rating), pocet: g.rating_count } : null,
     obchody, oficialni, steam_id: steamId,
     podobne: (g.similar_games || []).filter((x) => x?.slug).slice(0, 12).map((x) => ({ nazev: x.name, slug: x.slug, obal: obr(x.cover?.image_id, "t_cover_big"), rok: rok(x.first_release_date) })),
-    serie: kol?.games?.length > 1 ? { nazev: kol.name, hry: kol.games.filter((x) => x?.slug && HLAVNI.has(x.game_type ?? x.category ?? 0))
-      .map((x) => ({ nazev: x.name, slug: x.slug, rok: rok(x.first_release_date), tato: x.slug === g.slug })).sort((a, b) => (a.rok || 9999) - (b.rok || 9999)).slice(0, 30) } : null,
+    serie: serieZKolekce(kol, (x) => x.slug === g.slug),
     dlc: [...(g.expansions || []).map((x) => ({ ...x, druh: "rozsireni" })), ...(g.dlcs || []).map((x) => ({ ...x, druh: "dlc" }))].filter((x) => x?.name)
       .map((x) => ({ nazev: x.name, rok: rok(x.first_release_date), druh: x.druh })).sort((a, b) => (b.rok || 0) - (a.rok || 0)).slice(0, 20),
     serie_jmeno: (g.franchises || [])[0]?.name || kol?.name || "",
@@ -185,6 +184,8 @@ export async function apiHraDatabaze(env, ctx, slug) {
     if (!n.nenalezeno || !d) await db.prepare("INSERT OR REPLACE INTO igdb_detail (slug, data, cas) VALUES (?, ?, ?)").bind(slug, JSON.stringify(n), Date.now()).run();
     return n;
   };
+  // Záznamy starší verze (série jen z prvních 30 dílů) se obnoví hned.
+  if (d && !d.nenalezeno && d.v !== 2) { try { d = await obnov(); } catch { /* zůstane starý */ } }
   if (!d) { try { d = await obnov(); } catch (e) { console.error("databaze:", e); return { chyba: "Databáze her je teď nedostupná, zkus to za chvíli.", status: 503 }; } }
   else if (Date.now() - r.cas > PLATNOST) ctx.waitUntil(obnov().catch(() => {}));
   if (d.nenalezeno) return { chyba: "Hru jsme v databázi nenašli.", status: 404 };

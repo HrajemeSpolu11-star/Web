@@ -683,10 +683,19 @@
       <dl class="dna">${radky.map(([k, v, p]) => `<div><dt>${k}</dt><dd>${v}<span class="dna-p">${p}</span></dd></div>`).join("")}</dl>
       <p class="source-note">Herní DNA skládáme jen ze skutečných údajů Steamu, databáze IGDB a z našeho měření. Co v nich není, si nevymýšlíme.</p>`;
   }
+  // Série: na první pohled posledních 12 dílů (a tahle hra), celá série v rozbalovacím seznamu. Díly vedou na profil v databázi.
+  function serieSeznam(serie) {
+    if (!serie?.hry?.length || serie.hry.length < 2) return "";
+    const pol = (x) => `<li class="${x.tato ? "tato" : ""}"><span>${x.rok || "?"}</span>${!x.tato && x.slug ? `<a href="/databaze/${esc(x.slug)}"><b>${esc(x.nazev)}</b></a>` : `<b>${esc(x.nazev)}</b>`}${x.typ ? `<small class="dim">${esc(x.typ)}</small>` : ""}${x.tato ? `<em>tato hra</em>` : ""}</li>`;
+    const vse = serie.hry, kratce = vse.length > 14;
+    return `<div class="section-title">Série: ${esc(serie.nazev)} <span class="dim">(${pl(vse.length, "hra", "hry", "her")})</span></div>
+      ${kratce ? `<ol class="serie">${vse.slice(-12).map(pol).join("")}</ol>
+        <details class="serie-cela"><summary>Zobrazit celou sérii (${pl(vse.length, "hra", "hry", "her")})</summary><ol class="serie">${vse.map(pol).join("")}</ol></details>`
+      : `<ol class="serie">${vse.map(pol).join("")}</ol>`}`;
+  }
   function serieBlok(ig) {
     if (!ig || (!ig.serie?.hry?.length && !ig.dlc?.length)) return "";
-    return `${ig.serie?.hry?.length > 1 ? `<div class="section-title">Série: ${esc(ig.serie.nazev)}</div>
-        <ol class="serie">${ig.serie.hry.map((x) => `<li class="${x.tato ? "tato" : ""}"><span>${x.rok || "?"}</span><b>${esc(x.nazev)}</b>${x.tato ? `<em>tato hra</em>` : ""}</li>`).join("")}</ol>` : ""}
+    return `${serieSeznam(ig.serie)}
       ${ig.dlc?.length ? `<div class="section-title">DLC a rozšíření${ig.dlc_celkem > ig.dlc.length ? ` <span class="dim">(${ig.dlc.length} z ${ig.dlc_celkem})</span>` : ""}</div>
         <ul class="dlc">${ig.dlc.map((x) => `<li><b>${esc(x.nazev)}</b><span class="dim">${x.druh === "rozsireni" ? "rozšíření" : "DLC"}${x.rok ? ` · ${x.rok}` : ""}</span></li>`).join("")}</ul>` : ""}
       <p class="source-note">${puvod("databaze", "IGDB")} ${ig.slug ? `<a href="/databaze/${esc(ig.slug)}">Celý profil hry v databázi</a> · ` : ""}${ig.url ? `<a href="${esc(bezpecnaUrl(ig.url))}" target="_blank" rel="noopener noreferrer">Hra na IGDB</a>` : ""}</p>`;
@@ -917,8 +926,7 @@
           ${st.pozadavky.dop.length ? `<div><b>Doporučené</b><ul>${st.pozadavky.dop.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>` : ""}</div>
           <p class="source-note">Podle stránky hry na Steamu.</p></details>
           <div class="hw-na-hre" id="hw-hra"><b>Rozjede se mi to?</b> <a href="/rozjede-se?hra=${esc(st.id)}">Porovnat s mým počítačem</a></div>` : ""}
-        ${d.serie?.hry?.length > 1 ? `<div class="section-title">Série: ${esc(d.serie.nazev)}</div>
-          <ol class="serie">${d.serie.hry.map((x) => `<li class="${x.tato ? "tato" : ""}"><span>${x.rok || "?"}</span>${x.tato ? `<b>${esc(x.nazev)}</b><em>tato hra</em>` : `<a href="/databaze/${esc(x.slug)}"><b>${esc(x.nazev)}</b></a>`}</li>`).join("")}</ol>` : ""}
+        ${serieSeznam(d.serie)}
         ${d.dlc?.length ? `<div class="section-title">DLC a rozšíření</div><ul class="dlc">${d.dlc.map((x) => `<li><b>${esc(x.nazev)}</b><span class="dim">${x.druh === "rozsireni" ? "rozšíření" : "DLC"}${x.rok ? ` · ${x.rok}` : ""}</span></li>`).join("")}</ul>` : ""}
         ${d.podobne?.length ? `<div class="section-title">Podobné hry</div><div class="police police-mriz db-mriz">${d.podobne.map((h) => obalHry(h)).join("")}</div>` : ""}
         <p class="source-note">Údaje o hře jsou z databáze IGDB${d.cas ? ` (stav ${esc(kdy(new Date(d.cas)))})` : ""}${st ? ", ceny, hodnocení a počet hráčů ze Steamu" : ""}${gog ? " a GOGu" : ""}; streamy měříme sami z API Twitche a Kicku. ${d.url ? `<a href="${esc(bezpecnaUrl(d.url))}" target="_blank" rel="noopener noreferrer">Hra na IGDB</a>` : ""}</p>
