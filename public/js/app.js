@@ -191,7 +191,7 @@
   }
   const tlacitkoObrazek = (id) => `<button type="button" class="btn-maly" id="${id}">Sdílet jako obrázek</button>`;
   // Odznak pro streamery (PNG 640×360 – sedí do panelu pod streamem na Twitchi i Kicku). Kreslí se v prohlížeči, nic se neposílá.
-  async function stahniOdznak({ poradi, jmeno, tyden, popis }) {
+  async function stahniOdznak({ poradi, jmeno, tyden, popis, kategorie = "Česká herní hitparáda" }) {
     const W = 640, H = 360, c = document.createElement("canvas");
     c.width = W; c.height = H;
     const g = c.getContext("2d");
@@ -203,7 +203,7 @@
     g.strokeStyle = "rgba(255,192,77,.65)"; g.lineWidth = 4; g.beginPath(); g.roundRect(2, 2, W - 4, H - 4, 26); g.stroke();
     kresliZnak(g, 36, 30, 52, 1);
     g.fillStyle = "#f4f1ff"; g.font = F(800, 26); g.textBaseline = "middle"; g.fillText("Herní puls", 100, 56);
-    g.fillStyle = "#b9b2dc"; g.font = F(600, 20); g.fillText("Česká herní hitparáda", 100, 84);
+    g.fillStyle = "#b9b2dc"; g.font = F(600, 20); g.fillText(kategorie, 100, 84);
     g.fillStyle = "#ffc04d"; g.font = F(800, 150); g.textBaseline = "alphabetic"; g.fillText(`#${poradi}`, 32, 262);
     const x = 40 + g.measureText(`#${poradi}`).width + 26;
     g.fillStyle = "#f4f1ff"; g.font = F(800, 34);
@@ -2264,8 +2264,8 @@
         <div class="stat" id="stat-hodiny"><b data-count="${s.hodin30 || 0}" data-suffix=" h">${s.hodin30 || 0} h</b><span>${merenoOd(s) ? `odvysíláno od ${esc(merenoOd(s))}<small>od té doby ho měříme my</small>` : "odvysíláno za 30 dní"}</span></div>
       </div>
       ${s.hitparada ? `<div class="hp-odznak"><div class="hp-odznak-c">#${esc(String(s.hitparada.poradi))}</div>
-        <div><b>${s.hitparada.probiha ? "Průběžně" : "Minulý týden"} #${esc(String(s.hitparada.poradi))} v české hitparádě streamerů</b>
-          <span>${esc(tydenText(s.hitparada.tyden))} · ${esc(num(s.hitparada.divaci))} diváků najednou · ${esc(pl(s.hitparada.tydnu, "týden", "týdny", "týdnů"))} v hitparádě, nejlépe #${esc(String(s.hitparada.nejlepsi))}</span>
+        <div><b>${s.hitparada.probiha ? "Průběžně" : "Minulý týden"} #${esc(String(s.hitparada.poradi))} ${esc(DRUH_HP[s.hitparada.druh] || DRUH_HP.streameri)}</b>
+          <span>${esc(tydenText(s.hitparada.tyden))} · ${s.hitparada.druh && s.hitparada.druh !== "streameri" ? `${esc(num(s.hitparada.prumer || 0))} diváků v průměru` : `${esc(num(s.hitparada.divaci))} diváků najednou`} · ${esc(pl(s.hitparada.tydnu, "týden", "týdny", "týdnů"))} v hitparádě, nejlépe #${esc(String(s.hitparada.nejlepsi))}</span>
           <div class="hp-odznak-a"><button type="button" class="btn-maly" id="b-odznak">Stáhnout odznak pro kanál</button><a href="/hitparada/${esc(s.hitparada.probiha ? "aktualni" : s.hitparada.tyden)}">Hitparáda</a></div></div></div>` : ""}
       ${s.popis ? `<p class="popis">${esc(s.popis)}</p>` : ""}
       <div id="extra"></div>
@@ -2282,7 +2282,8 @@
     if (s.platforma !== "kick") nactiExtra(s);
     const bOdz = document.getElementById("b-odznak");
     if (bOdz) bOdz.onclick = () => stahniOdznak({ poradi: s.hitparada.poradi, jmeno: s.jmeno, tyden: `${tydenText(s.hitparada.tyden)}${s.hitparada.probiha ? " (průběžně)" : ""}`,
-      popis: `${num(s.hitparada.divaci)} diváků najednou · ${PLAT[s.platforma] || "Twitch"}` });
+      kategorie: s.hitparada.druh === "mali" ? "Malí streameři (do 50 diváků)" : s.hitparada.druh === "stredni" ? "Střední streameři (51–300 diváků)" : "Česká herní hitparáda",
+      popis: `${s.hitparada.druh && s.hitparada.druh !== "streameri" ? `${num(s.hitparada.prumer || 0)} diváků v průměru` : `${num(s.hitparada.divaci)} diváků najednou`} · ${PLAT[s.platforma] || "Twitch"}` });
     const zpr = (t) => { document.getElementById("pa-zprava").textContent = t; };
     document.getElementById("b-obr").onclick = () => sdilejObrazek({ stitek: `${PLAT[s.platforma] || "Twitch"} streamer`, nadpis: s.jmeno,
       odkaz: `/streamer/${s.platforma || "twitch"}/${s.login}`,
@@ -2482,6 +2483,11 @@
     const o = x.stav === "nahoru" || x.stav === "dolu" ? Math.abs((x.poradi_pred || 0) - x.poradi) : "";
     return `<span class="hp-posun ${p[1]}" title="${x.poradi_pred ? `minulý týden #${x.poradi_pred}` : ""}">${p[0]}${o ? ` ${o}` : ""}</span>`;
   }
+  const HP_VELIKOSTI = [["vsichni", "Všichni", "Nejvíc diváků najednou během týdne."],
+    ["stredni", "Střední (51–300)", "Kanály se špičkou 51–300 diváků. Pořadí podle průměru denních špiček – aspoň 3 h a 2 dny vysílání."],
+    ["mali", "Malí (do 50)", "Kanály se špičkou nejvýš 50 diváků. Pořadí podle průměru denních špiček – aspoň 3 h a 2 dny vysílání."]];
+  let hpVelikost = "vsichni";
+  const DRUH_HP = { streameri: "v české hitparádě streamerů", stredni: "mezi středními streamery (51–300 diváků)", mali: "mezi malými streamery (do 50 diváků)" };
   const tydenText = (t) => t.replace(/^(\d{4})-W0?(\d+)$/, "týden $2/$1");
   async function strankaHitparada(id) {
     app.innerHTML = `${hubHlava("hitparada")}${kostra(6)}`;
@@ -2502,7 +2508,7 @@
     const radekStr = (x) => `<a class="srow hp-r" href="${esc(profilUrl(x))}">
         <span class="rank hp-rank${x.poradi <= 3 ? ` hp-top${x.poradi}` : ""}">${x.poradi}</span>${posunHp(x)}${av(x)}
         <div class="info"><h3>${esc(x.jmeno)} ${platBadge(x)}</h3><div class="sub">${esc(pl(x.tydnu, "týden", "týdny", "týdnů"))} v hitparádě · nejlépe #${esc(String(x.nejlepsi))} · ${esc(num(x.hodin))} h vysílání</div></div>
-        <div class="num"><b>${esc(num(x.divaci))}</b>diváků max.</div></a>`;
+        ${hpVelikost !== "vsichni" ? `<div class="num"><b>${esc(num(x.prumer || 0))}</b>diváků v průměru</div>` : `<div class="num"><b>${esc(num(x.divaci))}</b>diváků max.</div>`}</a>`;
     app.innerHTML = `${hubHlava("hitparada")}
       <article class="report hitparada">
         <header class="rep-head"><span class="ht-stitek">Česká herní hitparáda · ${esc(tydenText(r.tyden))}</span>
@@ -2515,8 +2521,9 @@
         <div class="hp-sloupce">
           <section><div class="section-title">Hry · hodiny sledování</div>
             ${r.hry.length ? `<div class="slist">${r.hry.map(radekHry).join("")}</div>` : `<p class="dim">Zatím bez dat.</p>`}</section>
-          <section><div class="section-title">Streameři · nejvíc diváků najednou</div>
-            ${r.streameri.length ? `<div class="slist">${r.streameri.map(radekStr).join("")}</div>` : `<p class="dim">Zatím bez dat.</p>`}
+          <section><div class="section-title">Streameři</div>
+            <div class="mini-seg hp-velikost" role="group" aria-label="Velikost kanálu">${HP_VELIKOSTI.map(([k, t]) => `<button type="button" class="ms-b${k === hpVelikost ? " on" : ""}" data-hpv="${k}">${t}</button>`).join("")}</div>
+            <div id="hp-str"></div>
             <p class="source-note">Jsi v hitparádě? Na svém profilu si stáhneš odznak pro svůj kanál.</p></section>
         </div>
         <div class="rep-sdilet"><button type="button" class="btn-maly" id="sdilet">Sdílet odkaz</button> ${tlacitkoObrazek("sdilet-obr")}</div>
@@ -2524,6 +2531,21 @@
           ▲▼ = posun proti minulému týdnu, NOVÉ = poprvé v hitparádě, NÁVRAT = vrací se po vypadnutí. Každý uzavřený týden se uloží do archivu a už se nemění.
           ${puvod("mereno", "Twitch + Kick", r.cas)}</p>
       </article>`;
+    // Přepínač velikosti kanálu: všichni (nejvíc diváků najednou) / střední 51–300 / malí do 50 (průměr denních špiček).
+    const vykresliStr = () => {
+      const list = (hpVelikost === "mali" ? r.mali : hpVelikost === "stredni" ? r.stredni : r.streameri) || [];
+      const el = document.getElementById("hp-str");
+      if (!el) return;
+      el.innerHTML = `<p class="hp-vel-popis dim">${esc(HP_VELIKOSTI.find(([k]) => k === hpVelikost)[2])}</p>`
+        + (list.length ? `<div class="slist">${list.map(radekStr).join("")}</div>` : `<p class="dim">${r.mali ? "Zatím bez dat." : "Tento týden vznikl dřív, než jsme začali žebříček podle velikosti počítat."}</p>`);
+      el.querySelectorAll("[data-barva]").forEach((x) => x.style.setProperty("--sk", barva(x.dataset.barva, "#ffc04d")));
+    };
+    vykresliStr();
+    app.querySelectorAll("[data-hpv]").forEach((b) => b.onclick = () => {
+      hpVelikost = b.dataset.hpv;
+      app.querySelectorAll("[data-hpv]").forEach((x) => x.classList.toggle("on", x === b));
+      vykresliStr();
+    });
     const odkaz = `/hitparada/${r.probiha ? "aktualni" : r.tyden}`;
     const bo = document.getElementById("sdilet-obr");
     if (bo) bo.onclick = () => sdilejObrazek({ stitek: `Hitparáda · ${tydenText(r.tyden)}`, nadpis: "Co Česko hraje a sleduje", odkaz,

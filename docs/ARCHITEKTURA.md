@@ -159,10 +159,11 @@ Galerie a prohlížeč: `galerieHry()` / `otevriProhlizec()` v `app.js`, bez inl
 
 ## Hitparáda, odznaky, historie v Česku, měsíční zpráva (2026-11-27)
 - **Česká herní hitparáda** (`src/hitparada.js`, tabulka `hitparada (tyden, druh, od, data, uzavreno, cas)`): týden pondělí–neděle (Praha).
-  Hry = hodiny sledování z `hry_den` (top 20), streameři = nejvíc diváků najednou ze `snimky` (top 20). Posun proti minulému týdnu,
+  Hry = hodiny sledování z `hry_den` (top 20), streameři = nejvíc diváků najednou ze `snimky` (top 20), `stredni` (špička 51–300)
+  a `mali` (špička do 50) = průměr denních špiček, aspoň 3 h a 2 dny vysílání (top 20 každý). Posun proti minulému týdnu,
   týdny v hitparádě a nejlepší pozice se berou z archivu. Uzavřený týden se zapíše jednou a už se nemění (`uzavreno = 1`),
   rozběhnutý se přepisuje. Počítá se v úloze `trendy` (každé 3 h); první běh doplní nejvýš 8 chybějících uzavřených týdnů.
-  Zápisy: 2 řádky na běh (+ 2 za každý doplněný týden). `GET /api/hitparada?tyden=2026-W48|aktualni`, stránky `/hitparada`, `/hitparada/<týden>`.
+  Zápisy: 4 řádky na běh (+ 4 za každý doplněný týden). `GET /api/hitparada?tyden=2026-W48|aktualni`, stránky `/hitparada`, `/hitparada/<týden>`.
   Týden, kdy měření začalo uprostřed, má příznak `nastaveni.hitparada_neuplny_<týden>`.
 - **Odznak pro streamery**: `apiStreamer` vrací `hitparada` (pozice v poslední uzavřené, jinak rozběhnuté hitparádě). Odznak 640×360 PNG
   se kreslí v prohlížeči (canvas, `stahniOdznak`), nic se neposílá na server.

@@ -8,6 +8,12 @@
 
 ---
 
+## 2026-11-27 – Hitparáda i pro malé a střední streamery
+- Ve sloupci Streameři v hitparádě je přepínač **Všichni / Střední (51–300) / Malí (do 50)**.
+- Střední a malí se řadí podle **průměru denních špiček diváků** (jeden nájezd diváků nerozhodne) a musí vysílat aspoň 3 h ve 2 dnech.
+- Také s posunem ▲▼, NOVÉ/NÁVRAT, týdny v žebříčku a archivem. Uzavřené týdny se dopočítají zpětně (původní žebříčky zůstávají beze změny).
+- Odznak na profilu teď funguje i pro malé a střední streamery („#2 mezi malými streamery (do 50 diváků)“).
+
 ## 2026-11-27 – Česká herní hitparáda, odznaky pro streamery, historie hry v Česku, měsíční zpráva
 - **Česká herní hitparáda** (`/hitparada`): týdenní žebříček 20 her (hodiny sledování) a 20 streamerů (nejvíc diváků najednou)
   z Twitche i Kicku. Posun ▲▼ proti minulému týdnu, NOVÉ / NÁVRAT, počet týdnů v hitparádě, nejlepší pozice. Každý uzavřený týden
