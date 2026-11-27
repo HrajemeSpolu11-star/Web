@@ -8,6 +8,13 @@
 
 ---
 
+## 2026-11-27 – Rozbalovací nabídka „Hry“, rozpad streamů podle platformy
+- **Hry v horní liště** se po klepnutí rozbalí: „Všechno o hrách“ (rozcestník zůstává) a všechny stránky po skupinách
+  (Puls her, Najdi si hru, Ušetři, Co se chystá, Kdo hry dělá, Zahraj si) s ikonami. Na mobilu vyjede nad spodní lištou.
+  Zavře se klepnutím mimo, klávesou Esc nebo výběrem stránky. Ctrl/⌘+klik dál otevře rozcestník.
+- **Streameři**: pod počtem živých je nově rozpad „Twitch: N streamů · diváci“ a „Kick: N streamů · diváci“, ať je vidět,
+  kolik je kde. Zelený kroužek u bubliny = Kick, červeno-žlutý = Twitch (beze změny).
+
 ## 2026-11-27 – Jedno ID hry, Sledovat hru + Moje hry, chytré hledání, nákupní poradce, analytika
 - **Jedno ID hry**: každá hra má trvalé ID z databáze her (IGDB slug). Kategorie Twitche a hry ze Steamu se s ním propojují
   přes oficiální vazby (Twitch → IGDB, IGDB → Steam), ne podle názvu. Hry streamera a stránka hry z Twitche odkazují na profil

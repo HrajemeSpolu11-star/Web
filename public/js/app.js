@@ -1972,7 +1972,10 @@
     const obl = new Set(oblibeni());
     const mojiZive = streamy.filter((s) => obl.has(klicS(s)));
     return `<div class="live-head"><h1>Čeští streameři</h1>
-        <p>${streamy.length ? `Právě ${streamy.length >= 2 && streamy.length <= 4 ? "vysílají" : "vysílá"} ${pl(streamy.length, "streamer", "streameři", "streamerů")} pro <b class="hub-cislo" data-count="${divaku}" data-once="hub">${num(divaku)}</b> diváků.` : "Teď nikdo nevysílá – mrkni na žebříček nebo hry."}</p></div>
+        <p>${streamy.length ? `Právě ${streamy.length >= 2 && streamy.length <= 4 ? "vysílají" : "vysílá"} ${pl(streamy.length, "streamer", "streameři", "streamerů")} pro <b class="hub-cislo" data-count="${divaku}" data-once="hub">${num(divaku)}</b> diváků.` : "Teď nikdo nevysílá – mrkni na žebříček nebo hry."}</p>
+        ${streamy.length ? (() => { const plat = (p) => { const l = streamy.filter((s) => (s.platforma === "kick") === (p === "kick")); return [l.length, l.reduce((a, s) => a + (s.divaci || 0), 0)]; };
+          const [tn, td] = plat("twitch"), [kn, kd] = plat("kick");
+          return `<p class="plat-rozpad"><span class="pr-tw">Twitch: ${esc(pl(tn, "stream", "streamy", "streamů"))} · ${esc(num(td))} diváků</span><span class="pr-ki">Kick: ${esc(pl(kn, "stream", "streamy", "streamů"))} · ${esc(num(kd))} diváků</span></p>`; })() : ""}</div>
       ${obl.size ? `<div class="oblibeni-pruh"><b>Tvoji oblíbení</b> ${mojiZive.length ? `– právě živě: ${mojiZive.map((s) => `<a href="${esc(profilUrl(s))}">${esc(s.jmeno)}</a>`).join(", ")}` : `– teď nikdo z ${obl.size} nevysílá`}${pushZapnuto() ? ` <span class="dim">· upozornění zapnutá</span>` : ""}</div>` : ""}
       ${streamy.length ? `<div class="stories" aria-label="Právě živě">${[...mojiZive, ...streamy.filter((s) => !obl.has(klicS(s)))].slice(0, 24).map((s) =>
         `<a class="story${s.platforma === "kick" ? " kick" : ""}${obl.has(klicS(s)) ? " fav" : ""}" href="${esc(profilUrl(s))}"><div class="ring">${av(s)}</div><b>${esc(s.jmeno)}</b><span>${num(s.divaci || 0)} diváků</span></a>`).join("")}</div>` : ""}
@@ -2938,6 +2941,48 @@
     route();
     scrollTo(0, 0);
   }
+  // Rozbalovací nabídka „Hry“ v hlavní liště: seznam všech stránek o hrách (stejné skupiny jako rozcestník /pruvodce).
+  // Na mobilu vyjede nad spodní lištou. Rozcestník zůstává – první položka „Všechno o hrách“.
+  const tabHry = document.querySelector('.tabs a[data-tab="hry"]');
+  function zavriMenuHry() {
+    document.getElementById("menu-hry")?.remove();
+    tabHry?.setAttribute("aria-expanded", "false");
+  }
+  if (tabHry) {
+    tabHry.setAttribute("aria-haspopup", "true");
+    tabHry.setAttribute("aria-expanded", "false");
+    tabHry.classList.add("ma-menu");
+    tabHry.addEventListener("click", (e) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault(); e.stopPropagation();
+      if (document.getElementById("menu-hry")) { zavriMenuHry(); return; }
+      const m = document.createElement("div");
+      m.id = "menu-hry"; m.className = "menu-hry"; m.setAttribute("role", "menu");
+      m.innerHTML = `<a class="mh-vse" role="menuitem" href="/pruvodce"><span class="mh-ik" aria-hidden="true">${IKONY.hrat}</span><b>Všechno o hrách</b><span>Rozcestník se všemi stránkami</span></a>
+        <div class="mh-skupiny">${SKUPINY_HER.map((g) => `<div class="mh-sk" data-barva="${esc(g.barva)}"><div class="mh-sk-n">${esc(g.nazev)}</div>
+          ${g.polozky.map(([k, h, t]) => `<a role="menuitem" href="${esc(h)}"${location.pathname === h ? ' class="on"' : ""}><span class="mh-ik" aria-hidden="true">${IKONY[IKONA_STRANKY[k]] || ""}</span>${esc(t)}</a>`).join("")}</div>`).join("")}</div>`;
+      document.body.appendChild(m);
+      m.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
+      // Na počítači pod tlačítkem Hry (zarovnané, aby nevyjelo z obrazovky).
+      if (!matchMedia("(max-width:760px)").matches) {
+        const r = tabHry.getBoundingClientRect();
+        m.style.top = `${Math.round(r.bottom + 8)}px`;
+        m.style.left = `${Math.round(Math.max(8, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 8)))}px`;
+      }
+      tabHry.setAttribute("aria-expanded", "true");
+      m.querySelector("a")?.focus({ preventScroll: true });
+    });
+    document.addEventListener("click", (e) => {
+      const m = document.getElementById("menu-hry");
+      if (!m) return;
+      if (e.target.closest("#menu-hry a")) { setTimeout(zavriMenuHry, 0); return; }
+      if (!m.contains(e.target)) zavriMenuHry();
+    });
+    addEventListener("keydown", (e) => { if (e.key === "Escape" && document.getElementById("menu-hry")) { zavriMenuHry(); tabHry.focus(); } });
+    addEventListener("resize", zavriMenuHry);
+    addEventListener("popstate", zavriMenuHry);
+  }
+
   // Odkazy v rámci webu se otevírají bez načítání celé stránky.
   document.addEventListener("click", (e) => {
     // Zpětná tlačítka: když návštěvník přišel z jiné stránky webu, vrátí ho přesně tam (i se stavem filtrů a posunem).

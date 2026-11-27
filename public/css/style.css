@@ -1412,3 +1412,30 @@ html.bez-posunu{overflow:hidden}
 .an-z-t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .an-z-t em{font-style:normal;font-weight:700;margin-left:6px}
 .an-z-t em.plus{color:#3ddc84}.an-z-t em.minus{color:#ff6b6b}
+/* Rozbalovací nabídka „Hry“ v hlavní liště */
+.tabs a.ma-menu span:not(.dot)::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-3px) rotate(45deg);opacity:.8}
+.tabs a.ma-menu[aria-expanded="true"] span:not(.dot)::after{transform:translateY(1px) rotate(-135deg)}
+.menu-hry{position:fixed;z-index:60;width:min(720px,calc(100vw - 16px));max-height:calc(100vh - 120px);overflow:auto;background:rgba(22,19,46,.98);
+  border:1px solid var(--line);border-radius:var(--r-l,20px);padding:12px;box-shadow:0 24px 60px rgba(0,0,0,.55);animation:mh-in .14s ease-out}
+@keyframes mh-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.mh-vse{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--card2);color:var(--text);margin-bottom:10px}
+.mh-vse .mh-ik{grid-row:span 2}
+.mh-vse span:last-child{font-size:12.5px;color:var(--muted)}
+.mh-vse:hover{outline:1px solid var(--accent)}
+.mh-skupiny{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px}
+.mh-sk{--sk:#ffc04d;display:flex;flex-direction:column;gap:2px}
+.mh-sk-n{font-size:12px;font-weight:800;color:var(--sk);padding:4px 8px;border-left:3px solid var(--sk);margin-bottom:2px}
+.mh-sk a{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;color:var(--text);font-weight:600;font-size:14px}
+.mh-sk a:hover,.mh-sk a:focus-visible,.mh-sk a.on{background:color-mix(in srgb,var(--sk) 16%,transparent)}
+.mh-ik{display:inline-flex;width:30px;height:30px;border-radius:9px;align-items:center;justify-content:center;background:color-mix(in srgb,var(--sk,#ffc04d) 85%,#000);color:#1a1300;flex:none}
+.mh-ik svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:760px){
+  .menu-hry{left:8px;right:8px;width:auto;top:auto;bottom:calc(84px + env(safe-area-inset-bottom));max-height:calc(100vh - 160px)}
+  .mh-skupiny{grid-template-columns:1fr 1fr}
+  .tabs a.ma-menu span:not(.dot)::after{display:none}
+}
+@media(prefers-reduced-motion:reduce){.menu-hry{animation:none}}
+.plat-rozpad{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:13.5px;font-weight:600}
+.plat-rozpad span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.plat-rozpad .pr-tw::before{background:var(--live)}
+.plat-rozpad .pr-ki::before{background:var(--kick)}
