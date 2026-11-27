@@ -26,7 +26,9 @@
   // Styly se nastavují přes JS (CSSOM), takže CSP může zakázat inline styly.
   function obarvi(root) {
     requestAnimationFrame(() => nakresliEkg(root));
-    root.querySelectorAll("img.cover-img, .patch-obr img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
+    root.querySelectorAll("img.cover-img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
+    // Aktualizace bez obrázku: náhradní dlaždice s názvem hry (data-hra → CSS).
+    root.querySelectorAll(".patch-obr img").forEach((img) => img.addEventListener("error", () => { img.parentElement.classList.add("bez-obr"); img.remove(); }, { once: true }));
     root.querySelectorAll("[data-a]").forEach((el) => {
       el.style.background = `linear-gradient(135deg,${barva(el.dataset.a, "#444")},${barva(el.dataset.b, "#111")})`;
     });
@@ -447,7 +449,7 @@
     const text = [p.nadpis, p.shrnuti, p.komu, ...SKUPINY_PATCHE.flatMap(([k]) => p.skupiny?.[k] || [])].join(" ");
     const pojmy = SLOVNICEK.filter(([re]) => re.test(text));
     return `<article class="patch${mala ? " patch-mala" : ""}">
-      <a class="patch-obr" href="/hra/steam/${esc(p.steam_id)}"><img src="${esc(p.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
+      <a class="patch-obr" href="/hra/steam/${esc(p.steam_id)}" data-hra="${esc(p.hra)}"><img src="${esc(p.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
       <div class="patch-t">
         <header>${typStitek(p.typ)}<a class="patch-hra" href="/hra/steam/${esc(p.steam_id)}">${esc(p.hra)}</a><span class="dim">${esc(kdy(new Date(p.datum)))}</span></header>
         <h3>${esc(p.nadpis)}</h3>

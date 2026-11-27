@@ -58,6 +58,13 @@ export function urovenCestiny(jazyky) {
 }
 
 // Uloží hry (z katalogu nebo hledání). Zapisuje jen, když se něco změnilo.
+// Jen přidá hru (ID + název), pokud ji ještě neznáme – existující hry (ceny, slevy) NEMĚNÍ.
+// Pro místa, kde máme jen název (kalendář vydání, aktualizace, seznam přání). Obrázek, cenu a češtinu doplní sběr.
+export function prikazyPridejHry(db, hry, ted) {
+  const st = db.prepare("INSERT OR IGNORE INTO steam_hry (id, nazev, norm, mena, pridano) VALUES (?, ?, ?, 'CZK', ?)");
+  return hry.filter((h) => steamId(h.id) && h.nazev).map((h) => st.bind(String(h.id), String(h.nazev).slice(0, 160), normNazev(h.nazev), ted));
+}
+
 export function prikazyUlozHry(db, hry, ted) {
   const st = db.prepare(`INSERT INTO steam_hry (id, nazev, norm, obrazek, cena, puvodni, sleva, mena, kladne, recenzi, cena_cas, pridano)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

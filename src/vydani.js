@@ -3,7 +3,7 @@
 //  • Čeština: ze Steamu (seznam jazyků hry, src/hlidac.js), když ho hra má; jinak z IGDB (language_supports).
 // Obnova jednou za 6 h v Cronu katalogu (1–2 požadavky). Výsledek v tabulce katalog pod klíčem „vydani“.
 import { token } from "./twitch.js";
-import { prikazyUlozHry, zajistiSchemaHlidac } from "./hlidac.js";
+import { prikazyPridejHry, zajistiSchemaHlidac } from "./hlidac.js";
 
 const PLATNOST = 6 * 3600e3;
 // Pole z IGDB. game.first_release_date = první vydání hry vůbec (kterékoli platformy nebo předběžný přístup) –
@@ -75,7 +75,7 @@ export async function sberVydani(env, vynutit = false) {
   const prikazy = [db.prepare("INSERT OR REPLACE INTO katalog (klic, data, cas) VALUES ('vydani', ?, ?)").bind(JSON.stringify(seznam), Date.now())];
   // Hry ze Steamu do databáze her → postupně se ověří čeština i to, jestli už na Steamu vyšly (sberJazyku).
   await zajistiSchemaHlidac(db);
-  prikazy.push(...prikazyUlozHry(db, seznam.filter((x) => x.steam).slice(0, 150).map((x) => ({ id: x.steam, nazev: x.nazev })), Date.now()));
+  prikazy.push(...prikazyPridejHry(db, seznam.filter((x) => x.steam).slice(0, 150).map((x) => ({ id: x.steam, nazev: x.nazev })), Date.now()));
   await db.batch(prikazy);
   return { her: seznam.length, se_steamem: seznam.filter((x) => x.steam).length, uroven };
 }

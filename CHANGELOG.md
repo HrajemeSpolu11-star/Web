@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-11-27 – Obrázky u aktualizací her, bezpečné přidávání her
+- **Chybějící obrázky u aktualizací**: novější hry mají na Steamu obrázek na adrese s jedinečným kódem, odhad
+  `…/steam/apps/ID/header.jpg` nefungoval. API bere oficiální `header_image` z `steam_hry`; hry s novou aktualizací se do
+  databáze her přidají (sběr doplní obrázek). Když obrázek přesto chybí: dlaždice s názvem hry. Název hry v hlavičce karty
+  už neujíždí doprava.
+- Typ podle nadpisu: „Update 1.0.7“ už není „Velká aktualizace“ (jen verze x.0 bez další číslice).
+- **Oprava rizika**: `prikazyUlozHry` s hrou bez ceny (jen ID + název) by u známé hry vynulovala slevu. Nová
+  `prikazyPridejHry` (INSERT OR IGNORE) pro kalendář vydání, aktualizace a seznam přání.
+
 ## 2026-11-26 (večer, 32) – Oprava AI, kalendáře a Kicku podle stránky /stav
 - **AI nepsala nic**: Cloudflare účtu zakázal model `@cf/google/gemma-3-12b-it` (chyba 5018). `ai.js` má teď řadu záložních
   modelů Workers AI (Mistral Small 3.1 → Llama 3.3 70B → Llama 3.1 8B → Gemma), použije první funkční a ověří, že vrátil JSON.

@@ -15,6 +15,7 @@ import { token } from "./twitch.js";
 import { denPraha } from "./psani.js";
 import { BEZ_KATEGORIE } from "./prehled.js";
 import { normNazev } from "./hra-data.js";
+import { zajistiSchemaHlidac, prikazyPridejHry } from "./hlidac.js";
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS patche (gid TEXT PRIMARY KEY, appid TEXT NOT NULL, hra TEXT NOT NULL, nadpis TEXT NOT NULL, url TEXT NOT NULL,
@@ -48,7 +49,7 @@ export function typPodleNadpisu(t) {
   if (/season|sezón|battle ?pass|chapter|\bact \d/i.test(t)) return "sezona";
   if (/hotfix|bug ?fix|fixes|oprava|crash/i.test(t)) return "opravy";
   if (/balanc|nerf|buff/i.test(t)) return "rovnovaha";
-  if (/major|big update|expansion|\bdlc\b|content update|\b\d+\.0\b|1\.0|launch|out now|available now/i.test(t)) return "velka";
+  if (/major|big update|expansion|\bdlc\b|content update|\b\d+\.0(?![.\d])|launch|out now|available now/i.test(t)) return "velka";
   return "aktualizace";
 }
 
@@ -176,6 +177,10 @@ export async function sberPatchu(env) {
     }
   });
   prikazy.push(db.prepare("DELETE FROM patche WHERE datum < ?").bind(ted - 120 * DEN));
+  // Hry s novou aktualizací do databáze her (obrázek, cena a čeština se doplní při dalším sběru).
+  await zajistiSchemaHlidac(db);
+  const sNovinkou = vyber.filter((h, i) => odp[i].status === "fulfilled" && (odp[i].value?.appnews?.newsitems || []).length && h.nazev);
+  prikazy.push(...prikazyPridejHry(db, sNovinkou.map((h) => ({ id: String(h.appid), nazev: h.nazev })), ted));
   const v = await db.batch(prikazy);
   return { her: vyber.length, novych: vlozeni.reduce((a, i) => a + (v[i]?.meta?.changes || 0), 0) };
 }
@@ -246,8 +251,8 @@ export async function apiAktualizace(env) {
   const db = env.DB;
   await zajistiSchemaPatchu(db);
   const [p, s] = await db.batch([
-    db.prepare(`SELECT p.gid, p.appid, p.hra, p.nadpis, p.url, p.datum, p.stav, p.shrnuti, p.typ, p.poradi, l.zdroj FROM patche p
-      LEFT JOIN sledovane l ON l.appid = p.appid ORDER BY p.datum DESC LIMIT 150`),
+    db.prepare(`SELECT p.gid, p.appid, p.hra, p.nadpis, p.url, p.datum, p.stav, p.shrnuti, p.typ, p.poradi, l.zdroj, g.obrazek AS obr FROM patche p
+      LEFT JOIN sledovane l ON l.appid = p.appid LEFT JOIN steam_hry g ON g.id = p.appid ORDER BY p.datum DESC LIMIT 150`),
     db.prepare("SELECT COUNT(*) AS n, MIN(kontrola) AS nejstarsi FROM sledovane"),
   ]);
   return {
@@ -258,7 +263,9 @@ export async function apiAktualizace(env) {
       return {
         id: r.gid, steam_id: r.appid, hra: r.hra, nadpis: r.nadpis, url: r.url, datum: new Date(r.datum).toISOString(),
         typ: r.typ || typPodleNadpisu(r.nadpis), poradi: r.poradi || null, cesko: /cesko/.test(r.zdroj || ""),
-        obrazek: `https://cdn.cloudflare.steamstatic.com/steam/apps/${encodeURIComponent(r.appid)}/header.jpg`,
+        // Novější hry mají obrázek na adrese s jedinečným kódem → bereme oficiální header_image ze Steamu (steam_hry),
+        // odhad staré adresy jen jako záloha (web při chybě ukáže náhradní dlaždici s názvem).
+        obrazek: https(r.obr) || `https://cdn.cloudflare.steamstatic.com/steam/apps/${encodeURIComponent(r.appid)}/header.jpg`,
         stav: r.stav === "hotovo" ? "hotovo" : r.stav === "novy" ? "ceka" : "bez",
         shrnuti: x.shrnuti || "", komu: x.komu || "",
         skupiny: Object.fromEntries(SKUPINY.map((k) => [k, x[k] || (k === "novinky" && x.zmeny) || []])),

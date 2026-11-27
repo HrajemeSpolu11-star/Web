@@ -3,7 +3,7 @@
 // Web si NEUKLÁDÁ, čí seznam to je: hry se jen přidají do databáze her (ceny, čeština) a mezi sledované aktualizace.
 // Seznam „Moje hry“ si drží prohlížeč návštěvníka (localStorage). GOG a Epic veřejné API pro seznam přání nemají.
 // Požadavky: 1 (profil) + 1 (seznam) + až 5 (názvy po 100) = nejvýš 7 na jedno načtení; omezeno na 10 načtení za minutu.
-import { zajistiSchemaHlidac, prikazyUlozHry, hryPodleId, naHru } from "./hlidac.js";
+import { zajistiSchemaHlidac, prikazyPridejHry, hryPodleId, naHru } from "./hlidac.js";
 import { prikazyPridejSledovane, zajistiSchemaPatchu } from "./patche.js";
 
 const MAX_HER = 500;
@@ -69,7 +69,7 @@ export async function apiWishlist(env, vstup) {
     } catch { /* názvy doplní později katalog */ }
   }
   const ted = Date.now();
-  const prikazy = [...prikazyUlozHry(db, nove, ted), ...prikazyPridejSledovane(db, [...nove, ...[...znam.values()].map((r) => ({ id: r.id, nazev: r.nazev }))])];
+  const prikazy = [...prikazyPridejHry(db, nove, ted), ...prikazyPridejSledovane(db, [...nove, ...[...znam.values()].map((r) => ({ id: r.id, nazev: r.nazev }))])];
   for (let i = 0; i < prikazy.length; i += 100) await db.batch(prikazy.slice(i, i + 100));
   const radky = new Map((await hryPodleId(db, ids)).map((r) => [r.id, r]));
   return { pocet: polozky.length, hry: ids.map((id) => radky.get(id)).filter(Boolean).map(naHru) };
