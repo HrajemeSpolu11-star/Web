@@ -6,6 +6,10 @@ Majitel: Michal (GitHub `HrajemeSpolu11-star`). Komunikace **vždy česky**.
 **Než začneš, přečti `docs/PRO-NOVY-CHAT.md`.** Tam je kontext, stav a rozhodnutí.
 
 ## Pravidla
+0. **Z toho, co je hotové, se nic nemaže.** Žádná hotová funkce, stránka, sekce, text, data ani vzhled se neodstraní
+   ani nenahradí bez výslovného souhlasu uživatele. Úpravy se dělají přidáním nebo vylepšením, ne odebráním.
+   Když je změna vzhledu velká (logo, barvy, rozložení), nejdřív ukaž návrh(y) a počkej na schválení – teprve pak měň.
+   Když je něco potřeba kvůli chybě odebrat, napiš to uživateli předem a zapiš do `CHANGELOG.md`.
 1. **`CHANGELOG.md` se nikdy nemaže ani nepřepisuje.** Každou změnu zapiš jako nový záznam nahoru.
 2. **Nespouštěj zbytečně testy** a nespotřebovávej GitHub Actions – projekt žádné Actions nepoužívá a mít je nemá.
    Stačí `node --check` na změněné soubory; vizuální kontrolu dělej jen u větších změn vzhledu.

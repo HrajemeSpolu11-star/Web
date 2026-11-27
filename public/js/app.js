@@ -29,6 +29,11 @@
     root.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
     // Zpětné tlačítko vede na předchozí stránku webu → popisek „Zpět“ (bez historie vede na nadřazenou sekci s jejím názvem).
     if ((history.state?.n || 0) > 0) root.querySelectorAll("a.back, a.zpet-hub").forEach((a) => { a.textContent = "← Zpět"; });
+    // Náhled streamu, který se nenačte: zmizí a ukáže se rozostřená profilovka streamera (žádná rozbitá ikona obrázku).
+    root.querySelectorAll("img[data-nahled]").forEach((img) => {
+      const pryc = () => { img.closest(".live-thumb")?.classList.add("bez-nahledu"); img.remove(); };
+      if (img.complete && img.naturalWidth === 0 && img.src) pryc(); else img.addEventListener("error", pryc, { once: true });
+    });
     // Obrázek, který se nenačte (smazaný banner, vypršelý náhled), nahradí náhradní pozadí.
     root.querySelectorAll("img[data-zaloha]").forEach((img) => img.addEventListener("error", () => { const b = img.closest(".banner"); img.remove(); b?.classList.add("banner-nahrada"); }, { once: true }));
     root.querySelectorAll("img.cover-img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
@@ -135,18 +140,15 @@
     const z = g.createRadialGradient(W * 0.85, H * 0.1, 0, W * 0.85, H * 0.1, 700);
     z.addColorStop(0, "rgba(155,92,255,.38)"); z.addColorStop(1, "rgba(155,92,255,0)");
     g.fillStyle = z; g.fillRect(0, 0, W, H);
-    // znak loga: přehrávací trojúhelník s EKG křivkou (stejný jako v hlavičce webu)
-    const znak = (x, y, vel, a) => {
-      g.save(); g.translate(x, y); g.scale(vel / 64, vel / 64); g.globalAlpha = a;
-      const gr = g.createLinearGradient(0, 0, 64, 64); gr.addColorStop(0, "#ff3d7f"); gr.addColorStop(0.55, "#b347ff"); gr.addColorStop(1, "#6d4bff");
-      g.fillStyle = gr; g.beginPath(); g.roundRect(0, 0, 64, 64, 18); g.fill();
-      const tri = new Path2D("M23 17.5c0-2.6 2.8-4.2 5-2.9l19.6 11.6c2.2 1.3 2.2 4.5 0 5.8L28 43.6c-2.2 1.3-5-.3-5-2.9z"), ekgP = new Path2D("M6 33h15l4-9 5 17 5-13 3 5h20");
-      g.fillStyle = "#fff"; g.fill(tri);
-      g.lineWidth = 3.4; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = "#fff"; g.stroke(ekgP);
-      g.save(); g.clip(tri); g.strokeStyle = "#7a2bd6"; g.stroke(ekgP); g.restore();
-      g.restore();
+    // neuronová síť z loga
+    const sit = (cx, cy, r, a) => {
+      const b = [-90, -30, 30, 90, 150, 210].map((u) => [cx + r * Math.cos(u * Math.PI / 180), cy + r * Math.sin(u * Math.PI / 180)]);
+      g.strokeStyle = `rgba(155,92,255,${0.45 * a})`; g.lineWidth = Math.max(2, r / 40);
+      b.forEach((p, i) => { g.beginPath(); g.moveTo(...p); g.lineTo(...b[(i + 1) % 6]); g.moveTo(...p); g.lineTo(cx, cy); g.stroke(); });
+      g.fillStyle = `rgba(155,92,255,${a})`; b.forEach((p) => { g.beginPath(); g.arc(...p, r / 9, 0, 7); g.fill(); });
+      g.fillStyle = `rgba(255,192,77,${a})`; g.beginPath(); g.arc(cx, cy, r / 4.5, 0, 7); g.fill();
     };
-    znak(760, 70, 280, 0.18); znak(76, 76, 72, 1);
+    sit(880, 210, 150, 0.35); sit(110, 110, 34, 1);
     g.fillStyle = "#f4f1ff"; g.font = F(800, 46); g.textBaseline = "middle"; g.fillText("Herní puls", 165, 112);
     // štítek
     g.font = F(800, 34); const sw = g.measureText(stitek).width;
@@ -1458,7 +1460,7 @@
 
   function kartaZive(s) {
     return `<a class="live-card" href="${esc(profilUrl(s))}">
-      <div class="live-thumb">${https(s.nahled) ? `<img src="${esc(s.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+      <div class="live-thumb">${https(s.nahled) ? `<img src="${esc(s.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-nahled>` : ""}${https(s.profilovka) ? `<img class="live-thumb-zaloha" src="${esc(s.profilovka)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
         <span class="live-badge">ŽIVĚ</span>${platBadge(s)}<span class="live-viewers">${num(s.divaci || 0)} diváků</span>
         ${s.zacatek ? `<span class="live-time">${esc(delka(s.zacatek))}</span>` : ""}</div>
       <div class="live-info">${av(s)}<div class="info"><h3>${esc(s.jmeno)}${partner(s)}</h3>

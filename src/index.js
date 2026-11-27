@@ -129,7 +129,8 @@ function naStreamera(r, ted) {
     platforma: r.platforma || "twitch", login: r.login, jmeno: r.jmeno || r.login, profilovka: r.profilovka || "", partner: r.typ === "partner",
     sledujici: r.sledujici ?? null, max_divaku: r.max_divaku || 0, posledni_hra: r.posledni_hra || "",
     zive, divaci: zive ? r.zive_divaci : null, hra: zive ? r.zive_hra : null, titulek: zive ? r.zive_titulek : null,
-    zacatek: zive ? r.zive_zacatek : null, nahled: zive && r.zive_nahled ? `${r.zive_nahled}?t=${Math.floor(r.zive_cas / 60e3)}` : "",
+    zacatek: zive ? r.zive_zacatek : null, // Parametr ?t= jen u adres bez vlastních parametrů – podepsané adresy náhledů (Kick) by se jím rozbily.
+    nahled: zive && r.zive_nahled ? (String(r.zive_nahled).includes("?") ? r.zive_nahled : `${r.zive_nahled}?t=${Math.floor(r.zive_cas / 60e3)}`) : "",
     minut30: r.minut30 ?? undefined, rust30: r.rust30 ?? undefined,
     odkazy: parse(r.odkazy, undefined),
   };

@@ -1313,3 +1313,8 @@ html.bez-posunu{overflow:hidden}
 .uvod-veta a b{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
 .uvod + .pristi-akce{margin:6px 0 18px}
 @media(max-width:520px){.uvod-cisla b{font-size:21px}.uvod-cisla a{padding:10px}}
+
+/* Náhled živého streamu: záložní rozostřená profilovka (skrytá, dokud se skutečný náhled nenačte nebo selže). */
+.live-thumb{position:relative;isolation:isolate}
+.live-thumb-zaloha{display:none}
+.live-thumb.bez-nahledu .live-thumb-zaloha,.live-thumb:not(:has(img[data-nahled])) .live-thumb-zaloha{display:block;position:absolute;inset:-20%;width:140%;height:140%;object-fit:cover;filter:blur(22px) saturate(1.2) brightness(.6);z-index:-1}

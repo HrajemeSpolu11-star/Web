@@ -1,10 +1,19 @@
 # Seznam úprav (CHANGELOG)
 
+> **Pravidlo projektu: z toho, co je hotové, se nic nemaže** (funkce, stránky, texty, data, vzhled) bez výslovného souhlasu
+> uživatele. Velké změny vzhledu se nejdřív ukazují jako návrh.
 > **Pravidlo: z tohoto souboru se nic nemaže ani nepřepisuje.** Nové záznamy se přidávají vždy **nahoru**
 > pod nadpis s datem. Když se něco vrací nebo opravuje, napíše se nový záznam („Oprava: …“, „Vráceno: …“),
 > starý zůstává. Časy jsou v UTC podle commitů na GitHubu.
 
 ---
+
+## 2026-11-27 – Vráceno původní logo, náhledy streamů na Kicku, pravidlo „nic nemazat“
+- **Vráceno: původní logo** (EKG ve žlutém čtverci, ikony a obrázky ke sdílení). Nové logo „trojúhelník + EKG“ uživatel
+  odmítl. Další návrhy loga se nejdřív ukážou k výběru.
+- **Náhledy živých streamů**: u adres náhledů s vlastními parametry (podepsané adresy, Kick) se už nepřidává `?t=…`,
+  které je rozbíjelo. Když se náhled přesto nenačte, místo rozbité ikony se ukáže rozostřená profilovka streamera.
+- **Nové pravidlo** v `CLAUDE.md` a `docs/PRO-NOVY-CHAT.md`: z hotového se nic nemaže bez souhlasu uživatele.
 
 ## 2026-11-27 – Nové logo, hlavní stránka, náhledy streamerů, zpětná tlačítka
 - **Nové logo**: přehrávací trojúhelník s EKG křivkou v barevném čtverci (růžová → fialová), křivka v hlavičce „tepe“.
