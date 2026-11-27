@@ -93,7 +93,7 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 
 ## Databáze her (od 2026-11-27)
 `/databaze` + `/databaze/<slug>`: každá hra z IGDB, popis česky (AI, označený), podobné hry, napojení na Steam data.
-Další schválený krok, zatím neudělaný: „Sledovat hru“ s upozorněním (vydání, aktualizace, sleva, novinka).
+Navržený další krok (uživatel zatím neschválil): „Sledovat hru“ s upozorněním (vydání, aktualizace, sleva, novinka).
 
 ## Navigace (od 2026-11-27)
 Lišta: Domů, Novinky, Radar, Slevy, Kalendář, Aktualizace, Hry, Streameři (uživatel chtěl vytáhnout části Hry nahoru).
