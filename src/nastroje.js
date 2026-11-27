@@ -5,6 +5,7 @@ import { denPraha } from "./psani.js";
 import { BEZ_KATEGORIE } from "./prehled.js";
 import { zajistiSchemaHlidac } from "./hlidac.js";
 import { hraciZIgdb } from "./igdb-hra.js";
+import { napoveda } from "./indexy.js";
 
 const DEN = 86400e3;
 const posunDne = (den, n) => new Date(Date.parse(den + "T12:00:00Z") + n * DEN).toISOString().slice(0, 10);
@@ -79,7 +80,7 @@ export async function apiVyssiNizsi(env) {
   const [k, c, d] = await db.batch([
     db.prepare("SELECT data FROM katalog WHERE klic = 'steam_hrane'"),
     // INDEXED BY: jinak SQLite kvůli GROUP BY projde celou tabulku přes index hry (celá historie místo 7 dní).
-    db.prepare("SELECT hra, SUM(divako_minut) AS dm FROM hry_den INDEXED BY idx_hry_den_den WHERE den >= ? AND hra <> ? GROUP BY hra ORDER BY dm DESC LIMIT 40").bind(od, BEZ_KATEGORIE),
+    db.prepare(`SELECT hra, SUM(divako_minut) AS dm FROM hry_den ${await napoveda(db, "idx_hry_den_den")} WHERE den >= ? AND hra <> ? GROUP BY hra ORDER BY dm DESC LIMIT 40`).bind(od, BEZ_KATEGORIE),
     db.prepare("SELECT id, nazev, obrazek, doporuceni FROM steam_hry WHERE doporuceni >= 1000 AND vychazi = 0 ORDER BY doporuceni DESC LIMIT 80"),
   ]).catch(() => [{ results: [] }, { results: [] }, { results: [] }]);
   let hraci = [];

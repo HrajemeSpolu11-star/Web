@@ -58,6 +58,7 @@ všechno hluboko pod limitem; tohle jsou místa, která porostou s historií:
 jednou denně v Cronu. Žebříček, Přehled i Týden na scéně by pak četly stovky řádků místo desítek tisíc.
 
 Další poznámky:
-- Index `idx_snimky_den` se na ostrém webu založí jednorázově (zápis jednou za každý existující snímek, teď desítky tisíc).
-  Při běžném zápisu nepřidává zápisy navíc (den se při aktualizaci nemění).
+- **Oprava 2026-11-27 večer:** automatické založení indexu `idx_snimky_den` na ostré databázi vyčerpalo denní limit zápisů
+  a zastavilo sběr streamerů. Index se už nezakládá; kód ho použije jen, pokud existuje. Bez indexu se čte víc (viz čísla výše
+  bez indexu: Týden na scéně ~181 tis., Přehled ~85 tis., Měsíční zpráva ~264 tis. při objemu po roce).
 - Ochrana proti náporu u úplně prvního výpočtu (prázdná mezipaměť) funguje jen v rámci jedné instance Workeru.

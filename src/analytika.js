@@ -11,6 +11,7 @@ import { ZANRY } from "./nastroje.js";
 import { slugHry } from "./twitch.js";
 import { zajistiSchemaPatchu } from "./patche.js";
 import { zajistiSchemaPropojeni } from "./propojeni.js";
+import { napoveda } from "./indexy.js";
 
 const DEN = 86400e3;
 const posun = (den, n) => new Date(Date.parse(den + "T12:00:00Z") + n * DEN).toISOString().slice(0, 10);
@@ -35,6 +36,7 @@ export async function sestavAnalytiku(db, ted = Date.now()) {
   try { minule = JSON.parse((await db.prepare("SELECT data FROM katalog WHERE klic = 'analytika'").first())?.data || "null"); } catch { /* nic */ }
   const denne = minule?.denne_den === dnes;
   const prazdny = db.prepare("SELECT 1 WHERE 0");
+  const idxPatche = await napoveda(db, "idx_patche_datum");
   const [od, hry, slevy, patche] = await db.batch([
     db.prepare("SELECT MIN(den) AS od FROM hry_den"),
     db.prepare(`SELECT hra,
@@ -44,7 +46,7 @@ export async function sestavAnalytiku(db, ted = Date.now()) {
     denne ? prazdny : db.prepare(`SELECT c.id, g.nazev, g.obrazek, g.igdb_slug, SUM(CASE WHEN c.sleva > 0 THEN 1 ELSE 0 END) AS dni, MAX(c.sleva) AS max, COUNT(*) AS n
       FROM ceny_historie c JOIN steam_hry g ON g.id = c.id WHERE c.den >= ? GROUP BY c.id HAVING n >= 60 AND dni > 0 ORDER BY dni DESC, max DESC LIMIT 20`).bind(posun(dnes, -90)),
     denne ? prazdny : db.prepare(`SELECT p.appid, MAX(p.hra) AS hra, COUNT(*) AS n, MAX(p.datum) AS posledni, MAX(g.obrazek) AS obrazek, MAX(g.igdb_slug) AS igdb_slug
-      FROM patche p INDEXED BY idx_patche_datum LEFT JOIN steam_hry g ON g.id = p.appid WHERE p.datum > ? GROUP BY p.appid ORDER BY n DESC LIMIT 20`).bind(ted - 30 * DEN),
+      FROM patche p ${idxPatche} LEFT JOIN steam_hry g ON g.id = p.appid WHERE p.datum > ? GROUP BY p.appid ORDER BY n DESC LIMIT 20`).bind(ted - 30 * DEN),
   ]);
   const zacatek = od.results[0]?.od || null;
   const dostupne = !!zacatek && zacatek <= p0;

@@ -6,6 +6,7 @@
 import { denPraha } from "./psani.js";
 import { slugHry } from "./twitch.js";
 import { BEZ_KATEGORIE } from "./prehled.js";
+import { maIndex } from "./indexy.js";
 
 const DEN = 86400e3;
 const posunDne = (den, n) => new Date(Date.parse(den + "T12:00:00Z") + n * DEN).toISOString().slice(0, 10);
@@ -102,20 +103,21 @@ export async function apiReport(env, naStreamera, tydenId) {
   const odMs = pulnocPraha(po), doMs = pulnocPraha(posunDne(po, 7)), predOdMs = pulnocPraha(predPo);
   const probiha = po === aktualniPondeli;
 
+  const idx = await maIndex(db, "idx_snimky_den");
   const [sc, scP, spicka, kanaly, kanalyP, h, hp, top, hodinyStr, rust, udal] = await db.batch([
     db.prepare(`SELECT platforma, SUM(divako_minut) AS dm, (SELECT COUNT(DISTINCT cas) FROM scena WHERE cas >= ?3 AND cas < ?4) AS mereni
       FROM hry_den WHERE den BETWEEN ?1 AND ?2 GROUP BY platforma`).bind(po, ne, odMs, doMs),
     db.prepare("SELECT SUM(divako_minut) AS dm FROM hry_den WHERE den BETWEEN ? AND ?").bind(predPo, predNe),
     db.prepare("SELECT cas, SUM(divaci) AS d, SUM(streamu) AS s FROM scena WHERE cas >= ? AND cas < ? GROUP BY cas ORDER BY d DESC LIMIT 1").bind(odMs, doMs),
-    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ? AND max_divaku >= 3").bind(po, ne),
-    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ? AND max_divaku >= 3").bind(predPo, predNe),
+    pocetKanalu(db, po, ne, idx),
+    pocetKanalu(db, predPo, predNe, idx),
     dotazHry(db, po, ne, 15),
     dotazHry(db, predPo, predNe, 300),
-    topStreameru(db, po, ne, "MAX(max_divaku)", "t_max"),
-    topStreameru(db, po, ne, "SUM(minut)", "t_minut"),
+    topStreameru(db, po, ne, "MAX(max_divaku)", "t_max", 5, idx),
+    topStreameru(db, po, ne, "SUM(minut)", "t_minut", 5, idx),
     db.prepare(`SELECT s.*, (SELECT b.sledujici FROM snimky b WHERE b.user_id = s.id AND b.den BETWEEN ?1 AND ?2 AND b.sledujici IS NOT NULL ORDER BY b.den DESC LIMIT 1)
         - (SELECT a.sledujici FROM snimky a WHERE a.user_id = s.id AND a.den BETWEEN ?1 AND ?2 AND a.sledujici IS NOT NULL ORDER BY a.den LIMIT 1) AS t_rust
-      FROM streameri s WHERE s.skryty = 0 AND s.id IN (SELECT user_id FROM snimky WHERE den BETWEEN ?1 AND ?2 AND sledujici IS NOT NULL)
+      FROM streameri s WHERE s.skryty = 0 AND EXISTS (SELECT 1 FROM snimky x WHERE x.user_id = s.id AND x.den BETWEEN ?1 AND ?2 AND x.sledujici IS NOT NULL)
       ORDER BY t_rust DESC LIMIT 5`).bind(po, ne),
     db.prepare(`SELECT s.*, u.typ AS u_typ, u.hodnota AS u_hodnota, u.cas AS u_cas FROM udalosti u JOIN streameri s ON s.id = u.user_id
       WHERE u.cas >= ? AND u.cas < ? AND s.skryty = 0 ORDER BY u.hodnota DESC LIMIT 12`).bind(odMs, doMs),
@@ -190,13 +192,20 @@ async function pocetStreameru(db, hry, odMs, doMs, distinct = false) {
   return m;
 }
 
-// Top streamerů za období: nejdřív se sečtou snímky přes index podle dne (čte se jen dané období), až pak se připojí
-// streameři – dřív se procházeli všichni streameři a jejich snímky (zátěžový test 2026-11-27: 36–40 tis. → ~10 tis. řádků).
-// `agregace` = výraz nad snímky (např. "MAX(max_divaku)"), výsledek je ve sloupci `alias`.
-export function topStreameru(db, od, doDen, agregace, alias, limit = 5, podminka = "") {
-  return db.prepare(`SELECT s.*, a.hodnota AS ${alias} FROM (SELECT user_id, ${agregace} AS hodnota FROM snimky INDEXED BY idx_snimky_den
-      WHERE den BETWEEN ? AND ? ${podminka} GROUP BY user_id ORDER BY hodnota DESC LIMIT ${limit + 20}) a
+// Top streamerů za období. S indexem snimky(den): nejdřív součet snímků jen za období, pak připojení streamerů.
+// Bez indexu: původní tvar (procházejí se streameři a jejich snímky přes primární klíč) – součet přes celou tabulku
+// snímků by bez indexu četl celou historii. `idx` = výsledek maIndex(db, "idx_snimky_den").
+export function topStreameru(db, od, doDen, agregace, alias, limit = 5, idx = false) {
+  if (idx) return db.prepare(`SELECT s.*, a.hodnota AS ${alias} FROM (SELECT user_id, ${agregace} AS hodnota FROM snimky INDEXED BY idx_snimky_den
+      WHERE den BETWEEN ? AND ? GROUP BY user_id ORDER BY hodnota DESC LIMIT ${limit + 20}) a
     JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY a.hodnota DESC LIMIT ${limit}`).bind(od, doDen);
+  return db.prepare(`SELECT s.*, ${agregace.replace(/\b(max_divaku|minut)\b/g, "n.$1")} AS ${alias} FROM snimky n JOIN streameri s ON s.id = n.user_id
+    WHERE n.den BETWEEN ? AND ? AND s.skryty = 0 GROUP BY s.id ORDER BY ${alias} DESC LIMIT ${limit}`).bind(od, doDen);
+}
+// Počet kanálů s aspoň 3 diváky v období (bez indexu přes streamery a primární klíč snímků).
+export function pocetKanalu(db, od, doDen, idx = false) {
+  if (idx) return db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ? AND max_divaku >= 3").bind(od, doDen);
+  return db.prepare(`SELECT COUNT(*) AS n FROM streameri s WHERE EXISTS (SELECT 1 FROM snimky n WHERE n.user_id = s.id AND n.den BETWEEN ? AND ? AND n.max_divaku >= 3)`).bind(od, doDen);
 }
 
 // Sdílené pomocné funkce (hitparáda, měsíční zpráva).

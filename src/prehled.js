@@ -1,6 +1,7 @@
 // Přehled české streamovací scény: graf (scena), milníky (udalosti), kalendář (rozvrh), týden v číslech.
 import { denPraha } from "./psani.js";
 import { topStreameru } from "./statistiky.js";
+import { maIndex, napoveda } from "./indexy.js";
 import { zajistiSchemaTwitch } from "./twitch.js";
 
 export const SCHEMA_PREHLED = [
@@ -117,7 +118,8 @@ export async function nactiPredchozi(db, platforma, ted, platnost) {
 // ---------- API /api/prehled ----------
 export async function apiPrehled(env, naStreamera) {
   const db = env.DB;
-  await zajistiSchemaTwitch(db); // index idx_snimky_den
+  await zajistiSchemaTwitch(db);
+  const idx = await maIndex(db, "idx_snimky_den"), idxHry = await napoveda(db, "idx_hry_den_den");
   const ted = Date.now();
   const od7 = ted - 7 * 86400e3;
   const den7 = new Date(od7).toISOString().slice(0, 10);
@@ -125,12 +127,12 @@ export async function apiPrehled(env, naStreamera) {
     db.prepare(`SELECT cas, SUM(streamu) AS streamu, SUM(divaci) AS divaci FROM scena WHERE cas > ? GROUP BY cas ORDER BY cas`).bind(od7),
     db.prepare(`SELECT s.*, s.sledujici - (SELECT n.sledujici FROM snimky n WHERE n.user_id = s.id AND n.sledujici IS NOT NULL AND n.den >= ? ORDER BY n.den LIMIT 1) AS rust7
       FROM streameri s WHERE s.skryty = 0 AND s.sledujici IS NOT NULL ORDER BY rust7 IS NULL, rust7 DESC LIMIT 5`).bind(den7),
-    topStreameru(db, den7, "9999-12-31", "MAX(max_divaku)", "max7"),
-    topStreameru(db, den7, "9999-12-31", "SUM(minut)", "minut7"),
+    topStreameru(db, den7, "9999-12-31", "MAX(max_divaku)", "max7", 5, idx),
+    topStreameru(db, den7, "9999-12-31", "SUM(minut)", "minut7", 5, idx),
     // Kandidáti = 40 nejsledovanějších her za 7 dní (hry_den přes index dne), počty z hry_streamera jen pro ně přes index hry.
     // Dřív se četla celá tabulka hry_streamera (zátěžový test 2026-11-27).
     db.prepare(`SELECT h.hra, SUM(h.minut) AS minut, COUNT(*) AS streameru FROM hry_streamera h
-      WHERE h.hra IN (SELECT hra FROM hry_den INDEXED BY idx_hry_den_den WHERE den >= ? GROUP BY hra ORDER BY SUM(minut) DESC LIMIT 40)
+      WHERE h.hra IN (SELECT hra FROM hry_den ${idxHry} WHERE den >= ? GROUP BY hra ORDER BY SUM(minut) DESC LIMIT 40)
         AND h.posledni > ? GROUP BY h.hra ORDER BY minut DESC LIMIT 8`).bind(den7, od7),
     db.prepare(`SELECT s.*, u.typ AS u_typ, u.hodnota AS u_hodnota, u.cas AS u_cas FROM udalosti u JOIN streameri s ON s.id = u.user_id
       WHERE u.cas > ? AND s.skryty = 0 ORDER BY u.cas DESC LIMIT 20`).bind(od7),

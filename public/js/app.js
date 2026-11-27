@@ -2380,7 +2380,9 @@
       state.hry = h.status === "fulfilled" ? h.value : [];
     }
     if (location.pathname.replace(/\/+$/, "") !== "/hry") return;
-    const c = state.cesko, max = c.hry[0]?.hodin || 1;
+    const c = state.cesko || {};
+    if (!Array.isArray(c.hry)) c.hry = []; // neúplná odpověď nesmí shodit celou stránku
+    const max = c.hry[0]?.hodin || 1;
     const ted = (state.hry || []).filter((h) => h.zive).slice(0, 12);
     app.innerHTML = `${hubHlava("hry")}
       <div class="cesko-head"><h2>Co hraje Česko</h2>

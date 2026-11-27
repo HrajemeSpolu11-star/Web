@@ -19,6 +19,9 @@ Majitel: Michal (GitHub `HrajemeSpolu11-star`). Komunikace **vždy česky**.
    SQL jen přes `.bind()`. Žádné inline skripty ani styly (CSP je přísná – viz `public/_headers`); barvy a šířky se nastavují přes JS (CSSOM).
 5. **Limity Cloudflare Free**: 50 podrequestů a 10 ms CPU na běh, D1 ~100 tis. zápisů řádků denně, 5 Cron Triggerů.
    Při každé změně sběru spočítej požadavky a zápisy (viz `docs/ARCHITEKTURA.md`).
+   **Nikdy automaticky nezakládej index nad velkou existující tabulkou** (snimky, hry_den, ceny_historie, scena, hry_streamera…):
+   D1 počítá založení indexu jako zápis za každý řádek a vyčerpá denní limit (stalo se 2026-11-27 – sběr streamerů přestal fungovat).
+   `INDEXED BY` používej jen přes `src/indexy.js` (napoveda/maIndex), aby chybějící index nic nerozbil.
 6. **Přesnost dat o streamerech**: čísla jen z oficiálních API, nic nedomýšlet; u lidí jen veřejné profesní informace.
 7. **Web se otevřeně hlásí jako AI web** (uvítací karta, štítek, `/o-webu`). Nic nepřikrašluj, AI články vždy označuj.
 8. Nasazení: push do `main` → Cloudflare Workers Builds nasadí samo (bez build kroku). Commity piš česky.

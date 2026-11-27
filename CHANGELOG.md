@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-27 (večer) – Oprava: streameři se nenačítali
+- **Příčina (moje chyba v předchozí změně):** při nasazení se automaticky zakládal nový index nad tabulkou snímků streamerů.
+  Cloudflare D1 počítá založení indexu jako zápis za každý existující řádek (desítky tisíc), takže spolu s běžným provozem
+  pravděpodobně vyčerpal denní limit 100 tis. zápisů. Dávka, která zakládá tabulky, pak selhávala → sběr Twitch/Kick
+  i stránky streamerů končily chybou.
+- **Oprava:** index se už automaticky nezakládá (odebrán z `SCHEMA_TWITCH`). Kód ho použije, jen když existuje
+  (`src/indexy.js`), jinak jede původními dotazy přes primární klíč. Když dávka schématu selže, ale tabulky existují,
+  web dál čte data (`zajistiSchemaTwitch`). Sdílená mezipaměť při chybě počítá přímo.
+- Další úpravy z auditu: týdenní report bez indexu čte 181 tis. místo 699 tis. řádků (EXISTS místo IN), stránka
+  „Co hraje Česko“ nespadne při neúplné odpovědi.
+- Pokud byl denní limit zápisů vyčerpán, sběr znovu zapisuje po resetu limitu (00:00 UTC = 1:00 v noci našeho času).
+
 ## 2026-11-27 – Zátěžový a stres test + opravy výkonu
 - Test lokální kopie webu (stejný engine jako Cloudflare) s daty o objemu ~1 roku provozu: smíšený provoz 10–200 klientů
   (0 chyb), Crony během zátěže, výpadek externích služeb, nápor na studenou mezipaměť, zápisový nápor, nesmyslná data.

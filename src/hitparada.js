@@ -11,6 +11,7 @@ import { slugHry } from "./twitch.js";
 import { posunDne, hodin, pondeli, isoTyden, pondeliZTydne, zacatekDat, dotazHry } from "./statistiky.js";
 import { zajistiSchemaPropojeni } from "./propojeni.js";
 import { zajistiSchemaTwitch } from "./twitch.js";
+import { maIndex } from "./indexy.js";
 
 export const VELIKOST = 20;
 const SCHEMA = [
@@ -54,17 +55,22 @@ async function pridejHistorii(db, druh, tyden, polozky) {
 
 async function spocitejTyden(db, po) {
   const ne = posunDne(po, 6), tyden = isoTyden(po);
+  const idx = await maIndex(db, "idx_snimky_den");
   const [h, s, s2, s3, ig] = await db.batch([
     dotazHry(db, po, ne, VELIKOST),
     // Tři žebříčky rovnou v databázi (vrací 3 × 20 řádků, ne tisíce). prumer = průměr denních špiček ve dnech, kdy vysílal.
+    // S indexem snimky(den) se nejdřív sečtou snímky týdne; bez něj původní tvar přes streamery a primární klíč snímků.
     ...[["", "divaci DESC"], ["AND divaci BETWEEN 51 AND 300 AND minut >= 180 AND dni >= 2", "prumer DESC, minut DESC"],
-      ["AND divaci BETWEEN 3 AND 50 AND minut >= 180 AND dni >= 2", "prumer DESC, minut DESC"]].map(([podminka, razeni]) =>
-      // Nejdřív součty snímků přes index dne (jen daný týden), streameři se připojí až k vybraným.
-      db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, a.divaci, a.minut, a.prumer, a.dni
+      ["AND divaci BETWEEN 3 AND 50 AND minut >= 180 AND dni >= 2", "prumer DESC, minut DESC"]].map(([podminka, razeni]) => idx
+      ? db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, a.divaci, a.minut, a.prumer, a.dni
         FROM (SELECT user_id, MAX(max_divaku) AS divaci, SUM(minut) AS minut, AVG(CASE WHEN minut > 0 THEN max_divaku END) AS prumer,
             SUM(CASE WHEN minut > 0 THEN 1 ELSE 0 END) AS dni FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ?
           GROUP BY user_id HAVING divaci >= 3 ${podminka} ORDER BY ${razeni} LIMIT ${VELIKOST + 20}) a
-        JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY ${razeni.replace(/(\w+) (DESC)/g, "a.$1 $2")} LIMIT ${VELIKOST}`).bind(po, ne)),
+        JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY ${razeni.replace(/(\w+) (DESC)/g, "a.$1 $2")} LIMIT ${VELIKOST}`).bind(po, ne)
+      : db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, MAX(n.max_divaku) AS divaci, SUM(n.minut) AS minut,
+          AVG(CASE WHEN n.minut > 0 THEN n.max_divaku END) AS prumer, SUM(CASE WHEN n.minut > 0 THEN 1 ELSE 0 END) AS dni
+        FROM snimky n JOIN streameri s ON s.id = n.user_id WHERE n.den BETWEEN ? AND ? AND s.skryty = 0 GROUP BY s.id
+        HAVING divaci >= 3 ${podminka} ORDER BY ${razeni} LIMIT ${VELIKOST}`).bind(po, ne)),
     db.prepare("SELECT nazev, igdb_slug FROM hry WHERE igdb_slug IS NOT NULL AND posledni > ?").bind(Date.parse(po) - 30 * 86400e3),
   ]);
   const igdb = new Map(ig.results.map((r) => [r.nazev, r.igdb_slug]));

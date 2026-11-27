@@ -3,6 +3,7 @@
 import { denPraha } from "./psani.js";
 import { slugHry, zajistiSchemaTwitch } from "./twitch.js";
 import { zMezipameti } from "./mezipamet.js";
+import { maIndex } from "./indexy.js";
 import { posunDne, hodin, zmenaPct, pulnocPraha, zacatekDat, dotazHry } from "./statistiky.js";
 
 const MESICE = ["leden", "únor", "březen", "duben", "květen", "červen", "červenec", "srpen", "září", "říjen", "listopad", "prosinec"];
@@ -13,15 +14,20 @@ const posledniDen = (m) => { const [r, mm] = m.split("-").map(Number); return ne
 
 async function souhrnMesice(db, od, doDen) {
   const odMs = pulnocPraha(od), doMs = pulnocPraha(posunDne(doDen, 1));
+  const idx = await maIndex(db, "idx_snimky_den");
   const [pl, kan, spicka, hry, top, mereni] = await db.batch([
     db.prepare("SELECT platforma, SUM(divako_minut) AS dm, SUM(minut) AS m FROM hry_den WHERE den BETWEEN ? AND ? GROUP BY platforma").bind(od, doDen),
-    db.prepare(`SELECT s.platforma, COUNT(*) AS n FROM (SELECT user_id FROM snimky INDEXED BY idx_snimky_den
-      WHERE den BETWEEN ? AND ? AND max_divaku >= 3 GROUP BY user_id) a JOIN streameri s ON s.id = a.user_id GROUP BY s.platforma`).bind(od, doDen),
+    idx ? db.prepare(`SELECT s.platforma, COUNT(*) AS n FROM (SELECT user_id FROM snimky INDEXED BY idx_snimky_den
+      WHERE den BETWEEN ? AND ? AND max_divaku >= 3 GROUP BY user_id) a JOIN streameri s ON s.id = a.user_id GROUP BY s.platforma`).bind(od, doDen)
+      : db.prepare(`SELECT s.platforma, COUNT(*) AS n FROM streameri s WHERE EXISTS (SELECT 1 FROM snimky n WHERE n.user_id = s.id
+        AND n.den BETWEEN ? AND ? AND n.max_divaku >= 3) GROUP BY s.platforma`).bind(od, doDen),
     db.prepare("SELECT cas, SUM(divaci) AS d, SUM(streamu) AS s FROM scena WHERE cas >= ? AND cas < ? GROUP BY cas ORDER BY d DESC LIMIT 1").bind(odMs, doMs),
     dotazHry(db, od, doDen, 60),
-    db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, a.divaci, a.minut FROM (SELECT user_id, MAX(max_divaku) AS divaci, SUM(minut) AS minut
+    idx ? db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, a.divaci, a.minut FROM (SELECT user_id, MAX(max_divaku) AS divaci, SUM(minut) AS minut
       FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ? GROUP BY user_id ORDER BY divaci DESC LIMIT 30) a
-      JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY a.divaci DESC LIMIT 10`).bind(od, doDen),
+      JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY a.divaci DESC LIMIT 10`).bind(od, doDen)
+      : db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, MAX(n.max_divaku) AS divaci, SUM(n.minut) AS minut
+      FROM snimky n JOIN streameri s ON s.id = n.user_id WHERE n.den BETWEEN ? AND ? AND s.skryty = 0 GROUP BY s.id ORDER BY divaci DESC LIMIT 10`).bind(od, doDen),
     db.prepare("SELECT COUNT(DISTINCT cas) AS n FROM scena WHERE cas >= ? AND cas < ?").bind(odMs, doMs),
   ]);
   const p = Object.fromEntries(pl.results.map((r) => [r.platforma, r]));
@@ -40,7 +46,7 @@ async function souhrnMesice(db, od, doDen) {
 // při každé návštěvě ani v každém datacentru zvlášť.
 export async function apiZprava(env, mesicId) {
   const db = env.DB, ted = Date.now();
-  await zajistiSchemaTwitch(db); // index idx_snimky_den
+  await zajistiSchemaTwitch(db);
   const dnesM = denPraha(ted).slice(0, 7);
   let chci = /^\d{4}-\d{2}$/.test(mesicId || "") ? mesicId : posunMesic(dnesM, -1);
   if (chci > dnesM) chci = dnesM;

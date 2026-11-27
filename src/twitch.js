@@ -34,15 +34,24 @@ export const SCHEMA_TWITCH = [
      PRIMARY KEY (user_id, hra))`,
   // Kdo hraje danou hru (stránka hry). Index jen na `hra` (nemění se), ne na `minut` – ten se mění každý běh = zápisy navíc.
   `CREATE INDEX IF NOT EXISTS idx_hry_streamera_hra ON hry_streamera(hra)`,
-  // Výběr snímků za týden/měsíc (hitparáda, Týden na scéně, měsíční zpráva). Jen `den` – při běžném zápisu se nemění,
-  // takže index nepřidává zápisy při aktualizaci (jen 1 při prvním snímku kanálu za den). Bez něj by se četla celá tabulka.
-  `CREATE INDEX IF NOT EXISTS idx_snimky_den ON snimky(den)`,
+  // POZOR: index snimky(den) se tu automaticky NEZAKLÁDÁ. Založení indexu nad existující tabulkou počítá D1 jako zápis
+  // za každý řádek (desítky tisíc) a spolu s běžným provozem vyčerpalo denní limit 100 tis. zápisů → sběr streamerů
+  // přestal zapisovat (2026-11-27). Kód index použije, jen když existuje (src/indexy.js).
 ];
 
 let migraceHotova = false;
 export async function zajistiSchemaTwitch(db) {
   if (migraceHotova) return;
-  await db.batch([...SCHEMA_TWITCH, ...SCHEMA_PREHLED, ...SCHEMA_PUSH].map((s) => db.prepare(s)));
+  try {
+    await db.batch([...SCHEMA_TWITCH, ...SCHEMA_PREHLED, ...SCHEMA_PUSH].map((s) => db.prepare(s)));
+  } catch (e) {
+    // Když dávka selže (např. vyčerpaný denní limit zápisů), ale hlavní tabulky už existují, web musí dál číst data.
+    const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('streameri', 'snimky', 'hry_den', 'hry')").all();
+    if (results.length < 4) throw e;
+    console.warn("schéma Twitch: dávka selhala, tabulky existují – pokračuji:", String(e?.message || e));
+    migraceHotova = true;
+    return;
+  }
   // Migrace: sloupec platforma (twitch/kick). Index na login není unikátní – přejmenování účtů nesmí shodit zápis.
   const { results } = await db.prepare("PRAGMA table_info(streameri)").all();
   if (!results.some((c) => c.name === "platforma")) {

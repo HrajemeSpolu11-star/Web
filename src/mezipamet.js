@@ -20,7 +20,8 @@ async function zajisti(db) {
 
 export async function zMezipameti(db, klic, maxMs, vypocet) {
   if (bezi.has(klic)) return bezi.get(klic);
-  await zajisti(db);
+  // Když mezipaměť nejde založit (např. vyčerpaný denní limit zápisů D1), spočítá se výsledek přímo – web nesmí spadnout.
+  try { await zajisti(db); } catch (e) { console.warn("mezipaměť nedostupná:", String(e?.message || e)); return vypocet(); }
   const ted = Date.now();
   const r = await db.prepare("SELECT data, cas, zamek FROM mezipamet WHERE klic = ?").bind(klic).first().catch(() => null);
   let stara = null;
