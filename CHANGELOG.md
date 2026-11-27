@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-11-27 – Oprava: profil hry v databázi hlásil „nenalezeno“
+- Příčina: dotaz na IGDB se skládal z víceřádkového seznamu polí a při odstraňování mezer zmizela i mezera za slovem
+  `fields` („fieldsname,slug…“) → IGDB vracelo chybu u všech variant dotazu a web ukázal „Hru jsme nenašli“.
+  Hledání fungovalo, protože jeho dotazy se tak neupravovaly. Opraveno v `src/databaze.js` i `src/igdb-hra.js`.
+- Stejná chyba postihovala sérii/DLC/DNA na stránkách her ze Steamu (fungovala jen zjednodušená záloha bez počtu hráčů).
+  Uložené záznamy se značkou starší verze se teď obnoví na pozadí (`v: 2`).
+- Stránka hry v databázi teď rozlišuje „hru jsme nenašli“ (404) a „databáze teď neodpovídá“ (jiná chyba).
+
 ## 2026-11-27 – Oprava: nasazení selhávalo (run_worker_first)
 - Nasazení od commitu „Databáze her…“ selhávalo: Cloudflare odmítá v `run_worker_first` adresu `/databaze/`, když je tam
   zároveň `/databaze/*` („rule makes it redundant“). Odebráno `/databaze/` (pokrývá ho `/databaze/*`). Ověřeno

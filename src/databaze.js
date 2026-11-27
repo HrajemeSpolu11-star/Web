@@ -95,7 +95,7 @@ const POLE = [
   `fields name,slug,summary,storyline,first_release_date,cover.image_id,screenshots.image_id,websites.url,platforms.name,genres.name,themes.name,
    game_modes.name,player_perspectives.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,
    aggregated_rating,aggregated_rating_count,rating,rating_count,similar_games.name,similar_games.slug,similar_games.cover.image_id`,
-].map((p) => p.replace(/\s+/g, ""));
+].map((p) => p.replace(/\s+/g, " ").replace(/\s*,\s*/g, ","));
 
 const rok = (s) => (Number.isFinite(s) ? new Date(s * 1000).getUTCFullYear() : null);
 const HLAVNI = new Set([0, 4, 8, 9, 10, 11]);

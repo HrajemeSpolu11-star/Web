@@ -803,7 +803,12 @@
     app.innerHTML = `<div class="profile hra-stranka"><div class="kostra kostra-banner"></div>${kostra(4)}</div>`;
     let d;
     try { d = await nacti(`databaze/${enc(slugHry)}`); }
-    catch { nastavTitulek("Hra nenalezena"); app.innerHTML = `<p class="empty">Hru jsme v databázi nenašli. <a href="/databaze">Hledat v databázi her</a></p>`; return; }
+    catch (e) {
+      const nenalezeno = String(e.message) === "404";
+      nastavTitulek(nenalezeno ? "Hra nenalezena" : "Databáze her");
+      app.innerHTML = `<p class="empty">${nenalezeno ? "Hru jsme v databázi nenašli." : "Databáze her teď neodpovídá – zkus stránku obnovit za chvíli."} <a href="/databaze">Hledat v databázi her</a></p>`;
+      return;
+    }
     if (!location.pathname.startsWith("/databaze/")) return;
     const rok = d.vydano ? new Date(d.vydano).getFullYear() : "";
     nastavTitulek(`${d.nazev}${rok ? ` (${rok})` : ""} – popis, platformy, datum vydání`);

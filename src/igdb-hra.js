@@ -87,14 +87,14 @@ async function stahniPas(env, stav, { appid, nazev }) {
     const cil = normNazev(nazev);
     id = (d || []).find((g) => normNazev(g.name) === cil)?.id || null;
   }
-  if (!id) return { nenalezeno: true };
-  const zaklad = POLE_HRY.replace(/\s+/g, "");
+  if (!id) return { nenalezeno: true, v: 2 };
+  const zaklad = POLE_HRY.replace(/\s+/g, " ").replace(/\s*,\s*/g, ",");
   const [g] = await igdb(env, stav, "games", [
     `${zaklad.replace("TYP", "game_type")}; where id = ${id};`,
     `${zaklad.replace("TYP", "category")}; where id = ${id};`,
     `fields name,slug,first_release_date,game_modes.name,player_perspectives.name,themes.name,dlcs.name,expansions.name,collections.name; where id = ${id};`,
   ]);
-  if (!g) return { nenalezeno: true };
+  if (!g) return { nenalezeno: true, v: 2 };
   let ttb = null;
   try {
     const [t] = await igdb(env, stav, "game_time_to_beats", [`fields hastily,normally,completely,count; where game_id = ${id};`]);
@@ -111,7 +111,7 @@ async function stahniPas(env, stav, { appid, nazev }) {
     .filter((x) => x?.name).map((x) => ({ nazev: String(x.name).slice(0, 100), rok: rok(x.first_release_date), druh: x.druh }))
     .sort((a, b) => (b.rok || 0) - (a.rok || 0)).slice(0, 16);
   return {
-    igdb_id: id, slug: g.slug || "", url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
+    v: 2, igdb_id: id, slug: g.slug || "", url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
     serie, dlc, dlc_celkem: (g.expansions || []).length + (g.dlcs || []).length,
     dna: {
       pohled: preloz(PERSPEKTIVY, g.player_perspectives), rezimy: preloz(REZIMY, g.game_modes), temata: preloz(TEMATA, g.themes),
@@ -129,7 +129,8 @@ export async function pasZIgdb(env, ctx, { appid, nazev }) {
   if (klic.length < 3) return null;
   const r = await db.prepare("SELECT data, cas FROM igdb_hry WHERE klic = ?").bind(klic).first();
   const stary = r ? (() => { try { return JSON.parse(r.data); } catch { return null; } })() : null;
-  if (stary && Date.now() - r.cas < PLATNOST) return stary;
+  // v2 (27. 11.): starší záznamy vznikly s chybným dotazem (chyběla mezera za „fields“) → obnovit hned na pozadí.
+  if (stary && Date.now() - r.cas < PLATNOST && stary.v === 2) return stary;
   const obnov = async () => {
     const stav = { tok: await token(env), obnoveno: false };
     const d = await stahniPas(env, stav, { appid, nazev });
