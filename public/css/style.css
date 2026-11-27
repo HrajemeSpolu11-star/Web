@@ -1213,7 +1213,7 @@ html.bez-posunu{overflow:hidden}
 .tabs a{padding:8px 13px;gap:7px;transition:background .15s,color .15s}
 .tabs a:hover{color:var(--text);background:var(--card2)}
 .tabs a.on:hover{background:var(--accent);color:var(--accent-ink)}
-@media(min-width:761px) and (max-width:1339px){
+@media(min-width:761px) and (max-width:1459px){
   .top{flex-wrap:wrap;row-gap:8px}
   .top .tabs{order:3;width:100%;justify-content:center;flex-wrap:wrap}
 }
@@ -1352,3 +1352,15 @@ html.bez-posunu{overflow:hidden}
 .hra-bok .fakta{grid-template-columns:1fr}
 .hra-bok .fakta dd{text-align:right}
 .db-o-hre{max-width:760px}
+
+/* Bohatá karta hry v databázi: statistiky ze všech zdrojů a odkaz na živé streamy. */
+.db-staty{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.db-stat{display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+.db-stat b{font:800 26px/1.1 var(--display)}
+.db-stat span{font-size:13px;color:var(--muted);line-height:1.35;flex:1}
+.db-stat .puvod{align-self:flex-start;margin-top:4px;font-size:11px}
+@media(max-width:520px){.db-staty{grid-template-columns:repeat(2,minmax(0,1fr))}.db-stat b{font-size:21px}}
+.db-zive{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:6px 12px;border-radius:999px;background:rgba(255,61,127,.15);border:1px solid rgba(255,61,127,.45);font-weight:700;font-size:14px}
+.db-zive .zivy-bod{width:9px;height:9px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgba(255,61,127,.2);animation:pulse 1.6s infinite}
+.db-stat .puvod{white-space:normal}
+.db-steam-odkaz{margin:8px 0 0;font-size:14px}.db-steam-odkaz a{color:var(--accent);font-weight:700}

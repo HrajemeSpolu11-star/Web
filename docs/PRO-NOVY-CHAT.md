@@ -92,7 +92,8 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
   „DNA“ vymyšlená AI.
 
 ## Databáze her (od 2026-11-27)
-`/databaze` + `/databaze/<slug>`: každá hra z IGDB, popis česky (AI, označený), podobné hry, napojení na Steam data.
+`/databaze` + `/databaze/<slug>`: každá hra z IGDB, popis česky (AI, označený), podobné hry. Karta je „bohatá“ (přání uživatele):
+spojuje IGDB + Steam + GOG + Epic + naše měření (živí streameři, statistiky, pulsometr, ceny). Databáze je i v horní liště.
 Navržený další krok (uživatel zatím neschválil): „Sledovat hru“ s upozorněním (vydání, aktualizace, sleva, novinka).
 
 ## Navigace (od 2026-11-27)

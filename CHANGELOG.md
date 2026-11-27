@@ -8,6 +8,20 @@
 
 ---
 
+## 2026-11-27 – Databáze v horní liště, bohatá karta hry
+- **Lišta**: nová položka **Databáze** (na počítači; na mobilu je v sekci Hry – spodní lišta má 5 míst). Menu se na
+  vlastní řádek přesouvá až pod 1460 px.
+- **Karta hry v databázi** (`/databaze/<slug>`) teď spojuje všechny zdroje, ne jen popis:
+  - „X českých streamů právě živě“ v hlavičce a sekce **Právě streamují · Česko** s živými kartami streamerů,
+  - **Statistiky ze všech zdrojů**: hráči teď na Steamu, denní špička (naše měření), recenze Steamu, Metacritic,
+    hodnocení kritiků a hráčů IGDB, hodnocení GOG, hodiny sledování a špička diváků na českých streamech, pulsometr,
+  - pulsometr, **Kde hrát a koupit** (Steam a GOG s cenou a slevou, Epic zdarma, ostatní obchody), cenový radar,
+    hlídání ceny, porovnání, graf ceny, oficiální trailery ze Steamu (jinak obrázky IGDB a trailery YouTube),
+    herní DNA, poslední aktualizace, česká scéna (graf 30 dní, kdo hraje nejvíc), klipy, novinky o hře,
+    systémové požadavky + „Rozjede se mi to?“, série, DLC, podobné hry.
+- Backend: společná funkce `scenaHry()` (stránka hry i databáze), `bohataKarta()` v `src/index.js`. Hry ze Steamu
+  otevřené přes databázi se přidají do sledování cen.
+
 ## 2026-11-27 – Oprava: profil hry v databázi hlásil „nenalezeno“
 - Příčina: dotaz na IGDB se skládal z víceřádkového seznamu polí a při odstraňování mezer zmizela i mezera za slovem
   `fields` („fieldsname,slug…“) → IGDB vracelo chybu u všech variant dotazu a web ukázal „Hru jsme nenašli“.

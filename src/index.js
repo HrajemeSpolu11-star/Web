@@ -241,11 +241,12 @@ async function apiHraSteam(id, env, ctx) {
   return hraOdpoved(env, ctx, h, Promise.resolve(info), ted, id);
 }
 
-async function hraOdpoved(env, ctx, h, infoP, ted, steamId = null) {
+// Česká scéna kolem hry (podle názvu kategorie na Twitchi/Kicku): kdo ji právě streamuje, hodiny sledování, klipy, novinky.
+async function scenaHry(env, h, ted) {
   const q = `%${h.nazev}%`;
   const od30 = new Date(ted - 30 * 86400e3).toISOString().slice(0, 10), od7 = denPraha(ted - 6 * 86400e3);
   const [zive, nejvic, rss, vl, dny, klipy] = await env.DB.batch([
-    env.DB.prepare("SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? AND s.zive_hra = ? ORDER BY s.zive_divaci DESC LIMIT 50").bind(ted - ZIVE_PLATNOST, h.nazev),
+    env.DB.prepare("SELECT * FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ? AND s.zive_hra = ? COLLATE NOCASE ORDER BY s.zive_divaci DESC LIMIT 50").bind(ted - ZIVE_PLATNOST, h.nazev),
     env.DB.prepare(`SELECT s.*, x.minut AS minut_hra FROM hry_streamera x JOIN streameri s ON s.id = x.user_id
                     WHERE x.hra = ? AND s.skryty = 0 ORDER BY x.minut DESC LIMIT 20`).bind(h.nazev),
     env.DB.prepare("SELECT * FROM clanky WHERE nadpis LIKE ? ORDER BY datum DESC LIMIT 10").bind(q),
@@ -255,6 +256,48 @@ async function hraOdpoved(env, ctx, h, infoP, ted, steamId = null) {
       JOIN streameri s ON s.id = k.streamer_id WHERE k.hra_id = ? AND s.skryty = 0 ORDER BY k.zhlednuti DESC LIMIT 8`).bind(h.twitch_id || "-"),
   ]);
   const tyden = dny.results.filter((d) => d.den >= od7);
+  return {
+    statistiky: {
+      hodin7: Math.round(tyden.reduce((a, d) => a + (d.dm || 0), 0) / 60),
+      spicka7: Math.max(0, ...tyden.map((d) => d.spicka || 0)),
+      dny: dny.results.map((d) => ({ den: d.den, hodin: Math.round((d.dm || 0) / 60), spicka: d.spicka || 0 })),
+    },
+    klipy: klipy.results.map((r) => ({ url: r.url, nazev: r.nazev, nahled: r.nahled, zhlednuti: r.zhlednuti, delka: r.delka,
+      cas: new Date(r.cas).toISOString(), streamer: { jmeno: r.jmeno || r.login, login: r.login, platforma: r.platforma || "twitch", profilovka: r.profilovka || "" } })),
+    zive: zive.results.map((r) => naStreamera(r, ted)),
+    nejvic: nejvic.results.map((r) => ({ ...naStreamera(r, ted), hodin: Math.round((r.minut_hra || 0) / 60) })),
+    // LIKE najde i „Hra 2“ u „Hra“ nebo název uprostřed slova – necháme jen články, kde je název hry celé slovo/fráze.
+    clanky: [...vl.results.map(naPrispevek), ...rss.results.map(naClanek)].filter((c) => celyNazev(h.nazev).test(`${c.nadpis} ${c.perex || ""}`))
+      .sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 12),
+  };
+}
+
+// Bohatá karta hry z databáze: k údajům IGDB přidá všechno, co o hře víme odjinud –
+// Steam (cena, sleva, hráči teď, recenze, Metacritic, požadavky, trailery, historie cen, pulsometr, aktualizace),
+// GOG a Epic (cena, hodnocení, hra zdarma), naše měření (denní špička hráčů, česká scéna, kdo právě streamuje), klipy a novinky.
+async function bohataKarta(env, ctx, d) {
+  const ted = Date.now();
+  await zajistiSchemaTwitch(env.DB);
+  await zajistiSchemaObsah(env.DB);
+  const tw = await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE nazev = ? COLLATE NOCASE LIMIT 1").bind(d.nazev).first();
+  const h = tw || { slug: null, nazev: d.nazev, twitch_id: null };
+  const [scena, info] = await Promise.all([
+    scenaHry(env, h, ted),
+    (d.steam_id ? infoHrySteam(env, ctx, d.steam_id) : infoHry(env, ctx, `db-${d.slug}`, d.nazev)).catch(() => null),
+  ]);
+  let pas = null, spicka = null;
+  if (info?.steam?.id) {
+    // Hra ze Steamu jde i do naší databáze her → sleduje se její cena (historie, cenový radar, hlídání).
+    try { await zajistiSchemaHlidac(env.DB); ctx.waitUntil(env.DB.batch(prikazyUlozHry(env.DB, [info.steam], ted)).catch(() => {})); } catch { /* nepovinné */ }
+    pas = await doplnPas(env, ctx, { nazev: info.steam.nazev || d.nazev, st: info.steam }).catch(() => null);
+    const r = await env.DB.prepare("SELECT den, spicka FROM hraci_den WHERE id = ? ORDER BY den DESC LIMIT 1").bind(String(info.steam.id)).first().catch(() => null);
+    if (r) spicka = { den: r.den, hracu: r.spicka };
+  }
+  return { info, pas, scena, steam_spicka: spicka, cesko_slug: h.slug || d.cesko_slug || null };
+}
+
+async function hraOdpoved(env, ctx, h, infoP, ted, steamId = null) {
+  const scena = await scenaHry(env, h, ted);
   const info = await infoP;
   // Hra ze Steamu jde do databáze her (sleduje se cena, dá se hlídat) a přidá se nejnižší cena za 90 dní.
   if (info?.steam?.id) {
@@ -269,19 +312,7 @@ async function hraOdpoved(env, ctx, h, infoP, ted, steamId = null) {
   const pas = await doplnPas(env, ctx, { nazev: info?.steam?.nazev || h.nazev, st: info?.steam || null }).catch((e) => { console.error("pas:", e); return null; });
   return json({
     slug: h.slug, nazev: h.nazev, steam_id: steamId || info?.steam?.id || null,
-    info, pas,
-    statistiky: {
-      hodin7: Math.round(tyden.reduce((a, d) => a + (d.dm || 0), 0) / 60),
-      spicka7: Math.max(0, ...tyden.map((d) => d.spicka || 0)),
-      dny: dny.results.map((d) => ({ den: d.den, hodin: Math.round((d.dm || 0) / 60), spicka: d.spicka || 0 })),
-    },
-    klipy: klipy.results.map((r) => ({ url: r.url, nazev: r.nazev, nahled: r.nahled, zhlednuti: r.zhlednuti, delka: r.delka,
-      cas: new Date(r.cas).toISOString(), streamer: { jmeno: r.jmeno || r.login, login: r.login, platforma: r.platforma || "twitch", profilovka: r.profilovka || "" } })),
-    zive: zive.results.map((r) => naStreamera(r, ted)),
-    nejvic: nejvic.results.map((r) => ({ ...naStreamera(r, ted), hodin: Math.round((r.minut_hra || 0) / 60) })),
-    // LIKE najde i „Hra 2“ u „Hra“ nebo název uprostřed slova – necháme jen články, kde je název hry celé slovo/fráze.
-    clanky: [...vl.results.map(naPrispevek), ...rss.results.map(naClanek)].filter((c) => celyNazev(h.nazev).test(`${c.nadpis} ${c.perex || ""}`))
-      .sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 12),
+    info, pas, ...scena,
   }, 200, 120);
 }
 
@@ -409,8 +440,9 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname.startsWith("/api/databaze/")) {
       await zajistiSchemaTwitch(env.DB);
       const d = await apiHraDatabaze(env, ctx, dekoduj(url.pathname.slice(14)));
+      if (!d.chyba) Object.assign(d, await bohataKarta(env, ctx, d).catch((e) => { console.error("karta:", e); return {}; }));
       // Bez českého popisu jen krátká mezipaměť – překlad se dělá na pozadí a má se brzy ukázat.
-      odpoved = d.chyba ? json({ chyba: d.chyba }, d.status || 500) : json(d, 200, d.preklad || !(d.popis_en || d.pribeh_en) ? 3600 : 120);
+      odpoved = d.chyba ? json({ chyba: d.chyba }, d.status || 500) : json(d, 200, d.preklad || !(d.popis_en || d.pribeh_en) ? 900 : 120);
     }
     else if (url.pathname === "/api/radar") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiRadar(env), 200, 600); }
     else if (url.pathname === "/api/trendy") odpoved = json(await apiTrendy(env), 200, 1800);
