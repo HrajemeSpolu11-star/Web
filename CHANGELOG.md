@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-11-27 – Stránka hry: oficiální pozadí, dva sloupce, galerie a trailery
+- **Pozadí hry**: oficiální obrázek pozadí ze stránky hry na Steamu (`background_raw`) přes celou šířku okna, ztmavený
+  a rozostřený, aby byl text čitelný. Když se nenačte, zmizí. Hry mimo Steam mají dál pozadí v barvě hry.
+- **Dva sloupce na počítači** (od šířky 1100 px): vpravo sloupec, který zůstává při posouvání na místě – pulsometr, Kde koupit,
+  cenový radar, Hlídat cenu, čeština a hodnocení, Porovnat s jinou hrou. Vlevo popis, galerie, graf ceny, DNA, aktualizace,
+  série, požadavky a české streamy. Na mobilu jeden sloupec, popis hned pod hlavičkou.
+- **Galerie**: až 16 oficiálních screenshotů a 4 trailery ze Steamu (`screenshots`, `movies` v appdetails – žádné požadavky navíc).
+  Prohlížeč přes celou obrazovku: šipky, Esc, posun prstem, počítadlo. Trailer se načte až po kliknutí (mp4, nebo HLS);
+  když ho prohlížeč neumí přehrát, nabídne „Přehrát na Steamu“.
+- Starší uložené údaje o hrách (bez obrázků) se při dalším zobrazení obnoví na pozadí.
+- CSP: přidáno `media-src` jen pro videa ze Steamu (`*.steamstatic.com`, `steamcdn-a.akamaihd.net`). Patička nad pozadím (`z-index`).
+
 ## 2026-11-27 – Herní pas, pulsometr, herní radar, trendy, srovnávač her
 Podle návrhu (ChatGPT), který uživatel schválil v poctivé podobě – nic se nedomýšlí, vše má uvedený původ.
 - **Herní radar** (`/radar`, `src/radar.js`): proud událostí – velké aktualizace, hry zdarma na Epicu, hry na nejnižší ceně

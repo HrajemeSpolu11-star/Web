@@ -67,6 +67,11 @@ async function steamPodleId(id, shoda = {}) {
     platformy: d?.platforms ? Object.entries(d.platforms).filter(([, v]) => v).map(([k]) => k) : [],
     hodnoceni: q && q.total_reviews > 0 ? { kladne: Math.round((q.total_positive / q.total_reviews) * 100), recenzi: q.total_reviews } : null,
     hraci_ted: hraci.status === "fulfilled" && hraci.value?.response?.result === 1 ? hraci.value.response.player_count : null,
+    // Oficiální obrázky ze stránky hry: pozadí obchodu, screenshoty a trailery (mp4 u starších, HLS u novějších videí).
+    pozadi: https(d?.background_raw || d?.background),
+    screenshoty: (d?.screenshots || []).slice(0, 16).map((x) => ({ male: https(x.path_thumbnail), velke: https(x.path_full) })).filter((x) => x.male && x.velke),
+    videa: (d?.movies || []).slice(0, 4).map((m) => ({ nazev: String(m.name || "").slice(0, 100), nahled: https(m.thumbnail),
+      mp4: https(m.mp4?.max || m.mp4?.["480"]), hls: https(m.hls_h264) })).filter((m) => m.nahled && (m.mp4 || m.hls)),
     pozadavky: d?.pc_requirements && !Array.isArray(d.pc_requirements)
       ? { min: pozadavky(d.pc_requirements.minimum), dop: pozadavky(d.pc_requirements.recommended) } : null,
   };
@@ -125,7 +130,7 @@ export async function infoHrySteam(env, ctx, id) {
     return data;
   };
   if (!r) return uloz().catch(() => null);
-  if (Date.now() - r.cas > PLATNOST) ctx.waitUntil(uloz().catch((e) => console.error("hra_info steam:", e)));
+  if (Date.now() - r.cas > PLATNOST || !/"screenshoty"/.test(r.data)) ctx.waitUntil(uloz().catch((e) => console.error("hra_info steam:", e)));
   try { return JSON.parse(r.data); } catch { return null; }
 }
 
@@ -143,6 +148,7 @@ export async function infoHry(env, ctx, slug, nazev) {
     return data;
   };
   if (!r) return uloz().catch(() => null);
-  if (Date.now() - r.cas > PLATNOST) ctx.waitUntil(uloz().catch((e) => console.error("hra_info:", e)));
+  // Starší záznamy bez obrázků (před 27. 11.) se obnoví hned na pozadí.
+  if (Date.now() - r.cas > PLATNOST || (/"steam":\{/.test(r.data) && !/"screenshoty"/.test(r.data))) ctx.waitUntil(uloz().catch((e) => console.error("hra_info:", e)));
   try { return JSON.parse(r.data); } catch { return null; }
 }

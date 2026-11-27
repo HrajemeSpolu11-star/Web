@@ -676,6 +676,84 @@
       <p class="source-note">${puvod("databaze", "IGDB")} ${ig.url ? `<a href="${esc(bezpecnaUrl(ig.url))}" target="_blank" rel="noopener noreferrer">Hra na IGDB</a>` : ""}</p>`;
   }
 
+  // ---------- Galerie hry (oficiální screenshoty a trailery ze Steamu) ----------
+  function polozkyGalerie(st) {
+    const vid = (st?.videa || []).filter((v) => https(v.nahled) && (https(v.mp4) || https(v.hls))).map((v) => ({ typ: "video", nahled: v.nahled, mp4: https(v.mp4), hls: https(v.hls), nazev: v.nazev || "" }));
+    const obr = (st?.screenshoty || []).filter((x) => https(x.male) && https(x.velke)).map((x) => ({ typ: "obr", nahled: x.male, velke: x.velke }));
+    return [...vid, ...obr];
+  }
+  function galerieHry(st) {
+    const p = polozkyGalerie(st);
+    if (!p.length) return "";
+    return `<div class="section-title">Obrázky a trailery</div>
+      <div class="galerie" data-galerie>${p.map((x, i) => `<button type="button" class="gal-p${x.typ === "video" ? " gal-video" : ""}" data-i="${i}" aria-label="${x.typ === "video" ? "Přehrát trailer" : `Zvětšit obrázek ${i + 1}`}">
+        <img src="${esc(x.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">${x.typ === "video" ? `<span class="gal-play" aria-hidden="true"></span>` : ""}</button>`).join("")}</div>
+      <p class="source-note">Oficiální obrázky a trailery ze stránky hry na Steamu. ${puvod("oficialni", "Steam")}</p>`;
+  }
+  // Prohlížeč přes celou obrazovku: šipky, Esc, posun prstem. Trailer se načte až po otevření.
+  function pripojGalerii(root, st) {
+    const el = root.querySelector("[data-galerie]");
+    if (!el) return;
+    const p = polozkyGalerie(st);
+    el.addEventListener("click", (e) => { const b = e.target.closest(".gal-p"); if (b) otevriProhlizec(p, +b.dataset.i, b, st?.url); });
+  }
+  function otevriProhlizec(p, start, puvodni, steamUrl) {
+    let i = start;
+    const box = document.createElement("div");
+    box.className = "prohlizec"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Obrázky a trailery");
+    box.innerHTML = `<div class="pr-obsah"></div>
+      <button type="button" class="pr-zavrit" aria-label="Zavřít">✕</button>
+      ${p.length > 1 ? `<button type="button" class="pr-sip pr-pred" aria-label="Předchozí">‹</button><button type="button" class="pr-sip pr-dal" aria-label="Další">›</button>` : ""}
+      <span class="pr-pocet" aria-live="polite"></span>`;
+    const obsah = box.querySelector(".pr-obsah"), pocet = box.querySelector(".pr-pocet");
+    const ukaz = () => {
+      const x = p[i];
+      obsah.textContent = "";
+      if (x.typ === "video") {
+        const v = document.createElement("video");
+        v.controls = true; v.autoplay = true; v.playsInline = true; v.preload = "metadata"; v.poster = x.nahled;
+        for (const [src, typ] of [[x.mp4, "video/mp4"], [x.hls, "application/vnd.apple.mpegurl"]]) {
+          if (!src) continue;
+          const s = document.createElement("source"); s.src = src; s.type = typ; v.appendChild(s);
+        }
+        // Prohlížeč video neumí přehrát (např. HLS v Chromu na počítači) → odkaz na trailer na Steamu.
+        const nejde = () => { obsah.innerHTML = `<div class="pr-nejde"><img src="${esc(x.nahled)}" alt="" referrerpolicy="no-referrer"><p>Tenhle trailer tvůj prohlížeč neumí přehrát přímo.</p>
+          ${steamUrl ? `<a class="btn-sek" href="${esc(bezpecnaUrl(steamUrl))}" target="_blank" rel="noopener noreferrer">Přehrát na Steamu</a>` : ""}</div>`; };
+        const zdroje = [...v.querySelectorAll("source")];
+        if (!zdroje.some((s) => v.canPlayType(s.type))) { nejde(); }
+        else { zdroje[zdroje.length - 1].addEventListener("error", nejde); obsah.appendChild(v); }
+      } else {
+        const img = document.createElement("img");
+        img.src = x.velke; img.alt = `Obrázek ${i + 1} z ${p.length}`; img.referrerPolicy = "no-referrer";
+        obsah.appendChild(img);
+      }
+      pocet.textContent = `${i + 1} / ${p.length}`;
+    };
+    const posun = (d) => { i = (i + d + p.length) % p.length; ukaz(); };
+    const zavri = () => {
+      box.remove(); document.documentElement.classList.remove("bez-posunu");
+      removeEventListener("keydown", klav); removeEventListener("popstate", zavri);
+      puvodni?.focus?.();
+    };
+    const klav = (e) => {
+      if (e.key === "Escape") zavri();
+      else if (e.key === "ArrowLeft") posun(-1);
+      else if (e.key === "ArrowRight") posun(1);
+    };
+    box.querySelector(".pr-zavrit").onclick = zavri;
+    box.querySelector(".pr-pred")?.addEventListener("click", () => posun(-1));
+    box.querySelector(".pr-dal")?.addEventListener("click", () => posun(1));
+    box.addEventListener("click", (e) => { if (e.target === box || e.target === obsah) zavri(); });
+    let x0 = null;
+    box.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    box.addEventListener("touchend", (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50 && p.length > 1) posun(dx < 0 ? 1 : -1); });
+    addEventListener("keydown", klav); addEventListener("popstate", zavri);
+    document.documentElement.classList.add("bez-posunu");
+    document.body.appendChild(box);
+    ukaz();
+    box.querySelector(".pr-zavrit").focus();
+  }
+
   // ---------- Herní radar ----------
   const TYP_RADARU = {
     aktualizace: ["Aktualizace", "#5cc8ff"], zdarma: ["Zdarma", "#4fd88f"], cena: ["Nejnižší cena", "#ffc04d"],
@@ -1960,17 +2038,25 @@
       st?.zanry?.length && ["Žánr", esc(st.zanry.join(", "))],
       st?.vyvojari?.length && ["Vývojář", esc(st.vyvojari.join(", "))],
     ].filter(Boolean);
-    app.innerHTML = `<div class="profile">
+    // Pozadí hry = oficiální pozadí ze Steamu přes celou šířku (ztmavené). Na počítači dva sloupce: vpravo nákup a pulsometr.
+    const pozadi = https(st?.pozadi);
+    app.innerHTML = `${pozadi ? `<div class="hra-pozadi" aria-hidden="true"><img src="${esc(pozadi)}" alt="" referrerpolicy="no-referrer"></div>` : ""}<div class="profile hra-stranka">
       <a class="back" href="${h.slug ? "/hry" : "/vydani"}">${h.slug ? "← Co hraje Česko" : "← Hry"}</a>
       <div class="hra-hero${https(st?.obrazek) ? " s-obr" : ""}" data-a="${esc(a)}" data-b="${esc(b)}">
         ${https(st?.obrazek) ? `<img class="hra-hero-img" src="${esc(st.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}
         <div class="hra-hero-t"><h1>${esc(h.nazev)}</h1>
         <p>${h.zive.length ? `${pl(h.zive.length, "český stream", "české streamy", "českých streamů")} právě živě · ${num(h.zive.reduce((x, s) => x + (s.divaci || 0), 0))} diváků` : "Teď nikdo z českých streamerů nevysílá"}</p></div></div>
       ${st?.popis ? `<p class="hra-popis">${esc(st.popis)}</p>` : ""}
+      <div class="hra-mriz">
+      <aside class="hra-bok" aria-label="Cena a pulsometr">
       ${pulsBlok(pas.puls)}
       ${obchody.length ? `<div class="section-title">Kde koupit</div><div class="obchody">${obchody.join("")}</div>${cenovyText(pas.ceny?.rozbor, st)}` : ""}
       ${st && !st.zdarma ? `<div class="hra-hlidat">${tlacitkoHlidat({ id: st.id, nazev: st.nazev })}${tlacitkoObrazek("hra-obr")}<span class="dim">Pošleme upozornění, až bude ve slevě. <a href="/hlidac">Hlídač cen</a></span></div>` : ""}
       ${fakta.length ? `<dl class="fakta">${fakta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
+      ${h.steam_id ? `<p class="pas-srov"><a class="btn-sek" href="/porovnat-hry?ids=${esc(enc(h.steam_id))}">Porovnat s jinou hrou</a></p>` : ""}
+      </aside>
+      <div class="hra-hlavni">
+      ${galerieHry(st)}
       ${hist.length >= 2 ? `<div class="section-title">Vývoj ceny na Steamu</div><div class="graf" id="graf-cena"></div>
         <p class="source-note">Nejnižší cena každého dne od ${esc(datumKr(hist[0].den))}, kdy cenu sledujeme (nejvýš 400 dní), v Kč. ${puvod("mereno", "Steam")}</p>` : ""}
       ${dnaBlok(pas.dna)}
@@ -1980,7 +2066,6 @@
           ${x.shrnuti ? `<p>${esc(x.shrnuti)} ${puvod("ai", "podle oznámení na Steamu")}</p>` : ""}</li>`).join("")}</ul>
         <p class="source-note">${puvod("oficialni", "Steam")} Originální poznámky vývojářů jsou v odkazu.</p>` : ""}
       ${serieBlok(pas.igdb)}
-      ${h.steam_id ? `<p class="pas-srov"><a class="btn-sek" href="/porovnat-hry?ids=${esc(enc(h.steam_id))}">Porovnat s jinou hrou</a></p>` : ""}
       ${st?.pozadavky && (st.pozadavky.min.length || st.pozadavky.dop.length) ? `<details class="pozadavky"><summary>Systémové požadavky (PC)</summary>
         <div class="poz-sloupce">${st.pozadavky.min.length ? `<div><b>Minimální</b><ul>${st.pozadavky.min.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>` : ""}
         ${st.pozadavky.dop.length ? `<div><b>Doporučené</b><ul>${st.pozadavky.dop.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>` : ""}</div>
@@ -1998,9 +2083,14 @@
       ${h.nejvic.length ? `<div class="section-title">Kdo hraje nejvíc</div><div class="slist">${h.nejvic.map((s, i) => radekStreamera(s, i, "hra")).join("")}</div>` : ""}
       ${h.clanky.length ? `<div class="section-title">Novinky a recenze</div><div class="grid">${h.clanky.map((c) => kartaClanku(c, 1)).join("")}</div>` : ""}
       <p class="source-note">Ceny, čeština, hodnocení a počet hráčů jsou přímo z obchodů Steam a GOG${h.info?.cas ? ` (stav ${esc(kdy(new Date(h.info.cas)))})` : ""}; vždy platí cena v obchodě. Hodiny na streamech měříme sami z API Twitche a Kicku. <a href="/o-webu#data">Jak počítáme</a></p>
+
+      </div></div>
     </div>`;
     const gc = document.getElementById("graf-cena");
     if (gc) graf(gc, hist.map((x) => ({ v: x.cena, d: new Date(x.den + "T12:00:00").toLocaleDateString(LOC, { day: "numeric", month: "numeric" }) })), "Vývoj ceny na Steamu");
+    pripojGalerii(app, st);
+    const poz = app.querySelector(".hra-pozadi img");
+    if (poz) poz.addEventListener("error", () => poz.parentElement.remove(), { once: true });
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
     // Rozjede se mi to? – když má návštěvník uložený počítač, výsledek se ukáže rovnou.
     const hwEl = document.getElementById("hw-hra"), pc = mujPc();

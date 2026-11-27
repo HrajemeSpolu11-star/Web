@@ -555,6 +555,15 @@
     "na jednom zařízení stačí jedna kopie": ["na jednom zariadení stačí jedna kópia", "one copy is enough on a single device"],
     "Hraní napříč PC a konzolemi (crossplay) neuvádíme – spolehlivý zdroj pro něj není.": ["Hranie naprieč PC a konzolami (crossplay) neuvádzame – spoľahlivý zdroj preň nie je.", "We don't list cross-play between PC and consoles – there's no reliable source for it."],
     "Na radaru ": ["Na radare ", "On the radar "],
+    "Obrázky a trailery": ["Obrázky a trailery", "Screenshots and trailers"],
+    "Oficiální obrázky a trailery ze stránky hry na Steamu.": ["Oficiálne obrázky a trailery zo stránky hry na Steame.", "Official screenshots and trailers from the game's Steam page."],
+    "Přehrát trailer": ["Prehrať trailer", "Play trailer"],
+    "Zavřít": ["Zavrieť", "Close"],
+    "Předchozí": ["Predchádzajúci", "Previous"],
+    "Další": ["Ďalší", "Next"],
+    "Tenhle trailer tvůj prohlížeč neumí přehrát přímo.": ["Tento trailer tvoj prehliadač nevie prehrať priamo.", "Your browser can't play this trailer directly."],
+    "Přehrát na Steamu": ["Prehrať na Steame", "Play on Steam"],
+    "Cena a pulsometr": ["Cena a pulzomer", "Price and pulse"],
     "Nové hry": ["Nové hry", "New games"], "Nové platformy a plné verze": ["Nové platformy a plné verzie", "New platforms and full releases"],
     "Kategorie": ["Kategórie", "Categories"], "Upozornění jsou teď přeplněná, zkus to později.": ["Upozornenia sú teraz preplnené, skús to neskôr.", "Notifications are full right now, try again later."],
     "Všechny": ["Všetky", "All"], "Jen s češtinou": ["Len s češtinou", "Czech only"], "Jen s přesným datem": ["Len s presným dátumom", "Exact date only"],
@@ -606,6 +615,7 @@
 
   // ---------- Věty s čísly a proměnnými částmi: [vzor, slovensky, anglicky] ----------
   const FRAZE = [
+    [/^Zvětšit obrázek (\d+)$/, "Zväčšiť obrázok $1", "Enlarge image $1"], [/^Obrázek (\d+) z (\d+)$/, "Obrázok $1 z $2", "Image $1 of $2"],
     // ---- 27. 11.: pulsometr, cenový radar, DNA, radar, trendy ----
     [/^váha (\d+) %$/, "váha $1 %", "weight $1 %"],
     [/^(.+) hráčů právě teď \(celý svět\)$/, "$1 hráčov práve teraz (celý svet)", "$1 playing right now (worldwide)"],

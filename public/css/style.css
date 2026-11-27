@@ -1157,3 +1157,52 @@ h1{letter-spacing:-.03em}
 
 .ch-skupina{display:block;font-size:13px;color:#9fe6ff;margin-top:4px}
 .ch-skupina.nevime{color:var(--muted)}
+
+/* ===== 27. 11.: Stránka hry – oficiální pozadí, dva sloupce, galerie a prohlížeč ===== */
+/* Pozadí ze Steamu přes celou šířku okna, ztmavené a rozostřené, aby text zůstal čitelný. */
+.hra-pozadi{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.hra-pozadi img{width:100%;height:100%;object-fit:cover;object-position:center top;filter:blur(6px) saturate(1.1) brightness(.45);transform:scale(1.04);opacity:.9}
+.hra-pozadi::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,11,36,.35) 0%,rgba(14,11,36,.75) 45%,var(--bg) 100%)}
+.hra-stranka{position:relative;z-index:1}
+@media(min-width:1100px){
+  .profile.hra-stranka{max-width:1040px}
+  .hra-mriz{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0 28px;align-items:start}
+  .hra-bok{grid-column:2;grid-row:1;position:sticky;top:96px;max-height:calc(100vh - 110px);overflow-y:auto;scrollbar-width:thin;padding-bottom:12px}
+  .hra-hlavni{grid-column:1;grid-row:1}
+  .hra-bok .puls-blok{margin-top:18px}
+  .hra-bok .obchody{grid-template-columns:1fr}
+}
+.hra-bok .puls-blok{grid-template-columns:auto 1fr}
+.hra-stranka .hra-popis,.hra-stranka .section-title{text-shadow:0 1px 8px rgba(0,0,0,.45)}
+
+.galerie{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:thin}
+.gal-p{flex:none;width:220px;aspect-ratio:16/9;border-radius:var(--r-s);overflow:hidden;border:2px solid transparent;padding:0;background:var(--card);cursor:zoom-in;position:relative;scroll-snap-align:start}
+.gal-p img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.gal-p:hover img,.gal-p:focus-visible img{transform:scale(1.05)}
+.gal-p:hover,.gal-p:focus-visible{border-color:var(--accent)}
+.gal-video{cursor:pointer}
+.gal-play{position:absolute;inset:0;margin:auto;width:52px;height:52px;border-radius:50%;background:rgba(14,11,36,.75);border:2px solid #fff}
+.gal-play::after{content:"";position:absolute;left:20px;top:14px;border-left:16px solid #fff;border-top:11px solid transparent;border-bottom:11px solid transparent}
+@media(max-width:520px){.gal-p{width:72vw}}
+
+html.bez-posunu{overflow:hidden}
+.prohlizec{position:fixed;inset:0;z-index:1000;background:rgba(6,4,18,.94);display:grid;place-items:center;padding:56px 12px 44px}
+.pr-obsah{width:100%;height:100%;display:grid;place-items:center}
+.pr-obsah img,.pr-obsah video{max-width:min(100%,1600px);max-height:100%;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:#000}
+.pr-obsah video{width:min(100%,1280px)}
+.pr-zavrit,.pr-sip{position:absolute;border:0;color:#fff;background:rgba(255,255,255,.12);border-radius:50%;width:48px;height:48px;font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.pr-zavrit:hover,.pr-sip:hover{background:rgba(255,255,255,.25)}
+.pr-zavrit{top:10px;right:12px;font-size:20px}
+.pr-sip{top:50%;transform:translateY(-50%)}
+.pr-pred{left:10px}.pr-dal{right:10px}
+.pr-pocet{position:absolute;bottom:12px;left:0;right:0;text-align:center;color:var(--muted);font-size:14px}
+.pr-nejde{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:560px}
+.pr-nejde img{width:100%;border-radius:10px;opacity:.6}
+@media(max-width:520px){.pr-sip{width:40px;height:40px;top:auto;bottom:6px;transform:none}}
+.foot{position:relative;z-index:1}
+@media(min-width:1100px){
+  .hra-stranka .hra-hero-img{aspect-ratio:auto;height:340px}
+  .hra-bok .puls-slozky li{grid-template-columns:1fr 34px}
+  .hra-bok .puls-slozky .bar{grid-column:1/-1;grid-row:2}
+  .hra-bok .puls-cislo{width:80px;height:80px}.hra-bok .puls-cislo b{font-size:30px}
+}

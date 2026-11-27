@@ -117,3 +117,8 @@ Rozcestník Hry: `SKUPINY_HER` v `app.js` – nová stránka sekce Hry se přid�
 **Pravidla poctivosti**: pulsometr a trendy počítají jen z naměřených / oficiálních čísel (váhy a pásma v kódu i na `/o-webu#pulsometr`);
 chybějící ukazatel se nepočítá a skóre se ukáže až od 3 ukazatelů. Cenový radar vždy uvádí „od kdy měříme“. Herní DNA jen z polí Steamu
 a IGDB. Štítek původu dat (`puvod()` v `app.js`): Změřeno námi / Oficiální data / Databáze IGDB / AI souhrn.
+
+## Stránka hry – obrázky (2026-11-27)
+Pozadí, screenshoty a trailery jdou z odpovědi Steam `appdetails`, kterou stránka hry už stahuje (`src/hra-data.js`, pole
+`pozadi`, `screenshoty`, `videa`) – žádné požadavky navíc. CSP v `public/_headers` má `media-src` jen pro Steam CDN (videa).
+Galerie a prohlížeč: `galerieHry()` / `otevriProhlizec()` v `app.js`, bez inline stylů.
