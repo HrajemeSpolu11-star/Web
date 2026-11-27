@@ -19,9 +19,9 @@ návštěvník →│ statické soubory (public/)   ← servíruje Cloudflare As
 | Cron | Co dělá | Kód |
 |---|---|---|
 | `*/15 * * * *` | RSS novinky (10 z 19 zdrojů na běh, každý ≈ 30 min; vypnutý zdroj se zkusí znovu po 24 h) + studia a platformy (2 na běh) | `sber()` v `src/sber.js`, `sberStudii()` v `src/studia.js` |
-| `7 * * * *` | AI psaní (jen v hodinách `HODINY`, max `CLANKU_DENNE`) | `napisClanek()` v `src/psani.js` |
+| `7 * * * *` | AI psaní (jen v hodinách `HODINY`, max `CLANKU_DENNE`), ranní přehled, kalendář + výročí, aktualizace her (seznam + AI shrnutí), **trendy a cenový radar (každé 3 h)** | `napisClanek()`, `generujRanni()`, `sberVydani()`, `sestavTrendy()` … |
 | `5,20,35,50 * * * *` | Twitch + Kick streameři, rekordy, milníky, rozvrhy, push | `sberTwitch()`, `sberKick()` |
-| `25 * * * *` | Herní katalog: Steam (slevy, top, nové, brzy, nejhranější + hodnocení hráčů), Epic (zdarma), GOG (trendy, slevy) – ≈33 požadavků | `sberKatalogu()` v `src/katalog.js` |
+| `25 * * * *` | Herní katalog: Steam (slevy, top, nové, brzy, nejhranější + hodnocení hráčů), Epic (zdarma), GOG (trendy, slevy) – ≈33 požadavků. Navíc 1× denně uloží denní špičku hráčů top ~100 do `hraci_den` | `sberKatalogu()` v `src/katalog.js` |
 | `40 * * * *` | Videa z YouTube RSS (8 kanálů), Twitch klipy (8 streamerů), ceny her (≤3 × 100) a čeština (12 her) + upozornění hlídače – ≈34 požadavků | `sberObsahu()` v `src/obsah.js`, `sberHlidace()` v `src/hlidac.js` |
 
 **Všech 5 Cronů je obsazeno.** Další pravidelná úloha se musí přidat do některého stávajícího běhu.
@@ -97,3 +97,23 @@ Kick je jednodušší: nejdřív Livestreams V2 (`/public/v2/livestreams`, curso
 
 Kontrola AI textů (ranní přehled, aktualizace): každé číslo v AI textu musí být i ve zdroji, jinak se bod/řádek vyřadí.
 Rozcestník Hry: `SKUPINY_HER` v `app.js` – nová stránka sekce Hry se přidá do jedné skupiny.
+
+## Herní pas, pulsometr, radar, trendy, srovnávač (2026-11-27)
+| Část | Soubor | Kdy běží | Externí požadavky | Zápisy D1 |
+|---|---|---|---|---|
+| Herní radar `/radar`, `/api/radar` | `src/radar.js` | na žádost (mezipaměť 10 min) | 0 | 0 |
+| Trendy `/trendy` + cenový radar | `src/trendy.js` → katalog `trendy`, `cenovy_radar` | Cron psaní, každé 3 h (zámek `trendy_beh`) | 0 | 2 řádky/běh |
+| Denní špička hráčů Steamu | `prikazyHraciDen` v `src/trendy.js`, tabulka `hraci_den` | Cron katalogu, první běh dne | 0 (data z žebříčku) | ~100/den |
+| Pulsometr | `src/puls.js` | se stránkou hry / srovnávačem | 0 | 0 |
+| Herní pas (stránka hry) | `src/pas.js` + `src/igdb-hra.js` (tabulka `igdb_hry`, 7 dní) | se stránkou hry | IGDB 2–4 při prvním zobrazení hry | 1 řádek/hra/týden |
+| Srovnávač `/porovnat-hry`, `/api/srovnani` | `src/pas.js` | na žádost (mezipaměť 30 min), max. 4 hry | jako 4 stránky her (≤ ~30) | jako výše |
+| Co hrát s přáteli (`?n=`) | `src/nastroje.js` + `hraciZIgdb` (tabulka `igdb_hraci`, 30 dní) | na žádost | IGDB 2–3 při prázdné mezipaměti | ≤ 40 řádků/dotaz, pak nic |
+| Cenový rozbor | `src/ceny.js` (čistá funkce) | – | 0 | 0 |
+
+**Čtení D1**: trendy čtou `hry_den` za 45 dní a historii cen 150 her ve slevě → do ~90 tis. řádků na běh, 8× denně
+(limit Free 5 mil./den). Stránky čtou jen jeden řádek katalogu. Indexy: `hry_den(hra, den)`, `hry_streamera(hra)`,
+`patche(appid, datum)`, `hraci_den(den)` – na sloupcích, které se po vložení nemění.
+
+**Pravidla poctivosti**: pulsometr a trendy počítají jen z naměřených / oficiálních čísel (váhy a pásma v kódu i na `/o-webu#pulsometr`);
+chybějící ukazatel se nepočítá a skóre se ukáže až od 3 ukazatelů. Cenový radar vždy uvádí „od kdy měříme“. Herní DNA jen z polí Steamu
+a IGDB. Štítek původu dat (`puvod()` v `app.js`): Změřeno námi / Oficiální data / Databáze IGDB / AI souhrn.

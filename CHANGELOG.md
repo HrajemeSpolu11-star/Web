@@ -6,6 +6,32 @@
 
 ---
 
+## 2026-11-27 – Herní pas, pulsometr, herní radar, trendy, srovnávač her
+Podle návrhu (ChatGPT), který uživatel schválil v poctivé podobě – nic se nedomýšlí, vše má uvedený původ.
+- **Herní radar** (`/radar`, `src/radar.js`): proud událostí – velké aktualizace, hry zdarma na Epicu, hry na nejnižší ceně
+  od začátku měření, rekordy a milníky streamerů, prudce rostoucí / znovu ožívající hry, vydání, výročí. Filtry podle druhu,
+  „Vychází do 7 dní“. Na Domů blok „Na radaru“ (5 položek, bez aktualizací – ty mají vlastní blok).
+- **Rostoucí a upadající hry** (`/trendy`, `src/trendy.js`): česká scéna (hodiny sledování 7 celých dní proti předchozím 7)
+  a Steam (denní špička hráčů proti týdnu předtím; nová tabulka `hraci_den`, ukládá se 1× denně). Stavy: prudce roste, roste,
+  stabilní, klesá, výrazně klesá, znovu ožívá, nově na scéně. Počítá se každé 3 hodiny v Cronu psaní (nová úloha deníku „trendy“).
+- **Pulsometr** (`src/puls.js`): 0–100 z hráčů na Steamu, české scény, trendu, čerstvosti aktualizací a slevy, s rozpisem,
+  váhami a vysvětlením. Chybějící ukazatel se nepočítá; skóre až od 3 ukazatelů.
+- **Cenový radar** (`src/ceny.js`): u hry „nejnižší od…“, „ve slevě N× za dobu měření, obvykle −X %“, vždy s datem začátku
+  měření. Graf ceny na stránce hry až 400 dní. Na Hlídači seznam her na nejnižší ceně od začátku měření.
+- **Herní pas** (`src/pas.js`, `src/igdb-hra.js`): stránka hry nově s pulsometrem, cenovým radarem, herní DNA, posledními
+  aktualizacemi, sérií a DLC z IGDB (mezipaměť 7 dní, tabulka `igdb_hry`) a tlačítkem „Porovnat s jinou hrou“.
+- **Lehká herní DNA**: pohled, režimy, počty hráčů, témata, délka hraní (IGDB), režimy a žánry (Steam), aktivita vývojářů
+  (náš počet aktualizací za 90 dní). Každý řádek se štítkem zdroje.
+- **Srovnávač her** (`/porovnat-hry?ids=`, `/api/srovnani`): 2–4 hry vedle sebe (cena, cenový radar, GOG, čeština,
+  hodnocení, hráči teď, pulsometr, česká scéna, režimy, počet hráčů, pohled, délka, aktualizace, DLC, vydání, vývojář).
+- **Co hrát s přáteli**: volba „Kolik vás bude?“ – počet hráčů z IGDB (tabulka `igdb_hraci`), cena pro celou skupinu,
+  „na jednom zařízení stačí jedna kopie“ u split-screenu, hry bez údaje označené a na konci. Crossplay se neuvádí.
+- **Štítky původu dat** (`puvod()` v `app.js`): Změřeno námi / Oficiální data / Databáze IGDB / AI souhrn. Opraven starý štítek
+  u dat z obchodů, který chybně tvrdil „Data ověřila AI“.
+- Rozcestník Hry: nová skupina „Puls her“. Nové trasy ve `wrangler.jsonc`, SEO titulky a sitemap, `/o-webu#stitky`,
+  `#pulsometr`, `#trendy`. Překlady SK/EN. Indexy `patche(appid, datum)`, `hraci_den(den)`. Katalog API už neposílá `trendy`
+  a `cenovy_radar`.
+
 ## 2026-11-27 – Opravy podle externího auditu (ChatGPT)
 - **Push upozornění**: `/nehlidat` už nezakládá odběr; tělo požadavku se čte s pevným limitem (ne až po stažení celé);
   max. 30 nových odběrů za minutu pro celý web; neúspěšná odeslání mají postupné čekání (15 min → max. 12 h,

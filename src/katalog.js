@@ -4,6 +4,7 @@
 // Endpointy jsou veřejné (stejné, které používají weby obchodů), ale neoficiální –
 // každý obchod se zpracovává zvlášť, takže výpadek jednoho nerozbije ostatní.
 
+import { SCHEMA_HRACI, prikazyHraciDen } from "./trendy.js";
 import { zajistiSchemaHlidac, prikazyUlozHry, doplnSteamUdaje } from "./hlidac.js";
 
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
@@ -147,6 +148,9 @@ export async function sberKatalogu(env) {
   const steamHry = casti.filter((c) => c.status === "fulfilled").flatMap((c) => Object.entries(c.value))
     .filter(([k, v]) => k.startsWith("steam_") && Array.isArray(v)).flatMap(([, v]) => v);
   prikazy.push(...prikazyUlozHry(db, steamHry, ted));
+  // Denní špička hráčů do historie (1× denně, ~100 zápisů) – z ní se počítají trendy na Steamu.
+  const hrane = casti[1]?.status === "fulfilled" ? casti[1].value.steam_hrane : null;
+  if (hrane?.length) { await db.batch(SCHEMA_HRACI.map((x) => db.prepare(x))); prikazy.push(...prikazyHraciDen(db, hrane, ted)); }
   await db.batch(prikazy);
   return { ulozeno: prikazy.length - 1, chyby };
 }
@@ -155,7 +159,7 @@ export async function apiKatalog(env) {
   const db = env.DB;
   await db.prepare(SCHEMA).run();
   // Kalendář vydání a výročí mají vlastní API – sem nepatří (zbytečně by zvětšovaly odpověď).
-  const { results } = await db.prepare("SELECT klic, data, cas FROM katalog WHERE klic NOT IN ('vydani', 'vyroci')").all();
+  const { results } = await db.prepare("SELECT klic, data, cas FROM katalog WHERE klic NOT IN ('vydani', 'vyroci', 'trendy', 'cenovy_radar')").all();
   const out = { cas: null };
   for (const r of results) {
     try { out[r.klic] = JSON.parse(r.data); } catch { out[r.klic] = []; }

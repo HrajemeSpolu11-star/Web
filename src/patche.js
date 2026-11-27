@@ -22,6 +22,8 @@ const SCHEMA = [
      datum INTEGER NOT NULL, text TEXT, stav TEXT NOT NULL DEFAULT 'novy', shrnuti TEXT, model TEXT, ziskano INTEGER)`,
   `CREATE INDEX IF NOT EXISTS idx_patche_datum ON patche(datum DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_patche_stav ON patche(stav, datum DESC)`,
+  // Stránka hry a pulsometr hledají aktualizace jedné hry (appid ani datum se po vložení nemění → žádné zápisy navíc).
+  `CREATE INDEX IF NOT EXISTS idx_patche_appid ON patche(appid, datum DESC)`,
   `CREATE TABLE IF NOT EXISTS sledovane (appid TEXT PRIMARY KEY, nazev TEXT, poradi INTEGER, zdroj TEXT, kontrola INTEGER, aktualizovano INTEGER)`,
   `CREATE INDEX IF NOT EXISTS idx_sledovane_kontrola ON sledovane(kontrola, poradi)`,
 ];

@@ -46,6 +46,34 @@
     </ul>
     <p>Hry párujeme mezi Twitchem a obchody podle přesného názvu. Když si nejsme jistí, raději neukážeme nic, než abychom ukázali údaje jiné hry.</p>
 
+    <h2 id="stitky">Štítky původu dat</h2>
+    <p>U důležitých údajů najdeš barevný štítek, podle kterého hned poznáš, odkud číslo nebo text je:</p>
+    <ul>
+      <li><b>Změřeno námi</b> (zelená) – čísla jsme sami naměřili z oficiálních rozhraní a spočítali podle pravidel na této stránce (hodiny sledování, trendy, historie cen).</li>
+      <li><b>Oficiální data</b> (modrá) – přímo z obchodu, od vývojáře nebo z rozhraní platformy (cena, čeština, hodnocení, oznámení o aktualizacích).</li>
+      <li><b>Databáze IGDB</b> (žlutá) – z databáze her IGDB, kterou doplňuje komunita a vydavatelé. Může být neúplná (série, DLC, počet hráčů, délka hraní).</li>
+      <li><b>AI souhrn</b> (fialová) – text napsala AI podle oficiálního zdroje. Může obsahovat chybu, originál je vždy v odkazu.</li>
+    </ul>
+
+    <h2 id="pulsometr">Herní pulsometr</h2>
+    <p>Pulsometr ukazuje od 0 do 100, jak živá je hra právě teď. <b>Neměří, jestli je hra dobrá.</b> Skládá se jen z údajů, které opravdu máme:</p>
+    <ul>
+      <li><b>Hráči na Steamu (váha 30 %)</b> – kolik lidí hraje právě teď (oficiální Steam Web API). Logaritmická škála: 1 000 hráčů ≈ 50 bodů, milion = 100.</li>
+      <li><b>Česká scéna (25 %)</b> – hodiny sledování na českých streamech za posledních 7 celých dní v poměru k nejsledovanější hře týdne.</li>
+      <li><b>Trend na streamech (15 %)</b> – změna proti předchozímu týdnu: beze změny 50 bodů, dvojnásobek 100, pokles o polovinu 0. Jen když měříme aspoň 14 dní.</li>
+      <li><b>Aktualizace (20 %)</b> – jak dávno vyšla poslední aktualizace podle oficiálních oznámení na Steamu. Dnes 100, před 90 a více dny 0. Jen u her, jejichž oznámení sledujeme.</li>
+      <li><b>Cena teď (10 %)</b> – sleva na Steamu (80 % a víc = 100 bodů, hra zdarma = 100).</li>
+    </ul>
+    <p>Když nějaký údaj pro hru nemáme, nepočítá se a váhy ostatních se poměrně navýší. Skóre ukážeme, jen když máme aspoň tři údaje a mezi nimi hráče na Steamu nebo českou scénu.</p>
+
+    <h2 id="trendy">Rostoucí a upadající hry, cenový radar</h2>
+    <ul>
+      <li><b>Česká scéna</b> – hodiny sledování za 7 celých dní proti 7 dnům předtím, jen hry s aspoň 10 h týdně. Prudce roste = dvojnásobek a víc, roste = +25 %, klesá = −25 %, výrazně klesá = −60 %. „Znovu ožívá“ = hra se dřív hrála, týden skoro vůbec a teď zase.</li>
+      <li><b>Steam</b> – denní špička hráčů z oficiálního žebříčku zhruba 100 nejhranějších her, kterou si ukládáme jednou denně. Srovnáváme se stejným údajem o týden dřív. Hra, která ze žebříčku vypadla, se nehodnotí – neznamená to, že je „mrtvá“.</li>
+      <li><b>Cenový radar</b> – z historie cen, kterou si ukládáme od chvíle, kdy hru sledujeme. „Nejnižší cena“ znamená nejnižší za dobu našeho měření, ne v celé historii hry. Nejde o předpověď slev, jen o shrnutí toho, co jsme naměřili.</li>
+      <li><b>Herní DNA</b> – jen skutečné údaje ze Steamu (režimy, žánry), z IGDB (pohled, témata, počty hráčů, délka hraní podle hlasů hráčů) a z našeho počítání aktualizací. Co v databázích není, nedoplňujeme.</li>
+    </ul>
+
     <h2>Aplikace na plochu</h2>
     <p>Herní puls si můžeš přidat na plochu telefonu jako aplikaci. <b>Android (Chrome):</b> tlačítko „Nainstalovat jako aplikaci“ dole na webu, nebo menu ⋮ → „Přidat na plochu“. <b>iPhone (Safari):</b> tlačítko Sdílet → „Přidat na plochu“. Na iPhonu fungují upozornění jen v takto přidané aplikaci.</p>
 

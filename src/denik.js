@@ -26,6 +26,7 @@ export const ULOHY = {
   patche: { nazev: "Shrnutí aktualizací her (AI)", interval: null }, // jen když je nová aktualizace
   aktualizace: { nazev: "Aktualizace her (Steam, ~1 000 her)", interval: 15 },
   kalendar: { nazev: "Kalendář vydání a výročí (IGDB)", interval: null },
+  trendy: { nazev: "Trendy her a cenový radar", interval: 180 },
 };
 
 export async function zapis(db, uloha, ok, text) {

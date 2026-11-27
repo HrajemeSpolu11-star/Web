@@ -21,7 +21,7 @@ async function metaProStranku(url, env) {
   const og = (n) => `${url.origin}/og/${n}.png`;
   const OG = { "/": "domu", "/novinky": "novinky", "/zive": "streameri", "/streameri": "streameri", "/prehled": "streameri", "/porovnat": "streameri",
     "/hry": "cesko", "/cestina": "cestina", "/hlidac": "hlidac", "/vydani": "domu", "/akce": "domu", "/studia": "domu",
-    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky" };
+    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky", "/radar": "novinky", "/trendy": "cesko", "/porovnat-hry": "hra" };
   let m = { title: `${NAZEV} – herní novinky a čeští streameři`, popis: POPIS, obrazek: og(OG[p] || (p.startsWith("/report") ? "report" : p.startsWith("/hra/") ? "hra" : "domu")),
     velky: true, index: true, status: 200, typ: "website" };
   try {
@@ -43,6 +43,9 @@ async function metaProStranku(url, env) {
     else if (p === "/ceska-scena") m = { ...m, title: `Česká herní scéna – Warhorse, Bohemia, Amanita a další | ${NAZEV}`, popis: "Novinky, trailery a hry českých herních studií z jejich oficiálních kanálů na jednom místě." };
     else if (p === "/co-hrat") m = { ...m, title: `Co dnes hrát? Doporučení her podle tebe | ${NAZEV}`, popis: "Vyber, s kým hraješ, kolik chceš dát, jestli chceš češtinu a žánr – doporučíme hry, které hráči na Steamu nejvíc chválí." };
     else if (p === "/rozjede-se") m = { ...m, title: `Rozjede se mi to? Porovnání PC s požadavky hry | ${NAZEV}`, popis: "Zadej grafiku, procesor a paměť a porovnej je s minimálními a doporučenými požadavky hry ze Steamu." };
+    else if (p === "/radar") m = { ...m, title: `Herní radar – co se právě děje ve hrách | ${NAZEV}`, popis: "Velké aktualizace, hry zdarma, hry na nejnižší ceně od začátku měření, rekordy českých streamerů, rostoucí hry a vydání na jednom místě." };
+    else if (p === "/trendy") m = { ...m, title: `Rostoucí a upadající hry – Steam a české streamy | ${NAZEV}`, popis: "Které hry nabírají hráče na Steamu a diváky na českých streamech a které je ztrácejí. Jen z naměřených čísel, s vysvětlením výpočtu." };
+    else if (p === "/porovnat-hry") m = { ...m, title: `Srovnávač her – cena, čeština, hráči a pulsometr | ${NAZEV}`, popis: "Porovnej dvě až čtyři hry vedle sebe: cenu, historii cen, češtinu, hodnocení, počet hráčů, herní DNA a pulsometr.", index: !url.searchParams.get("ids") };
     else if (p === "/vyssi-nizsi") m = { ...m, title: `Vyšší, nebo nižší? Denní herní minihra | ${NAZEV}`, popis: "Tipni, která hra má víc hráčů. Skutečná čísla ze Steamu a českých streamů, každý den nové kolo." };
     else if (p.startsWith("/studio/")) {
       const st = STUDIA.find((x) => x.slug === p.slice(8));
@@ -148,7 +151,7 @@ export async function sitemap(request, env) {
   const o = new URL(request.url).origin;
   const ted = new Date().toISOString().slice(0, 10);
   const adresy = [["/", ted, "hourly"], ["/novinky", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/report", ted, "weekly"], ["/cestina", ted, "daily"], ["/vydani", ted, "daily"], ["/akce", ted, "daily"], ["/studia", ted, "daily"], ...STUDIA.map((x) => [`/studio/${x.slug}`, ted, "daily"]), ["/hlidac", ted, "monthly"], ["/prehled", ted, "daily"],
-    ["/pruvodce", ted, "weekly"], ["/obchody", ted, "hourly"], ["/ranni", ted, "daily"], ["/aktualizace", ted, "daily"], ["/ceska-scena", ted, "daily"],
+    ["/pruvodce", ted, "weekly"], ["/obchody", ted, "hourly"], ["/ranni", ted, "daily"], ["/aktualizace", ted, "daily"], ["/radar", ted, "hourly"], ["/trendy", ted, "daily"], ["/porovnat-hry", ted, "weekly"], ["/ceska-scena", ted, "daily"],
     ["/co-hrat", ted, "daily"], ["/rozjede-se", ted, "monthly"], ["/vyssi-nizsi", ted, "daily"], ["/o-webu", ted, "monthly"]];
   try {
     const [st, hry, cl] = await env.DB.batch([

@@ -4,6 +4,7 @@
 import { denPraha } from "./psani.js";
 import { BEZ_KATEGORIE } from "./prehled.js";
 import { zajistiSchemaHlidac } from "./hlidac.js";
+import { hraciZIgdb } from "./igdb-hra.js";
 
 const DEN = 86400e3;
 const posunDne = (den, n) => new Date(Date.parse(den + "T12:00:00Z") + n * DEN).toISOString().slice(0, 10);
@@ -17,8 +18,12 @@ export async function apiCoHrat(env, p) {
   const db = env.DB;
   await zajistiSchemaHlidac(db);
   const kde = ["g.jazyky_cas IS NOT NULL", "g.vychazi = 0", "g.zanry IS NOT NULL", "g.zanry <> ','"], hod = [];
-  const s = { sam: 1, koop: 2, online: 4 }[p.get("s")];
+  // Kolik vás je (2–8): jen hry pro víc hráčů (kooperace nebo online podle Steamu), počet hráčů pak z IGDB.
+  const n = Math.min(8, Math.max(0, parseInt(p.get("n") || "", 10) || 0));
+  let s = { sam: 1, koop: 2, online: 4 }[p.get("s")];
+  if (n >= 2 && s === 1) s = 0;
   if (s) { kde.push("(COALESCE(g.rezim, 0) & ?) <> 0"); hod.push(s); }
+  else if (n >= 2) kde.push("(COALESCE(g.rezim, 0) & 6) <> 0");
   const cz = { texty: 1, dabing: 2 }[p.get("cz")];
   if (cz) { kde.push("g.cestina >= ?"); hod.push(cz); }
   const cena = p.get("cena");
@@ -41,8 +46,27 @@ export async function apiCoHrat(env, p) {
     hodnoceni: g.recenzi >= 50 && g.kladne != null ? { kladne: g.kladne, recenzi: g.recenzi } : null,
     zanry: String(g.zanry || "").split(",").map(Number).filter((z) => ZANRY[z]).map((z) => ZANRY[z]),
     _s: skore(g),
-  })).sort((a, b) => b._s - a._s).slice(0, 12).map(({ _s, ...h }) => h);
-  return { hry, databaze: celkem.results[0]?.n || 0, zanry: ZANRY };
+  })).sort((a, b) => b._s - a._s);
+  if (n < 2) return { hry: hry.slice(0, 12).map(({ _s, ...h }) => h), databaze: celkem.results[0]?.n || 0, zanry: ZANRY };
+  // Skupina: počet hráčů z IGDB (multiplayer_modes). Bere se maximum podle zvoleného režimu; hry, kde IGDB počet nezná,
+  // jdou až za ty ověřené a jsou tak označené. Hry s menším maximem, než je vás, se vyřadí.
+  const kandidati = hry.slice(0, 40);
+  const mp = await hraciZIgdb(env, kandidati.map((h) => h.id)).catch(() => new Map());
+  const sedi = [], nevime = [];
+  let vyrazeno = 0;
+  for (const h of kandidati) {
+    const m = mp.get(String(h.id)) || null;
+    const koop = Math.max(m?.online_koop_max || 0, m?.offline_koop_max || 0);
+    const max = s === 2 ? koop : s === 4 ? Math.max(m?.online_max || 0, m?.online_koop_max || 0) : Math.max(koop, m?.online_max || 0);
+    const jednaKopie = !!(m && (m.splitscreen || m.offline_koop) && (m.offline_koop_max || 0) >= n);
+    const zaznam = { ...h, hraci: m ? { max: max || null, online_koop: m.online_koop, offline_koop: m.offline_koop, splitscreen: m.splitscreen, jedna_kopie: jednaKopie } : null,
+      skupina: { pocet: n, celkem: h.zdarma || h.cena === 0 ? 0 : h.cena != null ? Math.round(h.cena * n * 100) / 100 : null } };
+    if (max >= n) sedi.push(zaznam);
+    else if (!max) nevime.push(zaznam);
+    else vyrazeno++;
+  }
+  const vysl = [...sedi, ...nevime].slice(0, 12).map(({ _s, ...h }) => h);
+  return { hry: vysl, databaze: celkem.results[0]?.n || 0, zanry: ZANRY, skupina: { pocet: n, overeno: sedi.length, nevime: nevime.length, vyrazeno } };
 }
 
 // ---------- Vyšší, nebo nižší? ----------

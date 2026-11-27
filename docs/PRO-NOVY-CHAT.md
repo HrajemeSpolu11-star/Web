@@ -76,6 +76,18 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 - Domů má i Hru týdne, Recenze, Klipy týdne a Videa streamerů (`src/obsah.js`, Cron `40`). YouTube kanály se zadávají v adminu u streamera.
 - Všech 5 Cronů je obsazeno.
 
+## Herní pas a „Puls her“ (2026-11-27, schváleno podle návrhu ChatGPT, upravené na poctivou verzi)
+- **Herní radar** `/radar` (+ 5 položek na Domů „Na radaru“): aktualizace, hry zdarma, nejnižší ceny od začátku měření,
+  rekordy streamerů, trendy, vydání, výročí – jen ze sbíraných dat.
+- **Herní pas** = stránka hry: pulsometr, cenový radar + graf ceny (až 400 dní), herní DNA, poslední aktualizace, série a DLC (IGDB),
+  tlačítko „Porovnat s jinou hrou“.
+- **Pulsometr** 0–100 (jak je hra živá, NE jak je dobrá): hráči Steam 30 %, česká scéna 25 %, trend 15 %, aktualizace 20 %, sleva 10 %.
+- **Rostoucí a upadající hry** `/trendy` (česká scéna + Steam), **Srovnávač her** `/porovnat-hry`, **Co hrát s přáteli** (`/co-hrat?n=`),
+  **cenový radar** na Hlídači. Crossplay se neuvádí (není spolehlivý zdroj).
+- **Štítky původu dat** všude: Změřeno námi / Oficiální data / Databáze IGDB / AI souhrn (`/o-webu#stitky`).
+- Nedělat (rozhodnuto): uživatelské účty, knihovna/profil/hlasování s účty, česká herní mapa, AI poradce (až na konec),
+  „DNA“ vymyšlená AI.
+
 ## Strategie odlišení (schváleno 2026-11-26)
 Vlastní data o české scéně: „Co hraje Česko“ (`/hry`), týdenní report (`/report`), stránka hry se vším (obchody + čeština +
 hodnocení + streamy + klipy), rychlost bez reklam, upřímnost u čísel (`/o-webu#data`). Data jen z oficiálních zdrojů / vlastního měření.

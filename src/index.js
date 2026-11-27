@@ -26,6 +26,9 @@ import { apiAktualizace, sberPatchu, shrnPatch, sestavSledovane } from "./patche
 import { apiVyroci, sberVyroci } from "./vyroci.js";
 import { apiCoHrat, apiVyssiNizsi } from "./nastroje.js";
 import { apiCeskaScena } from "./studia.js";
+import { apiRadar } from "./radar.js";
+import { sestavTrendy, apiTrendy, apiCenovyRadar } from "./trendy.js";
+import { doplnPas, apiSrovnani } from "./pas.js";
 import { apiWishlist } from "./wishlist.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
@@ -258,13 +261,13 @@ async function hraOdpoved(env, ctx, h, infoP, ted, steamId = null) {
       ctx.waitUntil(env.DB.batch(prikazyUlozHry(env.DB, [info.steam], ted)).catch(() => {}));
       const u = (await doplnSteamUdaje(env.DB, [info.steam.id])).get(String(info.steam.id));
       if (u) info.steam.min90 = u.min90;
-      const { results } = await env.DB.prepare("SELECT den, cena FROM ceny_historie WHERE id = ? AND den >= ? ORDER BY den").bind(String(info.steam.id), new Date(ted - 90 * 86400e3).toISOString().slice(0, 10)).all();
-      info.steam.historie = results;
     } catch { /* nepovinné */ }
   }
+  // Herní pas: pulsometr, cenový radar, aktualizace, série a DLC, lehká DNA.
+  const pas = await doplnPas(env, ctx, { nazev: info?.steam?.nazev || h.nazev, st: info?.steam || null }).catch((e) => { console.error("pas:", e); return null; });
   return json({
     slug: h.slug, nazev: h.nazev, steam_id: steamId || info?.steam?.id || null,
-    info,
+    info, pas,
     statistiky: {
       hodin7: Math.round(tyden.reduce((a, d) => a + (d.dm || 0), 0) / 60),
       spicka7: Math.max(0, ...tyden.map((d) => d.spicka || 0)),
@@ -344,7 +347,7 @@ async function verejneApi(request, env, ctx, url) {
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
   // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
-  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam"];
+  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam", "n"];
   const ciste = new URL(url.origin + url.pathname);
   for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, k === "ids" ? 4000 : 200)); }
   const klic = new Request(ciste.toString(), { method: "GET" });
@@ -396,6 +399,10 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/co-hrat") odpoved = json(await apiCoHrat(env, url.searchParams), 200, 1800);
     else if (url.pathname === "/api/vyssi-nizsi") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiVyssiNizsi(env), 200, 1800); }
     else if (url.pathname === "/api/wishlist") { const w = await apiWishlist(env, url.searchParams.get("steam") || ""); odpoved = w.chyba ? json({ chyba: w.chyba }, w.status || 400) : json(w, 200, 600); }
+    else if (url.pathname === "/api/radar") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiRadar(env), 200, 600); }
+    else if (url.pathname === "/api/trendy") odpoved = json(await apiTrendy(env), 200, 1800);
+    else if (url.pathname === "/api/cenovy-radar") odpoved = json(await apiCenovyRadar(env), 200, 1800);
+    else if (url.pathname === "/api/srovnani") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiSrovnani(env, ctx, url.searchParams.get("ids")), 200, 1800); }
     else if (url.pathname === "/api/ceska-scena") odpoved = json(await apiCeskaScena(env), 200, 900);
     else if (url.pathname === "/api/stav-systemu") odpoved = json(await apiStavSystemu(env), 200, 60);
     else if (url.pathname === "/api/obsah") odpoved = json(await apiObsah(env), 200, 600);
@@ -519,6 +526,9 @@ export default {
         if (v.chyby.length) casti.push(`Nepovedlo se: ${v.chyby.join("; ")}.`);
         return casti.length ? casti.join(" ") : null;
       }));
+      // Trendy (rostoucí/upadající hry) a cenový radar: každé 3 hodiny, jen čtení z D1 + 2 zápisy.
+      ctx.waitUntil(behUlohy(env, "trendy", async () => (await zamekNa(env.DB, "trendy_beh", 3 * 3600e3 - 5 * 60e3)) ? sestavTrendy(env) : null, (v) => v
+        ? `Spočítala trendy her (česká scéna ${pl(v.cesko, "hra", "hry", "her")}, Steam ${pl(v.steam, "hra", "hry", "her")}) a cenový radar (${pl(v.ceny, "hra", "hry", "her")} na nejnižší ceně od začátku měření).${v.chyby.length ? ` Problém: ${v.chyby.join("; ")}.` : ""}` : null));
       ctx.waitUntil(behUlohy(env, "patche", async () => {
         const sez = await sestavSledovane(env).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) })); // 1× denně, ~7 dotazů na IGDB
         let shr;
