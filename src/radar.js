@@ -14,6 +14,7 @@ import { nactiKatalog } from "./trendy.js";
 const DEN = 86400e3;
 const https = (u) => (/^https:\/\//.test(String(u || "")) ? String(u) : "");
 const iso = (ms) => new Date(ms).toISOString();
+const dbOdkaz = (u) => { const m = /igdb\.com\/games\/([a-z0-9-]{1,100})/.exec(String(u || "")); return m ? `/databaze/${m[1]}` : ""; };
 
 export async function apiRadar(env) {
   const db = env.DB, ted = Date.now();
@@ -71,7 +72,7 @@ export async function apiRadar(env) {
       const d = Date.parse(h.datum);
       if (!Number.isFinite(d) || h.uz_vyslo) continue;
       const x = { typ: "vydani", cas: h.datum, hra: h.nazev, presne: h.presne, platformy: h.platformy, cestina: h.cestina, obrazek: https(h.obrazek),
-        odkaz: h.steam_id ? `/hra/steam/${encodeURIComponent(h.steam_id)}` : "/vydani", druh: "databaze", zdroj: "IGDB" };
+        odkaz: h.steam_id ? `/hra/steam/${encodeURIComponent(h.steam_id)}` : dbOdkaz(h.igdb) || "/vydani", druh: "databaze", zdroj: "IGDB" };
       if (d <= ted && d > ted - 2 * DEN) u.push(x);
       else if (d > ted && d <= ted + 7 * DEN && h.presne !== false) brzy.push(x);
     }
@@ -79,7 +80,7 @@ export async function apiRadar(env) {
   try {
     const vy = await apiVyroci(env);
     for (const h of (vy.hry || []).slice(0, 3)) u.push({ typ: "vyroci", cas: iso(Date.parse(vy.den + "T05:00:00Z")), hra: h.nazev, pred: h.pred, rok: h.rok, obrazek: https(h.obrazek),
-      odkaz: h.steam ? `/hra/steam/${encodeURIComponent(h.steam)}` : h.igdb || "/", druh: "databaze", zdroj: "IGDB" });
+      odkaz: h.steam ? `/hra/steam/${encodeURIComponent(h.steam)}` : dbOdkaz(h.igdb) || h.igdb || "/", druh: "databaze", zdroj: "IGDB" });
   } catch { /* nepovinné */ }
   u.sort((a, b) => b.cas.localeCompare(a.cas));
   brzy.sort((a, b) => a.cas.localeCompare(b.cas));

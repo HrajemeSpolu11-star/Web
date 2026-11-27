@@ -10,7 +10,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
-  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia|pruvodce|obchody|ranni|aktualizace|ceska-scena|co-hrat|rozjede-se|vyssi-nizsi)\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
+  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia|pruvodce|obchody|ranni|aktualizace|ceska-scena|co-hrat|rozjede-se|vyssi-nizsi|radar|trendy|porovnat-hry|databaze)\/?$/.test(pathname) || /^\/databaze\/[a-z0-9-]{1,100}\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
     /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/hra\/steam\/\d{1,10}\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
@@ -21,7 +21,7 @@ async function metaProStranku(url, env) {
   const og = (n) => `${url.origin}/og/${n}.png`;
   const OG = { "/": "domu", "/novinky": "novinky", "/zive": "streameri", "/streameri": "streameri", "/prehled": "streameri", "/porovnat": "streameri",
     "/hry": "cesko", "/cestina": "cestina", "/hlidac": "hlidac", "/vydani": "domu", "/akce": "domu", "/studia": "domu",
-    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky", "/radar": "novinky", "/trendy": "cesko", "/porovnat-hry": "hra" };
+    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky", "/radar": "novinky", "/trendy": "cesko", "/porovnat-hry": "hra", "/databaze": "hra" };
   let m = { title: `${NAZEV} – herní novinky a čeští streameři`, popis: POPIS, obrazek: og(OG[p] || (p.startsWith("/report") ? "report" : p.startsWith("/hra/") ? "hra" : "domu")),
     velky: true, index: true, status: 200, typ: "website" };
   try {
@@ -43,6 +43,20 @@ async function metaProStranku(url, env) {
     else if (p === "/ceska-scena") m = { ...m, title: `Česká herní scéna – Warhorse, Bohemia, Amanita a další | ${NAZEV}`, popis: "Novinky, trailery a hry českých herních studií z jejich oficiálních kanálů na jednom místě." };
     else if (p === "/co-hrat") m = { ...m, title: `Co dnes hrát? Doporučení her podle tebe | ${NAZEV}`, popis: "Vyber, s kým hraješ, kolik chceš dát, jestli chceš češtinu a žánr – doporučíme hry, které hráči na Steamu nejvíc chválí." };
     else if (p === "/rozjede-se") m = { ...m, title: `Rozjede se mi to? Porovnání PC s požadavky hry | ${NAZEV}`, popis: "Zadej grafiku, procesor a paměť a porovnej je s minimálními a doporučenými požadavky hry ze Steamu." };
+    else if (p === "/databaze") m = { ...m, title: `Databáze her – popis česky, platformy, data vydání | ${NAZEV}`, popis: "Přes 300 tisíc her od klasik po novinky: český popis, platformy a data vydání, obrázky, trailery, hodnocení, PEGI, série, DLC a podobné hry." };
+    else if (p.startsWith("/databaze/")) {
+      const slug = decodeURIComponent(p.slice(10));
+      const r = /^[a-z0-9][a-z0-9-]{0,99}$/.test(slug) ? await db.prepare("SELECT d.data, t.popis FROM igdb_detail d LEFT JOIN igdb_preklad t ON t.slug = d.slug WHERE d.slug = ?").bind(slug).first().catch(() => null) : null;
+      let d = null;
+      try { d = r ? JSON.parse(r.data) : null; } catch { /* nic */ }
+      if (d?.nenalezeno) m = { ...m, title: `Hra nenalezena | ${NAZEV}`, index: false, status: 404 };
+      else if (d) {
+        const rok = d.vydano ? new Date(d.vydano).getUTCFullYear() : "";
+        m = { ...m, title: `${d.nazev}${rok ? ` (${rok})` : ""} – popis, platformy, datum vydání | ${NAZEV}`,
+          popis: zkrat(r.popis || `${d.nazev}: ${[d.platformy?.slice(0, 4).join(", "), d.vyvojari?.[0]].filter(Boolean).join(" · ")}. Popis, data vydání, obrázky, hodnocení, podobné hry.`, 160),
+          obrazek: /^https:\/\//.test(d.obal || "") ? d.obal : m.obrazek };
+      } else m = { ...m, title: `Hra v databázi | ${NAZEV}`, popis: "Profil hry: popis česky, platformy, data vydání, obrázky, hodnocení a podobné hry." };
+    }
     else if (p === "/radar") m = { ...m, title: `Herní radar – co se právě děje ve hrách | ${NAZEV}`, popis: "Velké aktualizace, hry zdarma, hry na nejnižší ceně od začátku měření, rekordy českých streamerů, rostoucí hry a vydání na jednom místě." };
     else if (p === "/trendy") m = { ...m, title: `Rostoucí a upadající hry – Steam a české streamy | ${NAZEV}`, popis: "Které hry nabírají hráče na Steamu a diváky na českých streamech a které je ztrácejí. Jen z naměřených čísel, s vysvětlením výpočtu." };
     else if (p === "/porovnat-hry") m = { ...m, title: `Srovnávač her – cena, čeština, hráči a pulsometr | ${NAZEV}`, popis: "Porovnej dvě až čtyři hry vedle sebe: cenu, historii cen, češtinu, hodnocení, počet hráčů, herní DNA a pulsometr.", index: !url.searchParams.get("ids") };
@@ -151,7 +165,7 @@ export async function sitemap(request, env) {
   const o = new URL(request.url).origin;
   const ted = new Date().toISOString().slice(0, 10);
   const adresy = [["/", ted, "hourly"], ["/novinky", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/report", ted, "weekly"], ["/cestina", ted, "daily"], ["/vydani", ted, "daily"], ["/akce", ted, "daily"], ["/studia", ted, "daily"], ...STUDIA.map((x) => [`/studio/${x.slug}`, ted, "daily"]), ["/hlidac", ted, "monthly"], ["/prehled", ted, "daily"],
-    ["/pruvodce", ted, "weekly"], ["/obchody", ted, "hourly"], ["/ranni", ted, "daily"], ["/aktualizace", ted, "daily"], ["/radar", ted, "hourly"], ["/trendy", ted, "daily"], ["/porovnat-hry", ted, "weekly"], ["/ceska-scena", ted, "daily"],
+    ["/pruvodce", ted, "weekly"], ["/obchody", ted, "hourly"], ["/ranni", ted, "daily"], ["/aktualizace", ted, "daily"], ["/radar", ted, "hourly"], ["/trendy", ted, "daily"], ["/porovnat-hry", ted, "weekly"], ["/databaze", ted, "daily"], ["/ceska-scena", ted, "daily"],
     ["/co-hrat", ted, "daily"], ["/rozjede-se", ted, "monthly"], ["/vyssi-nizsi", ted, "daily"], ["/o-webu", ted, "monthly"]];
   try {
     const [st, hry, cl] = await env.DB.batch([
@@ -163,9 +177,12 @@ export async function sitemap(request, env) {
     for (const r of st.results) adresy.push([`/streamer/${r.platforma}/${encodeURIComponent(r.login)}`, d(r.posledni_zive), "daily"]);
     for (const r of hry.results) adresy.push([`/hra/${encodeURIComponent(r.slug)}`, d(r.posledni), "daily"]);
     // Hry ze Steamu s ověřenou češtinou (nejvíc recenzovaných 300).
-    const sh = await db.prepare("SELECT id FROM steam_hry WHERE cestina IS NOT NULL ORDER BY COALESCE(recenzi, 0) DESC LIMIT 300").all().catch(() => ({ results: [] }));
+    const sh = await env.DB.prepare("SELECT id FROM steam_hry WHERE cestina IS NOT NULL ORDER BY COALESCE(recenzi, 0) DESC LIMIT 300").all().catch(() => ({ results: [] }));
     for (const r of sh.results) adresy.push([`/hra/steam/${r.id}`, ted, "weekly"]);
     for (const r of cl.results) adresy.push([`/clanek/${r.id}`, d(r.t), "weekly"]);
+    // Databáze her: populární hry z IGDB (až 500).
+    const pop = await env.DB.prepare("SELECT data FROM katalog WHERE klic = 'igdb_popularni'").first().catch(() => null);
+    try { for (const h of (pop ? JSON.parse(pop.data) : []).slice(0, 500)) if (/^[a-z0-9-]{1,100}$/.test(h.slug || "")) adresy.push([`/databaze/${h.slug}`, ted, "weekly"]); } catch { /* nic */ }
   } catch (e) { console.warn("sitemap:", e); }
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     adresy.map(([u, l, f]) => `<url><loc>${escXml(o + u)}</loc><lastmod>${l}</lastmod><changefreq>${f}</changefreq></url>`).join("\n") + "\n</urlset>\n";

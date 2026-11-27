@@ -91,6 +91,10 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 - Nedělat (rozhodnuto): uživatelské účty, knihovna/profil/hlasování s účty, česká herní mapa, AI poradce (až na konec),
   „DNA“ vymyšlená AI.
 
+## Databáze her (od 2026-11-27)
+`/databaze` + `/databaze/<slug>`: každá hra z IGDB, popis česky (AI, označený), podobné hry, napojení na Steam data.
+Další schválený krok, zatím neudělaný: „Sledovat hru“ s upozorněním (vydání, aktualizace, sleva, novinka).
+
 ## Navigace (od 2026-11-27)
 Lišta: Domů, Novinky, Radar, Slevy, Kalendář, Aktualizace, Hry, Streameři (uživatel chtěl vytáhnout části Hry nahoru).
 Mobil: 5 ikon (Domů, Novinky, Radar, Hry, Streameři), třída `jen-pc` u ostatních. Vzhled „herní kanál“: banner `.kanal`

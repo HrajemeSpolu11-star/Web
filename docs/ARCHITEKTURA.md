@@ -122,3 +122,12 @@ a IGDB. Štítek původu dat (`puvod()` v `app.js`): Změřeno námi / Oficiáln
 Pozadí, screenshoty a trailery jdou z odpovědi Steam `appdetails`, kterou stránka hry už stahuje (`src/hra-data.js`, pole
 `pozadi`, `screenshoty`, `videa`) – žádné požadavky navíc. CSP v `public/_headers` má `media-src` jen pro Steam CDN (videa).
 Galerie a prohlížeč: `galerieHry()` / `otevriProhlizec()` v `app.js`, bez inline stylů.
+
+## Databáze her (2026-11-27)
+- `src/databaze.js`: `/api/databaze?q=` (hledání IGDB, mezipaměť 1 h), `/api/databaze` (populární, katalog `igdb_popularni`),
+  `/api/databaze/:slug` (profil, D1 `igdb_detail` 7 dní, při chybějícím překladu mezipaměť jen 2 min).
+- IGDB dotazy mají záložní varianty polí (nové schéma `game_type`, `age_ratings.rating_category` / staré `category`).
+- Překlad popisů: `prelozHru()` přes `zeptejSe(..., { bezSlabych: true })`, denní limit `PREKLADU_DENNE` (počítadlo
+  v `nastaveni`, klíč `preklad_YYYY-MM-DD`), kontrola čísel. Cron psaní: úloha „databaze“ (populární 1× denně ~5 dotazů IGDB,
+  2 překlady/h). Odhad: zápisy ≤ ~300 řádků/den, AI ≤ 250 volání/den.
+- Trasy: `/databaze`, `/databaze/*` ve `wrangler.jsonc` i v `jeStranka()` (jinak F5 vrací 404).

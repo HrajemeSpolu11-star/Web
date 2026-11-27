@@ -27,6 +27,7 @@ export const ULOHY = {
   aktualizace: { nazev: "Aktualizace her (Steam, ~1 000 her)", interval: 15 },
   kalendar: { nazev: "Kalendář vydání a výročí (IGDB)", interval: null },
   trendy: { nazev: "Trendy her a cenový radar", interval: 180 },
+  databaze: { nazev: "Databáze her (IGDB) a české popisy (AI)", interval: null },
 };
 
 export async function zapis(db, uloha, ok, text) {

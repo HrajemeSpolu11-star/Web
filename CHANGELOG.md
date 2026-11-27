@@ -8,6 +8,25 @@
 
 ---
 
+## 2026-11-27 – Databáze her (IGDB) s českým popisem
+- **Nová sekce `/databaze`**: hledání v celé databázi IGDB (přes 300 tisíc her, i konzolové exkluzivity a staré klasiky)
+  a populárních 48 her podle návštěvnosti IGDB (seznam se obnovuje 1× denně v Cronu psaní).
+- **Profil každé hry `/databaze/<slug>`**: obal a pozadí, platformy, vývojář a vydavatel, **popis česky** (přeložila AI,
+  štítek „AI souhrn · přeloženo z IGDB“ + originál ke zobrazení; anglicky pro návštěvníky s EN), příběh, galerie obrázků,
+  trailery (odkazy na YouTube), data vydání podle platforem, hodnocení kritiků a hráčů (IGDB) + Steam, PEGI, čeština
+  (Steam, jinak IGDB), délka hraní, žánry/témata/režimy/pohled, série s odkazy, DLC, **podobné hry**, obchody
+  (Steam, GOG, Epic, PlayStation, Xbox, Nintendo, itch.io…) a oficiální web. Napojení na naše data: cena a sleva ze Steamu,
+  hlídání ceny, odkaz na stránku hry na Steamu (pulsometr) a na české streamy.
+- **Český překlad** (`src/databaze.js`): AI na pozadí, max. 250 překladů denně + 2 populární hry každou hodinu předem;
+  překlad se zahodí, když obsahuje číslo, které v originálu není, nebo je podezřele dlouhý. Tabulky `igdb_detail` (7 dní),
+  `igdb_preklad`.
+- Propojení: kalendář vydání, výročí, radar a Domů vedou u her bez Steamu na profil v databázi; stránka hry ze Steamu
+  odkazuje na „Celý profil hry v databázi“. Rozcestník Hry: nová dlaždice Databáze her.
+- **Oprava**: `/radar`, `/trendy` a `/porovnat-hry` po obnovení stránky (F5) nebo při otevření odkazem vracely chybu 404 –
+  chyběly v seznamu stránek Workeru (`jeStranka` v `src/seo.js`). Opraveno i v mapě webu (sitemap) – chybné `db` místo
+  `env.DB` způsobilo, že se do ní nepřidávaly hry ze Steamu a články. Sitemap nově obsahuje až 500 her z databáze.
+- SEO: titulky a popisy profilů her (český popis, obal jako náhled). Překlady SK/EN.
+
 ## 2026-11-27 – Nové logo: herní ovladač s pulzující křivkou (vybral uživatel)
 - Uživatel vybral z návrhů logo „herní ovladač s EKG křivkou“ (3. v horní řadě). Původní logo (EKG ve žlutém čtverci)
   nahrazeno se souhlasem uživatele.

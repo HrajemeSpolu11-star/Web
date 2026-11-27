@@ -29,6 +29,7 @@ import { apiCeskaScena } from "./studia.js";
 import { apiRadar } from "./radar.js";
 import { sestavTrendy, apiTrendy, apiCenovyRadar } from "./trendy.js";
 import { doplnPas, apiSrovnani } from "./pas.js";
+import { apiHraDatabaze, apiHledatDatabaze, apiPopularniDatabaze, sestavPopularni, prelozPopularni } from "./databaze.js";
 import { apiWishlist } from "./wishlist.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
@@ -400,6 +401,17 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/co-hrat") odpoved = json(await apiCoHrat(env, url.searchParams), 200, 1800);
     else if (url.pathname === "/api/vyssi-nizsi") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiVyssiNizsi(env), 200, 1800); }
     else if (url.pathname === "/api/wishlist") { const w = await apiWishlist(env, url.searchParams.get("steam") || ""); odpoved = w.chyba ? json({ chyba: w.chyba }, w.status || 400) : json(w, 200, 600); }
+    else if (url.pathname === "/api/databaze") {
+      await zajistiSchemaTwitch(env.DB);
+      const q = url.searchParams.get("q");
+      odpoved = q ? json(await apiHledatDatabaze(env, q), 200, 3600) : json(await apiPopularniDatabaze(env), 200, 3600);
+    }
+    else if (url.pathname.startsWith("/api/databaze/")) {
+      await zajistiSchemaTwitch(env.DB);
+      const d = await apiHraDatabaze(env, ctx, dekoduj(url.pathname.slice(14)));
+      // Bez českého popisu jen krátká mezipaměť – překlad se dělá na pozadí a má se brzy ukázat.
+      odpoved = d.chyba ? json({ chyba: d.chyba }, d.status || 500) : json(d, 200, d.preklad || !(d.popis_en || d.pribeh_en) ? 3600 : 120);
+    }
     else if (url.pathname === "/api/radar") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiRadar(env), 200, 600); }
     else if (url.pathname === "/api/trendy") odpoved = json(await apiTrendy(env), 200, 1800);
     else if (url.pathname === "/api/cenovy-radar") odpoved = json(await apiCenovyRadar(env), 200, 1800);
@@ -525,6 +537,19 @@ export default {
         if (v.vydani?.her) casti.push(`Aktualizovala kalendář vydání (${pl(v.vydani.her, "hra", "hry", "her")}).`);
         if (v.vyroci?.her) casti.push(`Našla ${pl(v.vyroci.her, "výročí", "výročí", "výročí")} her vydaných v dnešní den.`);
         if (v.chyby.length) casti.push(`Nepovedlo se: ${v.chyby.join("; ")}.`);
+        return casti.length ? casti.join(" ") : null;
+      }));
+      // Databáze her: seznam populárních her z IGDB (1× denně) a předem 2 české překlady popisů za hodinu.
+      ctx.waitUntil(behUlohy(env, "databaze", async () => {
+        const pop = await sestavPopularni(env).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) }));
+        const pr = await prelozPopularni(env, 2).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) }));
+        return { pop, pr };
+      }, (v) => {
+        const casti = [];
+        if (v.pop?.her) casti.push(`Obnovila seznam ${pl(v.pop.her, "populární hry", "populárních her", "populárních her")} v databázi.`);
+        if (v.pop?.chyba) casti.push(`Seznam populárních her: ${v.pop.chyba}.`);
+        if (v.pr?.prelozeno) casti.push(`Přeložila do češtiny popis ${pl(v.pr.prelozeno, "hry", "her", "her")}.`);
+        if (v.pr?.chyba) casti.push(`Překlad: ${v.pr.chyba}.`);
         return casti.length ? casti.join(" ") : null;
       }));
       // Trendy (rostoucí/upadající hry) a cenový radar: každé 3 hodiny, jen čtení z D1 + 2 zápisy.

@@ -24,7 +24,7 @@ async function dotaz(env, tok, cesta, telo) {
   return r.json();
 }
 // Dotaz s obnovou tokenu (401) a záložními variantami pole (400 = IGDB pole přejmenovalo, např. category → game_type).
-async function igdb(env, stav, cesta, varianty) {
+export async function igdb(env, stav, cesta, varianty) {
   for (let i = 0; i < varianty.length; i++) {
     try { return await dotaz(env, stav.tok, cesta, varianty[i]); }
     catch (e) {
@@ -34,7 +34,7 @@ async function igdb(env, stav, cesta, varianty) {
   }
   return [];
 }
-const uvoz = (s) => String(s || "").replace(/["\\]/g, "").slice(0, 120);
+export const uvoz = (s) => String(s || "").replace(/["\\]/g, "").slice(0, 120);
 
 // Steam ID → ID hry v IGDB (stejně jako sledované hry: external_game_source = 1, dříve category = 1).
 async function idPodleSteamu(env, stav, appids) {
@@ -48,11 +48,11 @@ async function idPodleSteamu(env, stav, appids) {
   return m;
 }
 
-const PERSPEKTIVY = { "First person": "Z pohledu první osoby", "Third person": "Z pohledu třetí osoby", "Bird view / Isometric": "Shora / izometricky",
+export const PERSPEKTIVY = { "First person": "Z pohledu první osoby", "Third person": "Z pohledu třetí osoby", "Bird view / Isometric": "Shora / izometricky",
   "Side view": "Z boku", "Text": "Textová", "Auditory": "Zvuková", "Virtual Reality": "Virtuální realita (VR)" };
-const REZIMY = { "Single player": "Pro jednoho hráče", "Multiplayer": "Pro více hráčů", "Co-operative": "Kooperace", "Split screen": "Na jedné obrazovce",
+export const REZIMY = { "Single player": "Pro jednoho hráče", "Multiplayer": "Pro více hráčů", "Co-operative": "Kooperace", "Split screen": "Na jedné obrazovce",
   "Massively Multiplayer Online (MMO)": "MMO", "Battle Royale": "Battle royale" };
-const TEMATA = { "Action": "Akce", "Fantasy": "Fantasy", "Science fiction": "Sci-fi", "Horror": "Horor", "Thriller": "Thriller", "Survival": "Přežití",
+export const TEMATA = { "Action": "Akce", "Fantasy": "Fantasy", "Science fiction": "Sci-fi", "Horror": "Horor", "Thriller": "Thriller", "Survival": "Přežití",
   "Historical": "Historie", "Stealth": "Plížení", "Comedy": "Humor", "Business": "Byznys", "Drama": "Drama", "Non-fiction": "Podle skutečnosti",
   "Sandbox": "Sandbox", "Educational": "Vzdělávací", "Kids": "Pro děti", "Open world": "Otevřený svět", "Warfare": "Válka", "Party": "Párty",
   "4X (explore, expand, exploit, and exterminate)": "4X strategie", "Mystery": "Záhada", "Romance": "Romantika" };
@@ -111,7 +111,7 @@ async function stahniPas(env, stav, { appid, nazev }) {
     .filter((x) => x?.name).map((x) => ({ nazev: String(x.name).slice(0, 100), rok: rok(x.first_release_date), druh: x.druh }))
     .sort((a, b) => (b.rok || 0) - (a.rok || 0)).slice(0, 16);
   return {
-    igdb_id: id, url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
+    igdb_id: id, slug: g.slug || "", url: g.slug ? `https://www.igdb.com/games/${encodeURIComponent(g.slug)}` : "",
     serie, dlc, dlc_celkem: (g.expansions || []).length + (g.dlcs || []).length,
     dna: {
       pohled: preloz(PERSPEKTIVY, g.player_perspectives), rezimy: preloz(REZIMY, g.game_modes), temata: preloz(TEMATA, g.themes),

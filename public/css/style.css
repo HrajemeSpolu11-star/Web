@@ -1326,3 +1326,29 @@ html.bez-posunu{overflow:hidden}
 @keyframes lo-tep{0%{stroke-dashoffset:32;opacity:.6}40%{stroke-dashoffset:0;opacity:1}55%{opacity:1;stroke-width:3.2}70%,100%{stroke-dashoffset:0;opacity:.85;stroke-width:2.6}}
 .logo:hover .lo-krivka{animation-duration:1s}
 @media(prefers-reduced-motion:reduce){.logo-ovladac .lo-krivka{animation:none;stroke-dashoffset:0}}
+
+/* ===== 27. 11.: Databáze her (IGDB) ===== */
+.db-hledat{margin:0 0 6px}
+.db-hledat input{font-size:17px}
+@media(min-width:761px){.police-mriz.db-mriz{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
+@media(max-width:760px){.police-mriz.db-mriz{grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;margin-right:0;padding-right:0}}
+.db-hlava{display:flex;gap:22px;align-items:flex-end;margin:10px 0 6px}
+.db-obal{width:170px;aspect-ratio:3/4;object-fit:cover;border-radius:16px;flex:none;box-shadow:0 20px 50px -18px rgba(0,0,0,.8);border:1px solid var(--line);background:var(--card2);display:grid;place-items:center;font:800 48px var(--display)}
+.db-hlava h1{font:800 clamp(30px,5vw,52px)/1.02 var(--display);letter-spacing:-.03em;margin:0 0 8px;text-shadow:0 2px 14px rgba(0,0,0,.5)}
+.db-hlava .dim{margin:0 0 10px;font-size:16px}
+.db-plat{display:flex;flex-wrap:wrap;gap:6px}
+@media(max-width:520px){.db-hlava{gap:14px}.db-obal{width:110px;border-radius:12px}}
+.db-popis{font-size:17px;line-height:1.65;margin:0;max-width:70ch;white-space:pre-line}
+.db-orig{margin-top:8px}.db-orig summary,.db-pribeh summary{cursor:pointer;color:var(--accent);font-weight:700}
+.db-orig p,.db-pribeh p{color:var(--muted);line-height:1.6;white-space:pre-line;max-width:70ch}
+.db-pribeh{margin:14px 0 0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px}
+.db-videa{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.db-videa a{position:relative;display:flex;flex-direction:column;gap:6px}
+.db-videa img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--r-s);background:var(--card2)}
+.db-videa .gal-play{top:0;bottom:auto;height:52px;margin-top:calc((min(100%,1000px) * 0.5625 - 52px) / 2)}
+.db-videa b{font-size:14px}
+.db-hodn{grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}
+.db-vydani dd{font-variant-numeric:tabular-nums}
+.hra-bok .fakta{grid-template-columns:1fr}
+.hra-bok .fakta dd{text-align:right}
+.db-o-hre{max-width:760px}
