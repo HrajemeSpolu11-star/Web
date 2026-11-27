@@ -8,6 +8,12 @@
 
 ---
 
+## 2026-11-27 – Oprava: nasazení selhávalo (run_worker_first)
+- Nasazení od commitu „Databáze her…“ selhávalo: Cloudflare odmítá v `run_worker_first` adresu `/databaze/`, když je tam
+  zároveň `/databaze/*` („rule makes it redundant“). Odebráno `/databaze/` (pokrývá ho `/databaze/*`). Ověřeno
+  `wrangler deploy --dry-run`.
+- Do `CLAUDE.md` přidána kontrola: po změně `wrangler.jsonc` spustit `wrangler deploy --dry-run` (lokálně, bez Actions).
+
 ## 2026-11-27 – Databáze her (IGDB) s českým popisem
 - **Nová sekce `/databaze`**: hledání v celé databázi IGDB (přes 300 tisíc her, i konzolové exkluzivity a staré klasiky)
   a populárních 48 her podle návštěvnosti IGDB (seznam se obnovuje 1× denně v Cronu psaní).

@@ -22,6 +22,8 @@ Majitel: Michal (GitHub `HrajemeSpolu11-star`). Komunikace **vždy česky**.
 6. **Přesnost dat o streamerech**: čísla jen z oficiálních API, nic nedomýšlet; u lidí jen veřejné profesní informace.
 7. **Web se otevřeně hlásí jako AI web** (uvítací karta, štítek, `/o-webu`). Nic nepřikrašluj, AI články vždy označuj.
 8. Nasazení: push do `main` → Cloudflare Workers Builds nasadí samo (bez build kroku). Commity piš česky.
+   Po změně `wrangler.jsonc` (nebo nových souborů v `src/`) před pushem ověř `npx wrangler deploy --dry-run --outdir /tmp/wr`
+   – odhalí chyby, kvůli kterým by Cloudflare build selhal (např. v `run_worker_first` nesmí být `/x/` vedle `/x/*`).
 9. Uživatel pracuje z mobilu – návody piš krok za krokem, krátce, s přesnými názvy tlačítek.
 
 ## Rychlá orientace
