@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-11-27 – Nové logo, hlavní stránka, náhledy streamerů, zpětná tlačítka
+- **Nové logo**: přehrávací trojúhelník s EKG křivkou v barevném čtverci (růžová → fialová), křivka v hlavičce „tepe“.
+  Nové `ikona.svg`, `ikona-192/512.png`, `ikona-maskable-512.png`, `apple-touch-icon.png`, logo i v obrázcích ke sdílení.
+  Název v hlavičce písmem Bricolage Grotesque.
+- **Domů**: úvod ve dvou sloupcích – slogan, krátká věta a tři klikací čísla (zprávy za 24 h, hry zdarma, aktualizace
+  za 24 h) vlevo, monitor tepu a příští velké vydání vpravo; akce s odpočtem pod tím. Na mobilu pod sebou.
+- **Náhled profilu streamera**: když streamer nemá vlastní banner (na Twitchi/Kicku si ho nastavuje sám), ukáže se živý záběr
+  ze streamu, jinak rozostřená profilovka v barvě platformy s EKG křivkou. Banner, který se nenačte, se nahradí taky.
+- **Zpětná tlačítka**: „← Zpět“ vrací na opravdu předchozí stránku webu (i se stavem filtrů); bez historie vede na nadřazenou
+  sekci. Doplněno na /stav. Kontrola odkazů: 57 typů stránek prolezeno, žádný odkaz nevede na neexistující stránku.
+- Service worker `hp-offline-v4`. Překlady nových textů.
+
 ## 2026-11-27 – Jednotný vzhled „herního kanálu“, nová lišta, kalendář bez posuvníku
 - **Lišta**: nové položky Radar, Slevy (`/obchody`), Kalendář (`/vydani`), Aktualizace – na počítači všechny s ikonami,
   na mobilu spodní lišta s 5 ikonami (Domů, Novinky, Radar, Hry, Streameři); Slevy/Kalendář/Aktualizace jsou na mobilu

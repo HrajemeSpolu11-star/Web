@@ -27,6 +27,10 @@
   function obarvi(root) {
     requestAnimationFrame(() => nakresliEkg(root));
     root.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
+    // Zpětné tlačítko vede na předchozí stránku webu → popisek „Zpět“ (bez historie vede na nadřazenou sekci s jejím názvem).
+    if ((history.state?.n || 0) > 0) root.querySelectorAll("a.back, a.zpet-hub").forEach((a) => { a.textContent = "← Zpět"; });
+    // Obrázek, který se nenačte (smazaný banner, vypršelý náhled), nahradí náhradní pozadí.
+    root.querySelectorAll("img[data-zaloha]").forEach((img) => img.addEventListener("error", () => { const b = img.closest(".banner"); img.remove(); b?.classList.add("banner-nahrada"); }, { once: true }));
     root.querySelectorAll("img.cover-img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
     // Aktualizace bez obrázku: náhradní dlaždice s názvem hry (data-hra → CSS).
     root.querySelectorAll(".patch-obr img").forEach((img) => img.addEventListener("error", () => { img.parentElement.classList.add("bez-obr"); img.remove(); }, { once: true }));
@@ -131,15 +135,18 @@
     const z = g.createRadialGradient(W * 0.85, H * 0.1, 0, W * 0.85, H * 0.1, 700);
     z.addColorStop(0, "rgba(155,92,255,.38)"); z.addColorStop(1, "rgba(155,92,255,0)");
     g.fillStyle = z; g.fillRect(0, 0, W, H);
-    // neuronová síť z loga
-    const sit = (cx, cy, r, a) => {
-      const b = [-90, -30, 30, 90, 150, 210].map((u) => [cx + r * Math.cos(u * Math.PI / 180), cy + r * Math.sin(u * Math.PI / 180)]);
-      g.strokeStyle = `rgba(155,92,255,${0.45 * a})`; g.lineWidth = Math.max(2, r / 40);
-      b.forEach((p, i) => { g.beginPath(); g.moveTo(...p); g.lineTo(...b[(i + 1) % 6]); g.moveTo(...p); g.lineTo(cx, cy); g.stroke(); });
-      g.fillStyle = `rgba(155,92,255,${a})`; b.forEach((p) => { g.beginPath(); g.arc(...p, r / 9, 0, 7); g.fill(); });
-      g.fillStyle = `rgba(255,192,77,${a})`; g.beginPath(); g.arc(cx, cy, r / 4.5, 0, 7); g.fill();
+    // znak loga: přehrávací trojúhelník s EKG křivkou (stejný jako v hlavičce webu)
+    const znak = (x, y, vel, a) => {
+      g.save(); g.translate(x, y); g.scale(vel / 64, vel / 64); g.globalAlpha = a;
+      const gr = g.createLinearGradient(0, 0, 64, 64); gr.addColorStop(0, "#ff3d7f"); gr.addColorStop(0.55, "#b347ff"); gr.addColorStop(1, "#6d4bff");
+      g.fillStyle = gr; g.beginPath(); g.roundRect(0, 0, 64, 64, 18); g.fill();
+      const tri = new Path2D("M23 17.5c0-2.6 2.8-4.2 5-2.9l19.6 11.6c2.2 1.3 2.2 4.5 0 5.8L28 43.6c-2.2 1.3-5-.3-5-2.9z"), ekgP = new Path2D("M6 33h15l4-9 5 17 5-13 3 5h20");
+      g.fillStyle = "#fff"; g.fill(tri);
+      g.lineWidth = 3.4; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = "#fff"; g.stroke(ekgP);
+      g.save(); g.clip(tri); g.strokeStyle = "#7a2bd6"; g.stroke(ekgP); g.restore();
+      g.restore();
     };
-    sit(880, 210, 150, 0.35); sit(110, 110, 34, 1);
+    znak(760, 70, 280, 0.18); znak(76, 76, 72, 1);
     g.fillStyle = "#f4f1ff"; g.font = F(800, 46); g.textBaseline = "middle"; g.fillText("Herní puls", 165, 112);
     // štítek
     g.font = F(800, 34); const sw = g.measureText(stitek).width;
@@ -1253,7 +1260,7 @@
     let d;
     try { d = await nacti("stav-systemu"); } catch { app.innerHTML = `<p class="empty">Stav se nepodařilo načíst.</p>`; return; }
     if (location.pathname.replace(/\/+$/, "") !== "/stav") return;
-    app.innerHTML = `<div class="cesko-head"><h1>Stav systému a deník AI</h1>
+    app.innerHTML = `<a class="back" href="/">← Domů</a><div class="cesko-head"><h1>Stav systému a deník AI</h1>
         <p>Web provozuje AI. Tady je vidět, co právě dělá a jestli všechno běží – bez přikrášlování, včetně chyb.</p></div>
       <div class="stav-souhrn ${d.vse_ok ? "st-ok" : "st-pozor"}"><span class="ai-jadro" aria-hidden="true"></span>
         <b>${d.vse_ok ? "Všechno běží" : "Něco nejede, jak má"}</b><span>kontrola ${esc(hhmm(d.cas))}</span></div>
@@ -1795,6 +1802,16 @@
     napojOvladani(() => strankaStreameri().then(() => obarvi(app)), 350);
   }
 
+  // Náhled profilu: vlastní banner kanálu → když streamer žádný nenastavil, živý záběr ze streamu → jinak rozostřená
+  // profilovka v barvě platformy s EKG křivkou. (Banner si na Twitchi/Kicku nastavuje každý sám; mnoho kanálů ho nemá.)
+  function bannerStreamera(s) {
+    const pl = s.platforma === "kick" ? "kick" : "twitch";
+    if (https(s.banner)) return `<div class="banner"><img src="${esc(s.banner)}" alt="" referrerpolicy="no-referrer" data-zaloha></div>`;
+    const zivy = s.zive && https(s.nahled) ? s.nahled.replace("{width}", "1280").replace("{height}", "720") : "";
+    if (zivy) return `<div class="banner banner-zive"><img src="${esc(zivy)}" alt="" referrerpolicy="no-referrer" data-zaloha><span class="banner-stitek">Živý záběr ze streamu</span></div>`;
+    return `<div class="banner banner-nahrada banner-${pl}">${https(s.profilovka) ? `<img src="${esc(s.profilovka)}" alt="" referrerpolicy="no-referrer" data-zaloha>` : ""}
+      <svg class="banner-ekg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70h170l18-40 22 76 20-58 14 22h96l16-34 20 62 18-44 12 16h194"/></svg></div>`;
+  }
   async function strankaStreamer(platforma, login) {
     app.innerHTML = `<div class="profile"><div class="kostra kostra-banner"></div>${kostra(3)}</div>`;
     let s;
@@ -1806,7 +1823,7 @@
     const datumCz = (d) => d ? new Date(d).toLocaleDateString(LOC) : "–";
     app.innerHTML = `<div class="profile">
       <a class="back" href="/streameri">← Všichni streameři</a>
-      <div class="banner">${https(s.banner) ? `<img src="${esc(s.banner)}" alt="" referrerpolicy="no-referrer">` : ""}</div>
+      ${bannerStreamera(s)}
       <div class="profile-head">${av(s, true)}
         <div class="ph-text"><h1 class="m0">${esc(s.jmeno)}${partner(s)}</h1>
           <div class="dim">${platBadge(s)} ${s.platforma === "kick" ? "kick.com" : "twitch.tv"}/${esc(s.login)}${s.ucet_od ? ` · účet od ${esc(new Date(s.ucet_od).getFullYear())}` : ""}</div></div></div>
@@ -2316,6 +2333,7 @@
     const akce = (state.akce?.akce || [])[0];
     const zpravDnes = state.clanky.filter((c) => Date.now() - datum(c) < 864e5).length;
     const brzy = (vydani?.hry || []).slice(0, 10);
+    const patchu24 = (aktualizace?.polozky || []).filter((p) => Date.now() - Date.parse(p.datum) < 864e5).length;
     // Nejdřív aktualizace se shrnutím, nejpopulárnější hry první; jedna hra jen jednou.
     const patche = (() => { const vid = new Set(); return [...(aktualizace?.polozky || [])].filter((p) => Date.now() - Date.parse(p.datum) < 7 * 864e5)
       .sort((a, b) => (b.stav === "hotovo") - (a.stav === "hotovo") || (a.poradi || 9999) - (b.poradi || 9999)).filter((p) => !vid.has(p.hra) && vid.add(p.hra)).slice(0, 4); })();
@@ -2323,12 +2341,22 @@
     const radarDomu = (() => { const n = {}; return (state.radar?.udalosti || []).filter((u) => u.typ !== "aktualizace" && (n[u.typ] = (n[u.typ] || 0) + 1) <= 2).slice(0, 5); })();
     app.innerHTML = `
       <section class="uvod">
-        <h1>Hry mají tep.<br>My ho <em>měříme.</em></h1>
-        ${ekg(zpravDnes, true)}
-        <p class="uvod-veta"><span class="zivy-bod" aria-hidden="true"></span>Tep herního světa <b>${tepZDivaku(zpravDnes)}/min</b>${zpravDnes ? ` · <b>${zpravDnes}</b> zpráv za 24 h` : ""}${zdarmaVse.length ? ` · <b>${pl(zdarmaVse.length, "hra", "hry", "her")}</b> zdarma` : ""}${brzy[0] ? ` · příští velké vydání: <b>${esc(brzy[0].nazev)}</b>` : ""}</p>
-        ${akce ? `<a class="pristi-akce" href="/akce"><span class="akce-typ">${esc(TYP_AKCE[akce.typ] || "")}</span>
-          <b>${esc(akce.nazev)}</b><span>${akce.bezi ? "probíhá · končí za" : "za"} <b data-odpocet="${esc(akce.bezi ? akce.do : akce.od)}"></b></span></a>` : ""}
+        <div class="uvod-text">
+          <h1>Hry mají tep.<br>My ho <em>měříme.</em></h1>
+          <p class="uvod-perex">Herní novinky, slevy, aktualizace a vydání – každý den, česky a s čísly, která se dají ověřit.</p>
+          <div class="uvod-cisla">
+            <a href="/novinky"><b>${esc(num(zpravDnes))}</b><span>zpráv za 24 h</span></a>
+            <a href="/obchody"><b>${esc(num(zdarmaVse.length))}</b><span>${zdarmaVse.length === 1 ? "hra zdarma" : zdarmaVse.length >= 2 && zdarmaVse.length <= 4 ? "hry zdarma" : "her zdarma"}</span></a>
+            <a href="/aktualizace"><b>${esc(num(patchu24))}</b><span>aktualizací za 24 h</span></a>
+          </div>
+        </div>
+        <div class="uvod-monitor">
+          ${ekg(zpravDnes, true)}
+          <p class="uvod-veta"><span class="zivy-bod" aria-hidden="true"></span>Tep herního světa <b>${tepZDivaku(zpravDnes)}/min</b>${brzy[0] ? ` · příští velké vydání: <a href="${brzy[0].steam_id ? `/hra/steam/${esc(brzy[0].steam_id)}` : "/vydani"}"><b>${esc(brzy[0].nazev)}</b></a>` : ""}</p>
+        </div>
       </section>
+      ${akce ? `<a class="pristi-akce" href="/akce"><span class="akce-typ">${esc(TYP_AKCE[akce.typ] || "")}</span>
+        <b>${esc(akce.nazev)}</b><span>${akce.bezi ? "probíhá · končí za" : "za"} <b data-odpocet="${esc(akce.bezi ? akce.do : akce.od)}"></b></span></a>` : ""}
 
       <div class="mozaika">
         ${ranni?.body?.length ? `<section class="ranni-karta ${tydne ? "m7" : "m12"}">
@@ -2514,13 +2542,17 @@
     else stranka404();
     Promise.resolve(p).then(() => obarvi(app));
   }
+  // Hloubka procházení v rámci webu (history.state.n) – tlačítka „← Zpět“ pak vrací na opravdu předchozí stránku.
   function jdi(href) {
-    history.pushState(null, "", href);
+    history.pushState({ n: (history.state?.n || 0) + 1 }, "", href);
     route();
     scrollTo(0, 0);
   }
   // Odkazy v rámci webu se otevírají bez načítání celé stránky.
   document.addEventListener("click", (e) => {
+    // Zpětná tlačítka: když návštěvník přišel z jiné stránky webu, vrátí ho přesně tam (i se stavem filtrů a posunem).
+    const zpet = e.target.closest("a.back, a.zpet-hub");
+    if (zpet && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0 && (history.state?.n || 0) > 0) { e.preventDefault(); history.back(); return; }
     const a = e.target.closest("a[href]");
     if (!a || a.target || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
     const url = new URL(a.href, location.href);
