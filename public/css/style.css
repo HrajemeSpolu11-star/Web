@@ -654,7 +654,7 @@ a.ai-stav u{text-decoration-color:var(--line)}
 .web-nahled .btn-maly{align-self:flex-start}
 @media(min-width:760px){.web-nahled{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.web-nahled img{height:100%}}
 /* Nic nesmí roztáhnout stránku do šířky (dlouhá slova, URL, mřížky). */
-#app{min-width:0;max-width:100%;overflow-x:clip}
+#app{min-width:0;max-width:min(100%,1180px);overflow-x:clip}
 .akce>*,.studia>*,.rec-list>*,.vydani>*,.hrady>*,.stav-ulohy>*,.grid>*,.slist>*{min-width:0}
 .rec>div,.vyd-t,.hrad-t,.studio-h>div,.akce-k,.studio-k p,.hk-t{min-width:0;overflow-wrap:anywhere}
 .hub-tabs{max-width:100%}
@@ -1206,3 +1206,73 @@ html.bez-posunu{overflow:hidden}
   .hra-bok .puls-slozky .bar{grid-column:1/-1;grid-row:2}
   .hra-bok .puls-cislo{width:80px;height:80px}.hra-bok .puls-cislo b{font-size:30px}
 }
+
+/* ===== 27. 11.: Jednotný vzhled „herního kanálu“ – lišta, hlavičky stránek, rozcestník, police s obaly ===== */
+/* Lišta: ikony i na počítači, barevné zvýraznění aktivní sekce. Slevy/Kalendář/Aktualizace jen na počítači (mobil má 5 ikon). */
+.tabs .ikona{display:block;width:18px;height:18px}
+.tabs a{padding:8px 13px;gap:7px;transition:background .15s,color .15s}
+.tabs a:hover{color:var(--text);background:var(--card2)}
+.tabs a.on:hover{background:var(--accent);color:var(--accent-ink)}
+@media(min-width:761px) and (max-width:1339px){
+  .top{flex-wrap:wrap;row-gap:8px}
+  .top .tabs{order:3;width:100%;justify-content:center;flex-wrap:wrap}
+}
+@media(min-width:761px) and (max-width:900px){.tabs a span:not(.dot){font-size:14px}.tabs a{padding:8px 10px}}
+@media(max-width:760px){
+  .tabs a.jen-pc{display:none!important}
+  .tabs:has(.ikona){grid-template-columns:repeat(5,1fr)}
+  .tabs:has(.ikona) a{font-size:11px}
+  .tabs .ikona{width:20px;height:20px}
+}
+
+/* Hlavička každé stránky = banner kanálu v barvě sekce (--sk). */
+.kanal,.live-head,.news-head{--sk:#ffc04d;position:relative;isolation:isolate;overflow:hidden;margin:6px 0 16px;padding:24px 24px 20px;
+  border-radius:var(--r-l);border:1px solid var(--line);
+  background:radial-gradient(90% 160% at 0% 0%,color-mix(in srgb,var(--sk) 30%,transparent),transparent 60%),
+    radial-gradient(60% 120% at 100% 100%,color-mix(in srgb,var(--sk) 14%,transparent),transparent 70%),linear-gradient(135deg,var(--card2),var(--card))}
+.live-head{--sk:#9b5cff}.news-head{--sk:#5cc8ff}
+.kanal{display:flex;gap:18px;align-items:center}
+.kanal h1,.live-head h1,.news-head h1{margin:0 0 6px}
+.kanal p,.live-head p,.news-head p{margin:0;color:var(--muted);max-width:65ch}
+/* EKG stopa v rohu banneru – motiv „Herní puls“. */
+.kanal::after,.live-head::after,.news-head::after{content:"";position:absolute;right:-10px;bottom:10px;width:260px;height:60px;z-index:-1;opacity:.35;
+  background:var(--sk);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 60'%3E%3Cpath d='M0 35h70l10-22 14 40 12-30 8 12h46l8-18 12 34 10-26 8 10h62' fill='none' stroke='%23000' stroke-width='3' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 60'%3E%3Cpath d='M0 35h70l10-22 14 40 12-30 8 12h46l8-18 12 34 10-26 8 10h62' fill='none' stroke='%23000' stroke-width='3' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat}
+.live-head::before,.news-head::before{display:none}
+.kanal-ikona{flex:none;width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:var(--sk);color:var(--bg);
+  box-shadow:0 10px 30px -8px color-mix(in srgb,var(--sk) 70%,transparent)}
+.kanal-ikona svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:520px){.kanal,.live-head,.news-head{padding:18px 16px 16px}.kanal{gap:12px;align-items:flex-start}.kanal-ikona{width:44px;height:44px;border-radius:14px}.kanal-ikona svg{width:23px;height:23px}}
+
+/* Podsekce jako barevné „pilulky“ (stejně všude). */
+.hub-tabs{border-bottom:0;gap:8px;margin:0 0 18px;padding-bottom:2px}
+.hub-tabs a{border:1px solid var(--line);border-radius:999px;padding:8px 16px;min-height:40px;display:inline-flex;align-items:center;background:var(--card);margin:0;font-size:14.5px}
+.hub-tabs a:hover{color:var(--text);border-color:var(--accent)}
+.hub-tabs a.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+/* Rozcestník Hry: dlaždice s ikonou jako „kanály“. */
+.pruvodce{gap:30px}
+.pr-skupina h2{font:800 20px/1.2 var(--display);color:var(--text);margin:0 0 12px;gap:10px}
+.pr-skupina h2::before{width:6px;height:22px;border-radius:3px}
+.pr-dlazdice{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.pr-dl{flex-direction:row;align-items:flex-start;gap:14px;padding:18px;position:relative;overflow:hidden;border:1px solid var(--line);
+  background:radial-gradient(120% 120% at 0% 0%,color-mix(in srgb,var(--sk) 16%,transparent),transparent 55%),var(--card);
+  transition:transform .18s,border-color .18s,box-shadow .18s}
+.pr-dl::before{display:none}
+.pr-dl .n-ikona{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:var(--sk);color:var(--bg)}
+.pr-dl .n-ikona svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pr-dl > div{display:flex;flex-direction:column;gap:4px}
+.pr-dl:hover{transform:translateY(-3px);border-color:var(--sk);box-shadow:0 14px 34px -14px color-mix(in srgb,var(--sk) 60%,transparent)}
+@media(hover:none){.pr-dl:active{transform:scale(.98);border-color:var(--sk)}}
+@media(prefers-reduced-motion:reduce){.pr-dl,.pr-dl:hover{transition:none;transform:none}}
+
+/* Police s obaly her: na počítači mřížka bez posuvníku, na mobilu posun prstem bez viditelné lišty. */
+.police{scrollbar-width:none}
+.police::-webkit-scrollbar{display:none}
+@media(min-width:761px){
+  .police-mriz{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-auto-columns:auto;overflow:visible;gap:16px}
+}
+@media(max-width:760px){.police-mriz{grid-auto-columns:118px;margin-right:-16px;padding-right:16px}}
+.radar-brzy{margin-bottom:8px}
+@media(min-width:761px){.police-mriz.rada{grid-template-columns:repeat(8,minmax(0,1fr));gap:14px}}
+@media(max-width:620px){.kanal::after,.live-head::after,.news-head::after{display:none}}

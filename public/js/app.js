@@ -26,6 +26,7 @@
   // Styly se nastavují přes JS (CSSOM), takže CSP může zakázat inline styly.
   function obarvi(root) {
     requestAnimationFrame(() => nakresliEkg(root));
+    root.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
     root.querySelectorAll("img.cover-img").forEach((img) => img.addEventListener("error", () => img.remove(), { once: true }));
     // Aktualizace bez obrázku: náhradní dlaždice s názvem hry (data-hra → CSS).
     root.querySelectorAll(".patch-obr img").forEach((img) => img.addEventListener("error", () => { img.parentElement.classList.add("bez-obr"); img.remove(); }, { once: true }));
@@ -384,16 +385,17 @@
   ];
   function hubHry(aktivni, nadpis, perex) {
     const sk = SKUPINY_HER.find((g) => g.polozky.some(([k]) => k === aktivni));
+    const ik = IKONY[IKONA_STRANKY[aktivni]];
     return `<a class="zpet-hub" href="/pruvodce">← Všechno o hrách</a>
-      <div class="cesko-head"><h1>${esc(nadpis)}</h1>${perex ? `<p>${perex}</p>` : ""}</div>
+      <div class="cesko-head kanal"${sk ? ` data-barva="${sk.barva}"` : ""}>${ik ? `<span class="kanal-ikona" aria-hidden="true">${ik}</span>` : ""}<div><h1>${esc(nadpis)}</h1>${perex ? `<p>${perex}</p>` : ""}</div></div>
       ${sk && sk.polozky.length > 1 ? `<nav class="hub-tabs" aria-label="${esc(sk.nazev)}">${sk.polozky.map(([k, h, t]) => `<a href="${h}" class="${k === aktivni ? "on" : ""}">${t}</a>`).join("")}</nav>` : ""}`;
   }
   function strankaPruvodce() {
     nastavTitulek("Všechno o hrách – nástroje, slevy, kalendář, studia");
-    app.innerHTML = `<div class="cesko-head"><h1>Všechno o hrách</h1><p>Vyber, co tě zajímá. Každá stránka dělá jednu věc a dělá ji pořádně.</p></div>
+    app.innerHTML = `<div class="cesko-head kanal" data-barva="#ffc04d"><span class="kanal-ikona" aria-hidden="true">${IKONY.hrat}</span><div><h1>Všechno o hrách</h1><p>Vyber, co tě zajímá. Každá stránka dělá jednu věc a dělá ji pořádně.</p></div></div>
       <div class="pruvodce">${SKUPINY_HER.map((g) => `<section class="pr-skupina" data-barva="${g.barva}">
         <h2>${esc(g.nazev)}</h2>
-        <div class="pr-dlazdice">${g.polozky.map(([, h, t, popis]) => `<a class="pr-dl" href="${h}"><b>${t}</b><span>${popis}</span></a>`).join("")}</div>
+        <div class="pr-dlazdice">${g.polozky.map(([k, h, t, popis]) => `<a class="pr-dl" href="${h}"><span class="n-ikona" aria-hidden="true">${IKONY[IKONA_STRANKY[k]] || IKONY.hrat}</span><div><b>${t}</b><span>${popis}</span></div></a>`).join("")}</div>
       </section>`).join("")}</div>
       <p class="source-note">Hledáš streamery? Jsou v sekci <a href="/zive">Streameři</a>.</p>`;
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
@@ -805,7 +807,9 @@
       <div class="chips chips-barvy">${[["", "Vše"], ...Object.entries(TYP_RADARU).filter(([k]) => pocty[k]).map(([k, v]) => [k, `${v[0]} (${pocty[k]})`])].map(([k, t]) =>
         `<a class="chip${k === typ ? " on" : ""}" href="/radar${k ? `?typ=${k}` : ""}">${t}</a>`).join("")}</div>
       ${!typ && d.brzy.length ? `<section class="radar-brzy"><div class="section-title">Vychází do 7 dní · <a href="/vydani">kalendář</a></div>
-        <div class="radar-brzy-l">${d.brzy.map((h) => `<a href="${esc(h.odkaz)}"><b>${esc(h.hra)}</b><span>${esc(dnyDoVydani(h.cas))}</span></a>`).join("")}</div></section>` : ""}
+        <div class="police police-mriz">${d.brzy.slice(0, 10).map((h) => `<a class="obal" href="${esc(h.odkaz)}">
+          ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="obal-bez">${esc((h.hra || "?")[0])}</span>`}
+          <span class="obal-cip">${esc(dnyDoVydani(h.cas).replace("vychází ", ""))}</span><b>${esc(h.hra)}</b><small>${esc(datumVydani(h.cas))}</small></a>`).join("")}</div></section>` : ""}
       ${dny.length ? dny.map(([den, u]) => `<section class="radar-den"><h2>${esc(den)}</h2><div class="radar-l">${u.map(radekRadaru).join("")}</div></section>`).join("")
         : `<p class="empty">Za posledních 7 dní tu zatím nic není. Radar se plní z aktualizací her, obchodů a našeho měření streamů.</p>`}
       <p class="source-note">Radar nic nevymýšlí – každá položka pochází z dat, která web sbírá (oficiální oznámení na Steamu, obchody Epic a Steam, databáze IGDB, naše měření Twitche a Kicku). Barevný štítek u položky říká, odkud je. <a href="/o-webu#data">Jak počítáme</a></p>`;
@@ -2270,7 +2274,20 @@
     pc: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
     vn: '<svg viewBox="0 0 24 24"><path d="M12 4v16M6 10l6-6 6 6M6 14l6 6 6-6"/></svg>',
     cz: '<svg viewBox="0 0 24 24"><path d="M4 21V9l8-5 8 5v12M9 21v-6h6v6"/></svg>',
+    radar: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="1"/></svg>',
+    trendy: '<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
+    srovnani: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="16" rx="2"/><rect x="14" y="4" width="7" height="16" rx="2"/></svg>',
+    jazyk: '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8"/></svg>',
+    slevy: '<svg viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg>',
+    hlidac: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg>',
+    kalendar: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    aktualizace: '<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5l-2 2M4 13a8 8 0 0 0 14 5l2-2"/><path d="M4 4v4h4M20 20v-4h-4"/></svg>',
+    akce: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>',
+    studia: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 6l2 4M12 6l2 4M17 6l2 4"/></svg>',
   };
+  // Ikona každé stránky v rozcestníku Hry a v hlavičce stránky.
+  const IKONA_STRANKY = { radar: "radar", trendy: "trendy", "porovnat-hry": "srovnani", "co-hrat": "hrat", "rozjede-se": "pc", cestina: "jazyk",
+    obchody: "slevy", hlidac: "hlidac", vydani: "kalendar", aktualizace: "aktualizace", akce: "akce", "ceska-scena": "cz", studia: "studia", "vyssi-nizsi": "vn" };
   const NASTROJE_DOMU = [
     ["/co-hrat", "Co dnes hrát?", "Pár ťuknutí a máš tip na hru.", "#ffc04d", "hrat"],
     ["/rozjede-se", "Rozjede se mi to?", "Porovnej svůj počítač s hrou.", "#39d5ff", "pc"],
@@ -2338,7 +2355,7 @@
 
         ${brzy.length ? `<section class="blok m12">
           <div class="section-title">Brzy vyjde · <a href="/vydani">celý kalendář</a></div>
-          <div class="police">${brzy.map((h) => `<a class="obal" ${h.steam_id ? `href="/hra/steam/${esc(h.steam_id)}"` : `href="/vydani"`}>
+          <div class="police police-mriz rada">${brzy.slice(0, 8).map((h) => `<a class="obal" ${h.steam_id ? `href="/hra/steam/${esc(h.steam_id)}"` : `href="/vydani"`}>
               ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="obal-bez">${esc(h.nazev[0])}</span>`}
               ${h.presne ? `<span class="obal-cip">${esc(dnyDoVydani(h.datum).replace("vychází ", ""))}</span>` : ""}
               <b>${esc(h.nazev)}</b><small>${h.presne ? esc(datumVydani(h.datum)) : esc(h.human)}${h.cestina > 0 ? ` · <span class="cz">${h.cestina === 2 ? "CZ dabing" : "CZ texty"}</span>` : ""}</small></a>`).join("")}</div>
@@ -2359,7 +2376,7 @@
 
         ${vyroci?.hry?.length ? `<section class="blok m12">
           <div class="section-title">Dnes před lety vyšlo</div>
-          <div class="police">${vyroci.hry.slice(0, 8).map((h) => `<a class="obal" ${h.steam ? `href="/hra/steam/${esc(h.steam)}"` : `href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer"`}>
+          <div class="police police-mriz rada">${vyroci.hry.slice(0, 8).map((h) => `<a class="obal" ${h.steam ? `href="/hra/steam/${esc(h.steam)}"` : `href="${esc(bezpecnaUrl(h.igdb))}" target="_blank" rel="noopener noreferrer"`}>
               ${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="obal-bez">${esc(h.nazev[0])}</span>`}
               <span class="obal-cip">před ${pl(Number(h.pred) || 0, "rokem", "lety", "lety")}</span><b>${esc(h.nazev)}</b><small>${Number(h.rok) || ""}</small></a>`).join("")}</div>
         </section>` : ""}
@@ -2458,7 +2475,9 @@
   function route() {
     const casti = location.pathname.replace(/\/+$/, "").split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
     const sekce = casti[1] || "";
-    const tab = ["zive", "streameri", "streamer", "hry", "prehled", "porovnat", "report"].includes(sekce) ? "streameri"
+    // Sekce, které mají vlastní položku v liště (Radar, Slevy, Kalendář, Aktualizace), se rozsvítí samy; ostatní herní stránky pod „Hry“.
+    const vlastni = { radar: "radar", obchody: "slevy", hlidac: "slevy", vydani: "kalendar", aktualizace: "aktualizace" };
+    const tab = vlastni[sekce] ? vlastni[sekce] : ["zive", "streameri", "streamer", "hry", "prehled", "porovnat", "report"].includes(sekce) ? "streameri"
       : ["pruvodce", "vydani", "akce", "studia", "studio", "cestina", "hlidac", "hra", "obchody", "co-hrat", "rozjede-se", "vyssi-nizsi", "aktualizace", "ceska-scena", "radar", "trendy", "porovnat-hry"].includes(sekce) ? "hry"
       : ["", "stav"].includes(sekce) ? "domu" : ["novinky", "clanek", "ranni"].includes(sekce) ? "novinky" : "";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));

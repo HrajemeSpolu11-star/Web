@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-11-27 – Jednotný vzhled „herního kanálu“, nová lišta, kalendář bez posuvníku
+- **Lišta**: nové položky Radar, Slevy (`/obchody`), Kalendář (`/vydani`), Aktualizace – na počítači všechny s ikonami,
+  na mobilu spodní lišta s 5 ikonami (Domů, Novinky, Radar, Hry, Streameři); Slevy/Kalendář/Aktualizace jsou na mobilu
+  v sekci Hry. Mezi 761 a 1340 px jde menu na vlastní řádek. Stejná lišta v `404.html`, `offline.html`, `o-webu.html`.
+- **Hlavička každé stránky** jako banner kanálu: barva sekce, velká ikona, EKG stopa v rohu (na mobilu bez ní).
+  Platí pro všechny herní stránky (`hubHry`), Streamery a Novinky. Podsekce jako jednotné barevné pilulky.
+- **Rozcestník Hry**: dlaždice s ikonou v barvě skupiny, jemná záře a zvednutí při najetí, větší nadpisy skupin.
+- **„Vychází do 7 dní“ na radaru** a police na Domů: místo pásu s posuvníkem mřížka obalů her s odpočtem; na Domů jedna
+  řada po 8, na mobilu posun prstem bez viditelné lišty.
+- Obsah stránky je na širokých monitorech omezený na 1180 px a vycentrovaný (dřív se roztahoval přes celou šířku).
+- `obarvi()` nastavuje barvu sekce (`data-barva`) všude. Service worker `hp-offline-v3`. Překlady lišty.
+
 ## 2026-11-27 – Stránka hry: oficiální pozadí, dva sloupce, galerie a trailery
 - **Pozadí hry**: oficiální obrázek pozadí ze stránky hry na Steamu (`background_raw`) přes celou šířku okna, ztmavený
   a rozostřený, aby byl text čitelný. Když se nenačte, zmizí. Hry mimo Steam mají dál pozadí v barvě hry.

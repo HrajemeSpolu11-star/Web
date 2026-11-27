@@ -1,6 +1,6 @@
 // Service worker Herního pulsu: upozornění (živě, slevy) a stránka „Jsi offline“.
 // Data ani stránky se necachují – web vždy ukazuje aktuální čísla. Uložená je jen offline stránka a styly k ní.
-const OFFLINE = "hp-offline-v2";
+const OFFLINE = "hp-offline-v3";
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(OFFLINE).then((c) => c.addAll(["/offline.html", "/css/style.css", "/js/jazyk.js"])).catch(() => {}));
   self.skipWaiting();

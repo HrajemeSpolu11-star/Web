@@ -88,6 +88,11 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 - Nedělat (rozhodnuto): uživatelské účty, knihovna/profil/hlasování s účty, česká herní mapa, AI poradce (až na konec),
   „DNA“ vymyšlená AI.
 
+## Navigace (od 2026-11-27)
+Lišta: Domů, Novinky, Radar, Slevy, Kalendář, Aktualizace, Hry, Streameři (uživatel chtěl vytáhnout části Hry nahoru).
+Mobil: 5 ikon (Domů, Novinky, Radar, Hry, Streameři), třída `jen-pc` u ostatních. Vzhled „herní kanál“: banner `.kanal`
+s ikonou a barvou sekce na každé stránce, žádné pásy s viditelným posuvníkem.
+
 ## Strategie odlišení (schváleno 2026-11-26)
 Vlastní data o české scéně: „Co hraje Česko“ (`/hry`), týdenní report (`/report`), stránka hry se vším (obchody + čeština +
 hodnocení + streamy + klipy), rychlost bez reklam, upřímnost u čísel (`/o-webu#data`). Data jen z oficiálních zdrojů / vlastního měření.

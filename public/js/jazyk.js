@@ -564,6 +564,7 @@
     "Tenhle trailer tvůj prohlížeč neumí přehrát přímo.": ["Tento trailer tvoj prehliadač nevie prehrať priamo.", "Your browser can't play this trailer directly."],
     "Přehrát na Steamu": ["Prehrať na Steame", "Play on Steam"],
     "Cena a pulsometr": ["Cena a pulzomer", "Price and pulse"],
+    "Radar": ["Radar", "Radar"], "Slevy": ["Zľavy", "Deals"], "Kalendář": ["Kalendár", "Calendar"], "Hlavní menu": ["Hlavné menu", "Main menu"],
     "Nové hry": ["Nové hry", "New games"], "Nové platformy a plné verze": ["Nové platformy a plné verzie", "New platforms and full releases"],
     "Kategorie": ["Kategórie", "Categories"], "Upozornění jsou teď přeplněná, zkus to později.": ["Upozornenia sú teraz preplnené, skús to neskôr.", "Notifications are full right now, try again later."],
     "Všechny": ["Všetky", "All"], "Jen s češtinou": ["Len s češtinou", "Czech only"], "Jen s přesným datem": ["Len s presným dátumom", "Exact date only"],
