@@ -71,13 +71,13 @@ export async function apiCesko(env) {
   const ted = Date.now();
   const dnes = denPraha(ted);
   const od = posunDne(dnes, -6), predOd = posunDne(dnes, -13), predDo = posunDne(dnes, -7);
-  const [h, p, s, c] = await db.batch([
+  const [h, p, c] = await db.batch([
     dotazHry(db, od, dnes, 30),
     dotazHry(db, predOd, predDo, 300),
-    db.prepare("SELECT hra, COUNT(*) AS n FROM hry_streamera WHERE posledni > ? GROUP BY hra").bind(ted - 7 * DEN),
     db.prepare("SELECT SUM(CASE WHEN den >= ? THEN divako_minut ELSE 0 END) AS ted, SUM(CASE WHEN den < ? THEN divako_minut ELSE 0 END) AS pred FROM hry_den WHERE den >= ?").bind(od, od, predOd),
   ]);
-  const streameru = new Map(s.results.map((r) => [r.hra, r.n]));
+  // Počet streamerů jen u vybraných her (přes index hry) – dřív se kvůli tomu četla celá tabulka hry_streamera.
+  const streameru = await pocetStreameru(db, h.results.map((r) => r.hra), ted - 7 * DEN, ted);
   const hry = sestavHry(h.results, p.results, streameru);
   return {
     od, do: dnes, data_od: await zacatekDat(db),
@@ -102,20 +102,17 @@ export async function apiReport(env, naStreamera, tydenId) {
   const odMs = pulnocPraha(po), doMs = pulnocPraha(posunDne(po, 7)), predOdMs = pulnocPraha(predPo);
   const probiha = po === aktualniPondeli;
 
-  const [sc, scP, spicka, kanaly, kanalyP, h, hp, sStr, top, hodinyStr, rust, udal] = await db.batch([
+  const [sc, scP, spicka, kanaly, kanalyP, h, hp, top, hodinyStr, rust, udal] = await db.batch([
     db.prepare(`SELECT platforma, SUM(divako_minut) AS dm, (SELECT COUNT(DISTINCT cas) FROM scena WHERE cas >= ?3 AND cas < ?4) AS mereni
       FROM hry_den WHERE den BETWEEN ?1 AND ?2 GROUP BY platforma`).bind(po, ne, odMs, doMs),
     db.prepare("SELECT SUM(divako_minut) AS dm FROM hry_den WHERE den BETWEEN ? AND ?").bind(predPo, predNe),
     db.prepare("SELECT cas, SUM(divaci) AS d, SUM(streamu) AS s FROM scena WHERE cas >= ? AND cas < ? GROUP BY cas ORDER BY d DESC LIMIT 1").bind(odMs, doMs),
-    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky WHERE den BETWEEN ? AND ? AND max_divaku >= 3").bind(po, ne),
-    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky WHERE den BETWEEN ? AND ? AND max_divaku >= 3").bind(predPo, predNe),
+    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ? AND max_divaku >= 3").bind(po, ne),
+    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ? AND max_divaku >= 3").bind(predPo, predNe),
     dotazHry(db, po, ne, 15),
     dotazHry(db, predPo, predNe, 300),
-    db.prepare("SELECT hra, COUNT(DISTINCT user_id) AS n FROM hry_streamera WHERE posledni BETWEEN ? AND ? GROUP BY hra").bind(odMs, doMs),
-    db.prepare(`SELECT s.*, MAX(n.max_divaku) AS t_max FROM snimky n JOIN streameri s ON s.id = n.user_id
-      WHERE n.den BETWEEN ? AND ? AND s.skryty = 0 GROUP BY s.id ORDER BY t_max DESC LIMIT 5`).bind(po, ne),
-    db.prepare(`SELECT s.*, SUM(n.minut) AS t_minut FROM snimky n JOIN streameri s ON s.id = n.user_id
-      WHERE n.den BETWEEN ? AND ? AND s.skryty = 0 GROUP BY s.id ORDER BY t_minut DESC LIMIT 5`).bind(po, ne),
+    topStreameru(db, po, ne, "MAX(max_divaku)", "t_max"),
+    topStreameru(db, po, ne, "SUM(minut)", "t_minut"),
     db.prepare(`SELECT s.*, (SELECT b.sledujici FROM snimky b WHERE b.user_id = s.id AND b.den BETWEEN ?1 AND ?2 AND b.sledujici IS NOT NULL ORDER BY b.den DESC LIMIT 1)
         - (SELECT a.sledujici FROM snimky a WHERE a.user_id = s.id AND a.den BETWEEN ?1 AND ?2 AND a.sledujici IS NOT NULL ORDER BY a.den LIMIT 1) AS t_rust
       FROM streameri s WHERE s.skryty = 0 AND s.id IN (SELECT user_id FROM snimky WHERE den BETWEEN ?1 AND ?2 AND sledujici IS NOT NULL)
@@ -128,7 +125,7 @@ export async function apiReport(env, naStreamera, tydenId) {
   const celkemDm = (div.twitch || 0) + (div.kick || 0);
   const predDm = scP.results[0]?.dm || 0;
   const mereni = Math.max(0, ...sc.results.map((r) => r.mereni || 0));
-  const hry = sestavHry(h.results, hp.results, new Map(sStr.results.map((r) => [r.hra, r.n])));
+  const hry = sestavHry(h.results, hp.results, await pocetStreameru(db, h.results.map((r) => r.hra), odMs, doMs - 1, true));
   const sp = spicka.results[0];
   const str = (r, extra) => ({ ...naStreamera(r, ted), ...extra });
 
@@ -180,6 +177,26 @@ export async function apiReport(env, naStreamera, tydenId) {
     udalosti: udal.results.map((r) => str(r, { typ: r.u_typ, hodnota: r.u_hodnota, cas: new Date(r.u_cas).toISOString() })),
     tydny, data_od: od, cache: probiha ? 1800 : 86400,
   };
+}
+
+// Kolik streamerů hrálo dané hry v období (posledni v intervalu). Jen pro vyjmenované hry přes index idx_hry_streamera_hra.
+async function pocetStreameru(db, hry, odMs, doMs, distinct = false) {
+  const m = new Map();
+  const seznam = [...new Set(hry)].slice(0, 90);
+  if (!seznam.length) return m;
+  const { results } = await db.prepare(`SELECT hra, COUNT(${distinct ? "DISTINCT user_id" : "*"}) AS n FROM hry_streamera
+    WHERE hra IN (${seznam.map(() => "?").join(",")}) AND posledni BETWEEN ? AND ? GROUP BY hra`).bind(...seznam, odMs, doMs).all();
+  for (const r of results) m.set(r.hra, r.n);
+  return m;
+}
+
+// Top streamerů za období: nejdřív se sečtou snímky přes index podle dne (čte se jen dané období), až pak se připojí
+// streameři – dřív se procházeli všichni streameři a jejich snímky (zátěžový test 2026-11-27: 36–40 tis. → ~10 tis. řádků).
+// `agregace` = výraz nad snímky (např. "MAX(max_divaku)"), výsledek je ve sloupci `alias`.
+export function topStreameru(db, od, doDen, agregace, alias, limit = 5, podminka = "") {
+  return db.prepare(`SELECT s.*, a.hodnota AS ${alias} FROM (SELECT user_id, ${agregace} AS hodnota FROM snimky INDEXED BY idx_snimky_den
+      WHERE den BETWEEN ? AND ? ${podminka} GROUP BY user_id ORDER BY hodnota DESC LIMIT ${limit + 20}) a
+    JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY a.hodnota DESC LIMIT ${limit}`).bind(od, doDen);
 }
 
 // Sdílené pomocné funkce (hitparáda, měsíční zpráva).

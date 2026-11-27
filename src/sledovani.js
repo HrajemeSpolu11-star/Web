@@ -4,7 +4,7 @@
 //   • začala sleva na Steamu,
 //   • hra dnes vychází (datum z IGDB),
 //   • nová zpráva o hře (název hry v nadpisu zprávy z RSS nebo článku webu).
-// Zprávy odešle stávající fronta (odesliFrontu v běhu Twitche). Nejvýš 3 zprávy na odběr za běh.
+// Zprávy odešle stávající fronta (odesliFrontu v běhu Twitche). Nejvýš 3 zprávy na odběr a 100 událostí za běh.
 import { zajistiSchemaPush } from "./push.js";
 import { zajistiSchemaPatchu } from "./patche.js";
 import { zajistiSchemaHlidac } from "./hlidac.js";
@@ -26,17 +26,18 @@ export async function sledovat(db, odberId, b) {
   const slug = String(b.slug || "");
   if (!okSlug(slug)) return { chyba: "Neplatná hra", status: 400 };
   const steam = /^\d{1,10}$/.test(String(b.steam_id || "")) ? String(b.steam_id) : null;
-  const [p, uz] = await db.batch([
-    db.prepare("SELECT COUNT(*) AS n FROM sledovani WHERE odber_id = ?").bind(odberId),
-    db.prepare("SELECT 1 AS x FROM sledovani WHERE odber_id = ? AND slug = ?").bind(odberId, slug),
+  // Limit 100 her se hlídá v jednom příkazu (kontrola + zápis atomicky) – při souběžných požadavcích ho nejde přetéct
+  // (zátěžový test 2026-11-27: dřív 120 souběžných kliknutí = 121 her).
+  const ted = Date.now();
+  const [vlozeno, aktualizovano] = await db.batch([
+    db.prepare(`INSERT INTO sledovani (odber_id, slug, nazev, steam_id, cas) SELECT ?1, ?2, ?3, ?4, ?5
+      WHERE NOT EXISTS (SELECT 1 FROM sledovani WHERE odber_id = ?1 AND slug = ?2)
+        AND (SELECT COUNT(*) FROM sledovani WHERE odber_id = ?1) < ?6`).bind(odberId, slug, String(b.nazev || "").slice(0, 160), steam, ted, MAX_SLEDOVANYCH),
+    db.prepare("UPDATE sledovani SET nazev = ?3, steam_id = COALESCE(?4, steam_id) WHERE odber_id = ?1 AND slug = ?2")
+      .bind(odberId, slug, String(b.nazev || "").slice(0, 160), steam),
   ]);
-  if (!uz.results.length && (p.results[0]?.n || 0) >= MAX_SLEDOVANYCH) return { chyba: `Sledovat můžeš nejvýš ${MAX_SLEDOVANYCH} her.`, status: 400 };
-  await db.batch([
-    db.prepare(`INSERT INTO sledovani (odber_id, slug, nazev, steam_id, cas) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(odber_id, slug) DO UPDATE SET nazev = excluded.nazev, steam_id = COALESCE(excluded.steam_id, sledovani.steam_id)`)
-      .bind(odberId, slug, String(b.nazev || "").slice(0, 160), steam, Date.now()),
-    db.prepare("INSERT OR IGNORE INTO sledovani_hry (slug, posledni) VALUES (?, ?)").bind(slug, Date.now()),
-  ]);
+  if (!vlozeno.meta?.changes && !aktualizovano.meta?.changes) return { chyba: `Sledovat můžeš nejvýš ${MAX_SLEDOVANYCH} her.`, status: 400 };
+  await db.prepare("INSERT OR IGNORE INTO sledovani_hry (slug, posledni) VALUES (?, ?)").bind(slug, ted).run();
   return { ok: true };
 }
 export async function nesledovat(db, odberId, b) {
@@ -76,18 +77,24 @@ export async function kontrolaSledovanych(env) {
   const udalosti = new Map(); // slug → [{titulek, text, url}]
   const pridej = (slug, u) => { if (!udalosti.has(slug)) udalosti.set(slug, []); udalosti.get(slug).push(u); };
   const zmeny = [];
+  // Předpřipravené vyhledávání (jinak hry × oznámení × zprávy = statisíce porovnání při velké dávce).
+  const patchePodleHry = new Map();
+  for (const p of pa?.results || []) if (!patchePodleHry.has(String(p.appid))) patchePodleHry.set(String(p.appid), p); // nejnovější první
+  const zpravy = (cl?.results || []).map((x) => ({ ...x, mala: String(x.nadpis || "").toLowerCase() }));
   for (const h of hry) {
     const posl = h.posledni || ted - 3600e3, nazev = h.nazev || h.slug, url = `/databaze/${h.slug}`;
-    for (const p of (pa?.results || []).filter((x) => String(x.appid) === String(h.steam_id) && x.datum > posl).slice(0, 1))
-      pridej(h.slug, { titulek: `${nazev}: nová aktualizace`, text: String(p.nadpis || "").slice(0, 140), url });
+    const p = patchePodleHry.get(String(h.steam_id));
+    if (p && p.datum > posl) pridej(h.slug, { titulek: `${nazev}: nová aktualizace`, text: String(p.nadpis || "").slice(0, 140), url });
     const c = ceny.get(String(h.steam_id || ""));
     const sleva = Number(c?.sleva) || 0;
     if (c && sleva > 0 && !(h.sleva > 0)) pridej(h.slug, { titulek: `${nazev} je ve slevě −${sleva} %`, text: `Na Steamu teď za ${Number(c.cena)} ${c.mena === "EUR" ? "€" : "Kč"}.`, url });
     const v = vydano.get(h.slug);
     if (v && new Date(v).toISOString().slice(0, 10) === dnes && h.vydani_ozn !== dnes) pridej(h.slug, { titulek: `${nazev} dnes vychází`, text: "Hra, kterou sleduješ, právě vychází.", url });
-    if (String(nazev).length >= 4) {
-      const re = reNazvu(nazev);
-      const z = (cl?.results || []).find((x) => Number(x.datum) > posl && re.test(x.nadpis || ""));
+    if (String(nazev).length >= 4 && zpravy.length) {
+      const mn = String(nazev).replace(/[™®©]/g, "").trim().toLowerCase();
+      const kandidati = zpravy.filter((x) => Number(x.datum) > posl && x.mala.includes(mn));
+      const re = kandidati.length ? reNazvu(nazev) : null;
+      const z = kandidati.find((x) => re.test(x.nadpis || ""));
       if (z) pridej(h.slug, { titulek: `Novinka: ${nazev}`, text: String(z.nadpis).slice(0, 140), url: `/clanek/${z.id}` });
     }
     const novaSleva = c ? sleva : (h.sleva || 0), vydaniDnes = v && new Date(v).toISOString().slice(0, 10) === dnes && h.vydani_ozn !== dnes;
@@ -97,23 +104,21 @@ export async function kontrolaSledovanych(env) {
         .bind(h.slug, ted, novaSleva, vydaniDnes ? dnes : null));
   }
   zmeny.push(db.prepare("INSERT OR REPLACE INTO nastaveni (klic, hodnota, plati_do) VALUES ('sledovani_beh', ?, NULL)").bind(String(ted)));
-  // Zprávy pro odběratele (nejvýš 3 na odběr za běh).
+  // Zprávy pro odběratele: jeden příkaz INSERT … SELECT na událost (rozeslání dělá databáze, ne JavaScript – i při velké
+  // slevové akci s tisíci odběry zůstane CPU pod limitem). Nejvýš 3 zprávy na odběr za běh, nejvýš 100 událostí za běh.
   let zprav = 0;
-  if (udalosti.size) {
-    const slugy = [...udalosti.keys()].slice(0, 90);
-    const { results: odb } = await db.prepare(`SELECT odber_id, slug FROM sledovani WHERE slug IN (${ph(slugy.length)}) LIMIT 5000`).bind(...slugy).all();
-    const naOdber = new Map();
-    const vloz = db.prepare("INSERT INTO push_zpravy (odber_id, titulek, text, url, cas) VALUES (?, ?, ?, ?, ?)");
-    for (const o of odb) for (const u of udalosti.get(o.slug) || []) {
-      const n = naOdber.get(o.odber_id) || 0;
-      if (n >= 3) continue;
-      naOdber.set(o.odber_id, n + 1);
-      zmeny.push(vloz.bind(o.odber_id, u.titulek.slice(0, 120), u.text.slice(0, 200), u.url, ted));
-      zprav++;
-    }
+  const vsechny = [...udalosti.entries()].flatMap(([slug, l]) => l.map((u) => ({ slug, ...u }))).slice(0, 100);
+  const rozeslat = vsechny.map((u) => db.prepare(`INSERT INTO push_zpravy (odber_id, titulek, text, url, cas)
+      SELECT s.odber_id, ?, ?, ?, ? FROM sledovani s WHERE s.slug = ?
+        AND (SELECT COUNT(*) FROM push_zpravy z WHERE z.odber_id = s.odber_id AND z.cas = ?) < 3`)
+    .bind(u.titulek.slice(0, 120), u.text.slice(0, 200), u.url, ted, u.slug, ted));
+  // Nejdřív zprávy, pak stav (čas kontroly) – kdyby rozeslání selhalo, události se zkusí znovu za hodinu.
+  for (let i = 0; i < rozeslat.length; i += 25) {
+    const v = await db.batch(rozeslat.slice(i, i + 25));
+    zprav += v.reduce((a, r) => a + (r.meta?.changes || 0), 0);
   }
   for (let i = 0; i < zmeny.length; i += 100) await db.batch(zmeny.slice(i, i + 100));
-  return { her: hry.length, zprav };
+  return { her: hry.length, udalosti: vsechny.length, zprav };
 }
 
 // „Moje hry“ na Domů: stav sledovaných her (jen z uložených dat, žádné externí požadavky).

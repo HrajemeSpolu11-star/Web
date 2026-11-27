@@ -1,7 +1,8 @@
 // Měsíční zpráva o české streamovací scéně – jen z vlastních měření oficiálních API Twitche a Kicku (žádná AI, žádné odhady).
 // Měsíc = kalendářní měsíc podle pražského času. Rozběhnutý měsíc se počítá průběžně (označeno), minulé se drží v mezipaměti.
 import { denPraha } from "./psani.js";
-import { slugHry } from "./twitch.js";
+import { slugHry, zajistiSchemaTwitch } from "./twitch.js";
+import { zMezipameti } from "./mezipamet.js";
 import { posunDne, hodin, zmenaPct, pulnocPraha, zacatekDat, dotazHry } from "./statistiky.js";
 
 const MESICE = ["leden", "únor", "březen", "duben", "květen", "červen", "červenec", "srpen", "září", "říjen", "listopad", "prosinec"];
@@ -14,12 +15,13 @@ async function souhrnMesice(db, od, doDen) {
   const odMs = pulnocPraha(od), doMs = pulnocPraha(posunDne(doDen, 1));
   const [pl, kan, spicka, hry, top, mereni] = await db.batch([
     db.prepare("SELECT platforma, SUM(divako_minut) AS dm, SUM(minut) AS m FROM hry_den WHERE den BETWEEN ? AND ? GROUP BY platforma").bind(od, doDen),
-    db.prepare(`SELECT s.platforma, COUNT(DISTINCT n.user_id) AS n FROM snimky n JOIN streameri s ON s.id = n.user_id
-      WHERE n.den BETWEEN ? AND ? AND n.max_divaku >= 3 GROUP BY s.platforma`).bind(od, doDen),
+    db.prepare(`SELECT s.platforma, COUNT(*) AS n FROM (SELECT user_id FROM snimky INDEXED BY idx_snimky_den
+      WHERE den BETWEEN ? AND ? AND max_divaku >= 3 GROUP BY user_id) a JOIN streameri s ON s.id = a.user_id GROUP BY s.platforma`).bind(od, doDen),
     db.prepare("SELECT cas, SUM(divaci) AS d, SUM(streamu) AS s FROM scena WHERE cas >= ? AND cas < ? GROUP BY cas ORDER BY d DESC LIMIT 1").bind(odMs, doMs),
     dotazHry(db, od, doDen, 60),
-    db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, MAX(n.max_divaku) AS divaci, SUM(n.minut) AS minut
-      FROM snimky n JOIN streameri s ON s.id = n.user_id WHERE n.den BETWEEN ? AND ? AND s.skryty = 0 GROUP BY s.id ORDER BY divaci DESC LIMIT 10`).bind(od, doDen),
+    db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, a.divaci, a.minut FROM (SELECT user_id, MAX(max_divaku) AS divaci, SUM(minut) AS minut
+      FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ? GROUP BY user_id ORDER BY divaci DESC LIMIT 30) a
+      JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY a.divaci DESC LIMIT 10`).bind(od, doDen),
     db.prepare("SELECT COUNT(DISTINCT cas) AS n FROM scena WHERE cas >= ? AND cas < ?").bind(odMs, doMs),
   ]);
   const p = Object.fromEntries(pl.results.map((r) => [r.platforma, r]));
@@ -33,7 +35,27 @@ async function souhrnMesice(db, od, doDen) {
   };
 }
 
+// Spočítaná zpráva se ukládá do sdílené mezipaměti v D1: uzavřený měsíc se počítá jednou (platí rok), rozběhnutý nejvýš
+// jednou za 12 h. Výpočet z denních snímků čte statisíce řádků (zátěžový test 2026-11-27), takže se nesmí opakovat
+// při každé návštěvě ani v každém datacentru zvlášť.
 export async function apiZprava(env, mesicId) {
+  const db = env.DB, ted = Date.now();
+  await zajistiSchemaTwitch(db); // index idx_snimky_den
+  const dnesM = denPraha(ted).slice(0, 7);
+  let chci = /^\d{4}-\d{2}$/.test(mesicId || "") ? mesicId : posunMesic(dnesM, -1);
+  if (chci > dnesM) chci = dnesM;
+  const d = await zMezipameti(db, `zprava:${chci}`, chci < dnesM ? 365 * 86400e3 : 12 * 3600e3, () => spocitejZpravu(env, chci));
+  if (!d?.mesic) return d;
+  return { ...d, probiha: d.mesic === dnesM, mesice: seznamMesicu(d.data_od, dnesM), cache: d.mesic < dnesM ? 86400 : 1800 };
+}
+
+function seznamMesicu(odDne, aktualni) {
+  const mesice = [], prvni = String(odDne || aktualni).slice(0, 7);
+  for (let m = aktualni; m >= prvni && mesice.length < 36; m = posunMesic(m, -1)) mesice.push({ id: m, nazev: `${MESICE[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`, probiha: m === aktualni });
+  return mesice;
+}
+
+async function spocitejZpravu(env, mesicId) {
   const db = env.DB, ted = Date.now();
   const dnes = denPraha(ted), aktualni = dnes.slice(0, 7);
   const zacatek = await zacatekDat(db);
@@ -77,8 +99,7 @@ export async function apiZprava(env, mesicId) {
   if (t.top[0]) vety.push(`Nejvíc diváků najednou měl ${t.top[0].jmeno || t.top[0].login} (${cz(t.top[0].divaci)}).`);
   if (t.spicka) vety.push(`Celá scéna měla nejvíc diváků najednou ${cz(t.spicka.divaci)} na ${cz(t.spicka.streamu)} streamech.`);
 
-  const mesice = [];
-  for (let m = aktualni; m >= prvni && mesice.length < 36; m = posunMesic(m, -1)) mesice.push({ id: m, nazev: `${MESICE[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`, probiha: m === aktualni });
+  const mesice = seznamMesicu(zacatek, aktualni);
   return {
     mesic, nazev: `${MESICE[Number(mesic.slice(5)) - 1]} ${mesic.slice(0, 4)}`, od, do: doDen, probiha, pokryti, data_od: zacatek,
     neuplny: zacatek > od, vety,

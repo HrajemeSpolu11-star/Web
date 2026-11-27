@@ -5,11 +5,12 @@
 // Každý týden se uloží do tabulky `hitparada` (archiv vydrží i po smazání denních dat po 400 dnech). Rozběhnutý týden se
 // přepočítává (průběžné pořadí), uzavřený týden se zapíše jednou a už se nemění. Pozice minulý týden, počet týdnů
 // v žebříčku a nejlepší pozice se berou z archivu – nic se nedopočítává.
-// Běží v úloze „trendy“ (každé 3 h): ~4 čtení + nejvýš pár zápisů; při prvním běhu doplní uzavřené týdny od začátku měření.
+// Běží v úloze „trendy“ (každé 3 h): ~13 dotazů, 4 zápisy; chybějící uzavřené týdny doplňuje po 2 za běh.
 import { denPraha } from "./psani.js";
 import { slugHry } from "./twitch.js";
 import { posunDne, hodin, pondeli, isoTyden, pondeliZTydne, zacatekDat, dotazHry } from "./statistiky.js";
 import { zajistiSchemaPropojeni } from "./propojeni.js";
+import { zajistiSchemaTwitch } from "./twitch.js";
 
 export const VELIKOST = 20;
 const SCHEMA = [
@@ -19,75 +20,82 @@ const SCHEMA = [
 let hotovo = false;
 export async function zajistiSchemaHitparady(db) { if (hotovo) return; await db.batch(SCHEMA.map((s) => db.prepare(s))); hotovo = true; }
 
-// Historie z archivu: pozice podle týdnů → minulá pozice, počet týdnů v žebříčku, nejlepší pozice.
-function pridejHistorii(polozky, klic, predchozi) {
-  // predchozi: pole uložených týdnů (nejnovější první) – každý { tyden, mapa: Map(klic → poradi) }
-  const minuly = predchozi[0]?.mapa;
+// Historie z archivu: minulá pozice, počet týdnů v žebříčku a nejlepší pozice. Každá uložená položka nese své `tydnu`
+// a `nejlepsi`, takže stačí poslední výskyt: z minulého týdne, a jen u nováčků/návratů se hledá starší výskyt
+// (dotazem LIKE přímo v databázi – nenačítá se a neparsuje celý archiv, šetří CPU).
+const klicHry = (x) => `"hra":${JSON.stringify(x.hra)}`;
+const klicStr = (x) => `"login":${JSON.stringify(x.login)}`;
+const stejny = (druh, a, b) => (druh === "hry" ? a.hra === b.hra : a.login === b.login && a.platforma === b.platforma);
+async function pridejHistorii(db, druh, tyden, polozky) {
+  const minulyRadek = await db.prepare("SELECT data FROM hitparada WHERE druh = ? AND tyden < ? ORDER BY tyden DESC LIMIT 1").bind(druh, tyden).first();
+  if (!minulyRadek) return polozky.map((p) => ({ ...p, poradi_pred: null, tydnu: 1, nejlepsi: p.poradi, stav: null }));
+  let minuly = [];
+  try { minuly = JSON.parse(minulyRadek.data); } catch { /* nic */ }
+  const klic = druh === "hry" ? klicHry : klicStr;
+  const chybi = polozky.filter((p) => !minuly.some((m) => stejny(druh, m, p)));
+  const starsi = new Map();
+  if (chybi.length) {
+    const v = await db.batch(chybi.map((p) => db.prepare("SELECT data FROM hitparada WHERE druh = ? AND tyden < ? AND instr(data, ?) > 0 ORDER BY tyden DESC LIMIT 1")
+      .bind(druh, tyden, klic(p))));
+    chybi.forEach((p, i) => {
+      const r = v[i].results[0];
+      if (!r) return;
+      try { const e = JSON.parse(r.data).find((m) => stejny(druh, m, p)); if (e) starsi.set(p, e); } catch { /* nic */ }
+    });
+  }
   return polozky.map((p) => {
-    const k = klic(p);
-    const pozice = predchozi.map((t) => t.mapa.get(k)).filter(Boolean);
-    const pred = minuly ? minuly.get(k) || null : null;
-    const bylDriv = pozice.length > 0;
-    return { ...p, poradi_pred: pred, tydnu: pozice.length + 1, nejlepsi: Math.min(p.poradi, ...pozice),
-      stav: !minuly ? null : pred ? (pred > p.poradi ? "nahoru" : pred < p.poradi ? "dolu" : "stejne") : bylDriv ? "navrat" : "nova" };
-  });
-}
-
-async function nactiPredchozi(db, druh, predTydnem, n = 52) {
-  const { results } = await db.prepare("SELECT tyden, data FROM hitparada WHERE druh = ? AND tyden < ? ORDER BY tyden DESC LIMIT ?").bind(druh, predTydnem, n).all();
-  return results.map((r) => {
-    let d = [];
-    try { d = JSON.parse(r.data); } catch { /* nic */ }
-    return { tyden: r.tyden, mapa: new Map(d.map((x) => [druh === "hry" ? x.hra : `${x.platforma}:${x.login}`, x.poradi])) };
+    const m = minuly.find((x) => stejny(druh, x, p));
+    const e = m || starsi.get(p);
+    const pred = m ? m.poradi : null;
+    return { ...p, poradi_pred: pred, tydnu: e ? (e.tydnu || 1) + 1 : 1, nejlepsi: Math.min(p.poradi, e?.nejlepsi || e?.poradi || p.poradi),
+      stav: pred ? (pred > p.poradi ? "nahoru" : pred < p.poradi ? "dolu" : "stejne") : e ? "navrat" : "nova" };
   });
 }
 
 async function spocitejTyden(db, po) {
   const ne = posunDne(po, 6), tyden = isoTyden(po);
-  const [h, s, ig] = await db.batch([
+  const [h, s, s2, s3, ig] = await db.batch([
     dotazHry(db, po, ne, VELIKOST),
-    // Všechny kanály týdne (velcí, střední i malí). prumer = průměr denních špiček ve dnech, kdy vysílal.
-    db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, MAX(n.max_divaku) AS divaci, SUM(n.minut) AS minut,
-        AVG(CASE WHEN n.minut > 0 THEN n.max_divaku END) AS prumer, SUM(CASE WHEN n.minut > 0 THEN 1 ELSE 0 END) AS dni
-      FROM snimky n JOIN streameri s ON s.id = n.user_id WHERE n.den BETWEEN ? AND ? AND s.skryty = 0 GROUP BY s.id
-      HAVING divaci >= 3 ORDER BY divaci DESC LIMIT 4000`).bind(po, ne),
+    // Tři žebříčky rovnou v databázi (vrací 3 × 20 řádků, ne tisíce). prumer = průměr denních špiček ve dnech, kdy vysílal.
+    ...[["", "divaci DESC"], ["AND divaci BETWEEN 51 AND 300 AND minut >= 180 AND dni >= 2", "prumer DESC, minut DESC"],
+      ["AND divaci BETWEEN 3 AND 50 AND minut >= 180 AND dni >= 2", "prumer DESC, minut DESC"]].map(([podminka, razeni]) =>
+      // Nejdřív součty snímků přes index dne (jen daný týden), streameři se připojí až k vybraným.
+      db.prepare(`SELECT s.platforma, s.login, s.jmeno, s.profilovka, a.divaci, a.minut, a.prumer, a.dni
+        FROM (SELECT user_id, MAX(max_divaku) AS divaci, SUM(minut) AS minut, AVG(CASE WHEN minut > 0 THEN max_divaku END) AS prumer,
+            SUM(CASE WHEN minut > 0 THEN 1 ELSE 0 END) AS dni FROM snimky INDEXED BY idx_snimky_den WHERE den BETWEEN ? AND ?
+          GROUP BY user_id HAVING divaci >= 3 ${podminka} ORDER BY ${razeni} LIMIT ${VELIKOST + 20}) a
+        JOIN streameri s ON s.id = a.user_id WHERE s.skryty = 0 ORDER BY ${razeni.replace(/(\w+) (DESC)/g, "a.$1 $2")} LIMIT ${VELIKOST}`).bind(po, ne)),
     db.prepare("SELECT nazev, igdb_slug FROM hry WHERE igdb_slug IS NOT NULL AND posledni > ?").bind(Date.parse(po) - 30 * 86400e3),
   ]);
   const igdb = new Map(ig.results.map((r) => [r.nazev, r.igdb_slug]));
-  const predchoziHry = await nactiPredchozi(db, "hry", tyden);
-  const [predchoziStr, predchoziStr2, predchoziMali] = await Promise.all(["streameri", "stredni", "mali"].map((d) => nactiPredchozi(db, d, tyden)));
-  const hry = pridejHistorii(h.results.filter((r) => (r.dm || 0) >= 60).map((r, i) => ({
+  const hry = await pridejHistorii(db, "hry", tyden, h.results.filter((r) => (r.dm || 0) >= 60).map((r, i) => ({
     poradi: i + 1, hra: r.hra, slug: slugHry(r.hra), igdb_slug: igdb.get(r.hra) || null, hodin: hodin(r.dm),
     kick_podil: r.dm ? Math.round(((r.dm_kick || 0) / r.dm) * 100) : 0, spicka: r.spicka || 0,
-  })), (x) => x.hra, predchoziHry);
+  })));
   const naRadek = (r, i) => ({
     poradi: i + 1, platforma: r.platforma || "twitch", login: r.login, jmeno: r.jmeno || r.login,
     profilovka: /^https:\/\//.test(r.profilovka || "") ? r.profilovka : "", divaci: r.divaci, hodin: Math.round((r.minut || 0) / 60),
     prumer: Math.round(r.prumer || 0), dni: r.dni || 0,
   });
-  const klicS = (x) => `${x.platforma}:${x.login}`;
-  const streameri = pridejHistorii(s.results.slice(0, VELIKOST).map(naRadek), klicS, predchoziStr);
   // Střední a malí: řadí se podle průměru denních špiček (jeden nájezd diváků nerozhodne), musí vysílat aspoň 3 h a 2 dny.
-  const podleVelikosti = (od, doMax) => s.results.filter((r) => r.divaci >= od && r.divaci <= doMax && (r.minut || 0) >= 180 && (r.dni || 0) >= 2)
-    .sort((a, b) => (b.prumer || 0) - (a.prumer || 0) || (b.minut || 0) - (a.minut || 0)).slice(0, VELIKOST).map(naRadek);
-  const stredni = pridejHistorii(podleVelikosti(51, 300), klicS, predchoziStr2);
-  const mali = pridejHistorii(podleVelikosti(3, 50), klicS, predchoziMali);
+  const [streameri, stredni, mali] = await Promise.all([["streameri", s], ["stredni", s2], ["mali", s3]]
+    .map(([druh, r]) => pridejHistorii(db, druh, tyden, r.results.map(naRadek))));
   return { tyden, od: po, hry, streameri, stredni, mali };
 }
 
 export async function sestavHitparadu(env, ted = Date.now()) {
   const db = env.DB;
-  await zajistiSchemaHitparady(db); await zajistiSchemaPropojeni(db);
+  await zajistiSchemaHitparady(db); await zajistiSchemaPropojeni(db); await zajistiSchemaTwitch(db);
   const od = await zacatekDat(db);
   if (!od) return { tydnu: 0 };
   const aktualni = pondeli(denPraha(ted));
   // Hotový = uzavřený týden se všemi čtyřmi žebříčky (střední a malí přibyli později – doplní se).
   const { results: ulozene } = await db.prepare("SELECT tyden, COUNT(*) AS n FROM hitparada WHERE uzavreno = 1 GROUP BY tyden").all();
   const hotove = new Set(ulozene.filter((r) => r.n >= 4).map((r) => r.tyden));
-  // Uzavřené týdny, které v archivu chybí (od nejstaršího, ať navazuje historie) – nejvýš 8 za běh. Týden, kdy měření
+  // Uzavřené týdny, které v archivu chybí (od nejstaršího, ať navazuje historie) – nejvýš 2 za běh (limit CPU). Týden, kdy měření
   // začalo uprostřed, se ukládá také (s příznakem neúplný v datech stránky).
   let zpracovano = 0;
-  for (let po = pondeli(od); po < aktualni && zpracovano < 8; po = posunDne(po, 7)) {
+  for (let po = pondeli(od); po < aktualni && zpracovano < 2; po = posunDne(po, 7)) {
     if (hotove.has(isoTyden(po))) continue;
     await ulozTyden(db, await spocitejTyden(db, po), 1, ted, po < od);
     zpracovano++;

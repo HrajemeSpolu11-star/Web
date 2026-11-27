@@ -172,3 +172,17 @@ Galerie a prohlížeč: `galerieHry()` / `otevriProhlizec()` v `app.js`, bez inl
 - **Měsíční zpráva** (`src/zprava.js`): `GET /api/zprava?mesic=2026-11`, stránky `/zprava`, `/zprava/<měsíc>`. Hodiny Twitch/Kick, podíl Kicku,
   aktivní kanály, špička scény, top 15 her, skokani, nově v top 15, top streameři, věty bez AI. Srovnání jen s celým změřeným měsícem,
   u rozběhnutého měsíce se stejným počtem dní. Jen čtení D1 (6 dotazů × 2 měsíce), mezipaměť 30 min / 1 den.
+
+## Výkon a limity D1 – výsledky zátěžového testu (2026-11-27)
+Podrobně v `docs/ZATEZOVY-TEST.md`, skripty v `tools/zatez/` (spouštět jen ručně, lokálně).
+- **Sdílená mezipaměť v D1** (`src/mezipamet.js`, tabulka `mezipamet (klic, data, cas, zamek)`): Přehled (30 min), Co hraje Česko
+  (15 min), Týden na scéně (rozběhnutý 1 h, uzavřený 1 den), Měsíční zpráva (rozběhnutý měsíc 12 h, uzavřený rok), počty streamerů
+  u her (6 h). Zestárlá data přepočítá jen držitel zámku, ostatní dostanou poslední verzi. Zápis: 1 řádek na přepočet.
+- **Index `idx_snimky_den`** na `snimky(den)`; týdenní/měsíční výběry snímků jdou přes `INDEXED BY idx_snimky_den` a nejdřív
+  sečtou snímky, až pak připojí streamery (`topStreameru()` ve `statistiky.js`).
+- Počty streamerů z `hry_streamera` jen pro vyjmenované hry (index `idx_hry_streamera_hra`), ne celá tabulka.
+- Analytika: „nejčastěji ve slevě“ a „nejvíc aktualizací“ 1× denně. Sitemap v mezipaměti 6 h.
+- Rozeslání upozornění sledovaných her: `INSERT … SELECT` na událost (max. 100 událostí a 3 zprávy na odběr za běh).
+- Chyby API: chybějící tabulka = 503 „připravuje se“, výpadek externí služby = 503, jinak 500. Hledání v IGDB: 429 nad 40 nových
+  hledání/min v instanci, dotaz `q`/`dotaz` se sjednocuje (malá písmena, mezery) pro mezipaměť.
+- Zbývající riziko při roce dat: `/api/streameri` (30denní součty pro každého streamera při každém načtení). Návrh: denní souhrny.

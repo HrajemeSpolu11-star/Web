@@ -34,6 +34,9 @@ export const SCHEMA_TWITCH = [
      PRIMARY KEY (user_id, hra))`,
   // Kdo hraje danou hru (stránka hry). Index jen na `hra` (nemění se), ne na `minut` – ten se mění každý běh = zápisy navíc.
   `CREATE INDEX IF NOT EXISTS idx_hry_streamera_hra ON hry_streamera(hra)`,
+  // Výběr snímků za týden/měsíc (hitparáda, Týden na scéně, měsíční zpráva). Jen `den` – při běžném zápisu se nemění,
+  // takže index nepřidává zápisy při aktualizaci (jen 1 při prvním snímku kanálu za den). Bez něj by se četla celá tabulka.
+  `CREATE INDEX IF NOT EXISTS idx_snimky_den ON snimky(den)`,
 ];
 
 let migraceHotova = false;

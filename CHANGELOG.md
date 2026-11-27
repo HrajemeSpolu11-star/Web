@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-11-27 – Zátěžový a stres test + opravy výkonu
+- Test lokální kopie webu (stejný engine jako Cloudflare) s daty o objemu ~1 roku provozu: smíšený provoz 10–200 klientů
+  (0 chyb), Crony během zátěže, výpadek externích služeb, nápor na studenou mezipaměť, zápisový nápor, nesmyslná data.
+  Výsledky v `docs/ZATEZOVY-TEST.md`, skripty v `tools/zatez/` (jen ruční spouštění).
+- **Opravy** (funkce i vzhled beze změny):
+  - sdílená mezipaměť v D1 se zámkem pro Přehled, Co hraje Česko, Týden na scéně, Měsíční zprávu a počty streamerů u her
+    (100 souběžných návštěv Přehledu: dřív 64 výpočtů a 5,7 mil. přečtených řádků, teď 1 výpočet);
+  - index snímků podle dne, součty snímků před připojením streamerů, počty z hry_streamera jen pro vybrané hry;
+  - `/api/hry` 314 tis. → 1,9 tis. řádků, Vyšší nebo nižší 128 tis. → 10 tis., sitemap v mezipaměti 6 h;
+  - analytika (slevy, aktualizace) 1× denně; hitparáda počítá žebříčky v databázi a doplňuje archiv po 2 týdnech;
+  - upozornění sledovaných her se rozesílají přímo v databázi (velká sleva: 442 ms → ~11 ms CPU);
+  - limit 100 sledovaných her už nejde přetéct souběžným klikáním;
+  - chybějící tabulka už nevrací prázdná data (503 „připravuje se“), výpadek IGDB/Twitch = 503 místo 500 (body z auditu);
+  - hledání v IGDB má limit 40 nových hledání za minutu a sjednocený dotaz pro mezipaměť (bod z auditu).
+
 ## 2026-11-27 – Hitparáda i pro malé a střední streamery
 - Ve sloupci Streameři v hitparádě je přepínač **Všichni / Střední (51–300) / Malí (do 50)**.
 - Střední a malí se řadí podle **průměru denních špiček diváků** (jeden nájezd diváků nerozhodne) a musí vysílat aspoň 3 h ve 2 dnech.

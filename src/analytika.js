@@ -2,8 +2,8 @@
 //  • Žánry na české scéně: hodiny sledování (hry_den) za 7 dní proti 7 předchozím, žánry podle Steamu (steam_hry.zanry).
 //    Jen hry, které umíme spárovat se Steamem – podíl spárovaných hodin se ukládá (pokryti), nic se nedopočítává.
 //  • Rostoucí komunity: kolik českých streamů hru hrálo nejvíc najednou na jedné platformě (max_streamu) – tento týden proti minulému.
-//  • Nejčastěji ve slevě: počet dní se slevou za posledních 90 dní (ceny_historie, jen hry měřené aspoň 60 dní).
-//  • Nejvíc aktualizací: oficiální oznámení na Steamu za 30 dní (patche).
+//  • Nejčastěji ve slevě: počet dní se slevou za posledních 90 dní (ceny_historie, jen hry měřené aspoň 60 dní) – 1× denně.
+//  • Nejvíc aktualizací: oficiální oznámení na Steamu za 30 dní (patche) – 1× denně.
 import { denPraha } from "./psani.js";
 import { BEZ_KATEGORIE } from "./prehled.js";
 import { normNazev } from "./hra-data.js";
@@ -29,16 +29,22 @@ async function steamPodleNazvu(db, nazvy) {
 export async function sestavAnalytiku(db, ted = Date.now()) {
   await zajistiSchemaPatchu(db); await zajistiSchemaPropojeni(db);
   const dnes = denPraha(ted), vcera = posun(dnes, -1), t0 = posun(dnes, -7), p0 = posun(dnes, -14);
+  // „Nejčastěji ve slevě“ a „Nejvíc aktualizací“ čtou celou historii cen a oznámení – počítají se jen jednou denně
+  // (jinak by 8 běhů denně přečetlo statisíce řádků; limit D1 Free je 5 mil. přečtených řádků za den).
+  let minule = null;
+  try { minule = JSON.parse((await db.prepare("SELECT data FROM katalog WHERE klic = 'analytika'").first())?.data || "null"); } catch { /* nic */ }
+  const denne = minule?.denne_den === dnes;
+  const prazdny = db.prepare("SELECT 1 WHERE 0");
   const [od, hry, slevy, patche] = await db.batch([
     db.prepare("SELECT MIN(den) AS od FROM hry_den"),
     db.prepare(`SELECT hra,
         SUM(CASE WHEN den >= ?1 THEN divako_minut ELSE 0 END) AS t, SUM(CASE WHEN den < ?1 THEN divako_minut ELSE 0 END) AS p,
         MAX(CASE WHEN den >= ?1 THEN max_streamu ELSE 0 END) AS st, MAX(CASE WHEN den < ?1 THEN max_streamu ELSE 0 END) AS sp
       FROM hry_den WHERE den >= ?2 AND den <= ?3 AND hra <> ?4 GROUP BY hra`).bind(t0, p0, vcera, BEZ_KATEGORIE),
-    db.prepare(`SELECT c.id, g.nazev, g.obrazek, g.igdb_slug, SUM(CASE WHEN c.sleva > 0 THEN 1 ELSE 0 END) AS dni, MAX(c.sleva) AS max, COUNT(*) AS n
+    denne ? prazdny : db.prepare(`SELECT c.id, g.nazev, g.obrazek, g.igdb_slug, SUM(CASE WHEN c.sleva > 0 THEN 1 ELSE 0 END) AS dni, MAX(c.sleva) AS max, COUNT(*) AS n
       FROM ceny_historie c JOIN steam_hry g ON g.id = c.id WHERE c.den >= ? GROUP BY c.id HAVING n >= 60 AND dni > 0 ORDER BY dni DESC, max DESC LIMIT 20`).bind(posun(dnes, -90)),
-    db.prepare(`SELECT p.appid, MAX(p.hra) AS hra, COUNT(*) AS n, MAX(p.datum) AS posledni, MAX(g.obrazek) AS obrazek, MAX(g.igdb_slug) AS igdb_slug
-      FROM patche p LEFT JOIN steam_hry g ON g.id = p.appid WHERE p.datum > ? GROUP BY p.appid ORDER BY n DESC LIMIT 20`).bind(ted - 30 * DEN),
+    denne ? prazdny : db.prepare(`SELECT p.appid, MAX(p.hra) AS hra, COUNT(*) AS n, MAX(p.datum) AS posledni, MAX(g.obrazek) AS obrazek, MAX(g.igdb_slug) AS igdb_slug
+      FROM patche p INDEXED BY idx_patche_datum LEFT JOIN steam_hry g ON g.id = p.appid WHERE p.datum > ? GROUP BY p.appid ORDER BY n DESC LIMIT 20`).bind(ted - 30 * DEN),
   ]);
   const zacatek = od.results[0]?.od || null;
   const dostupne = !!zacatek && zacatek <= p0;
@@ -74,7 +80,8 @@ export async function sestavAnalytiku(db, ted = Date.now()) {
   }
   return {
     dostupne, od: zacatek, obdobi: { od: t0, do: vcera, pred_od: p0 }, pokryti, zanry, komunity,
-    slevy: slevy.results.map((r) => ({ id: r.id, nazev: r.nazev, obrazek: https(r.obrazek), igdb_slug: r.igdb_slug || null, dni: r.dni, z: r.n, max: r.max || 0 })),
-    aktualizace: patche.results.map((r) => ({ id: r.appid, nazev: r.hra, pocet: r.n, posledni: new Date(r.posledni).toISOString(), obrazek: https(r.obrazek), igdb_slug: r.igdb_slug || null })),
+    denne_den: dnes,
+    slevy: denne ? minule.slevy || [] : slevy.results.map((r) => ({ id: r.id, nazev: r.nazev, obrazek: https(r.obrazek), igdb_slug: r.igdb_slug || null, dni: r.dni, z: r.n, max: r.max || 0 })),
+    aktualizace: denne ? minule.aktualizace || [] : patche.results.map((r) => ({ id: r.appid, nazev: r.hra, pocet: r.n, posledni: new Date(r.posledni).toISOString(), obrazek: https(r.obrazek), igdb_slug: r.igdb_slug || null })),
   };
 }

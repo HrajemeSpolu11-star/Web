@@ -10,6 +10,7 @@ import { extraTwitch } from "./extra.js";
 import { jeStranka, vykresliStranku, sitemap, robots } from "./seo.js";
 import { pushApi } from "./push.js";
 import { apiPrehled } from "./prehled.js";
+import { zMezipameti } from "./mezipamet.js";
 import { apiKatalog, sberKatalogu, sberKataloguPokudStary } from "./katalog.js";
 import { apiObsah, sberObsahu } from "./obsah.js";
 import { apiCesko, apiReport } from "./statistiky.js";
@@ -58,11 +59,19 @@ const BEZPECNE_HLAVICKY = {
   "Cross-Origin-Resource-Policy": "same-origin",
 };
 
-function json(data, status = 200, cacheSec = 0) {
+function json(data, status = 200, cacheSec = 0, dalsi = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...BEZPECNE_HLAVICKY, "Cache-Control": cacheSec ? `public, max-age=${cacheSec}` : "no-store" },
+    headers: { ...BEZPECNE_HLAVICKY, "Cache-Control": cacheSec ? `public, max-age=${cacheSec}` : "no-store", ...dalsi },
   });
+}
+
+// Jednoduchý limit hledání v IGDB v rámci jedné instance Workeru (okno 1 minuta).
+let hledaniOkno = { od: 0, n: 0 };
+function limitHledani(max = 40) {
+  const ted = Date.now();
+  if (ted - hledaniOkno.od > 60e3) hledaniOkno = { od: ted, n: 0 };
+  return ++hledaniOkno.n <= max;
 }
 
 function barvaPodle(id) {
@@ -213,12 +222,19 @@ async function apiStreamer(platforma, login, env) {
 // ---------- Hry ----------
 async function apiHry(env) {
   const ted = Date.now();
-  const { results } = await env.DB.prepare(`
-    SELECT h.slug, h.nazev,
-      (SELECT COUNT(*) FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ?1 AND s.zive_hra = h.nazev) AS zive,
-      (SELECT COALESCE(SUM(s.zive_divaci), 0) FROM streameri s WHERE s.skryty = 0 AND s.zive_cas > ?1 AND s.zive_hra = h.nazev) AS divaci,
-      (SELECT COUNT(*) FROM hry_streamera x WHERE x.hra = h.nazev) AS streameru
-    FROM hry h WHERE h.posledni > ?2 ORDER BY divaci DESC, streameru DESC LIMIT 120`).bind(ted - ZIVE_PLATNOST, ted - 30 * 86400e3).all();
+  // Živé streamy se sečtou jednou pro všechny hry (dřív se pro každou hru znovu procházeli všichni živí streameři –
+  // při stovkách her to byly statisíce přečtených řádků na jedno načtení; zátěžový test 2026-11-27).
+  // Počty streamerů u her se mění pomalu → jednou za 6 h do sdílené mezipaměti (čtou celou historii hry_streamera).
+  const pocty = await zMezipameti(env.DB, "hry_streameru", 6 * 3600e3, async () => Object.fromEntries((await env.DB.prepare(
+    `SELECT x.hra, COUNT(*) AS n FROM hry_streamera x WHERE x.hra IN (SELECT nazev FROM hry WHERE posledni > ?) GROUP BY x.hra`)
+    .bind(ted - 30 * 86400e3).all()).results.map((r) => [r.hra, r.n])));
+  const { results: radky } = await env.DB.prepare(`
+    SELECT h.slug, h.nazev, COALESCE(z.zive, 0) AS zive, COALESCE(z.divaci, 0) AS divaci
+    FROM hry h LEFT JOIN (SELECT zive_hra, COUNT(*) AS zive, SUM(zive_divaci) AS divaci FROM streameri
+      WHERE skryty = 0 AND zive_cas > ?1 GROUP BY zive_hra) z ON z.zive_hra = h.nazev
+    WHERE h.posledni > ?2`).bind(ted - ZIVE_PLATNOST, ted - 30 * 86400e3).all();
+  const results = radky.map((r) => ({ ...r, streameru: pocty[r.nazev] || 0 }))
+    .sort((a, b) => b.divaci - a.divaci || b.streameru - a.streameru).slice(0, 120);
   return json(results, 200, results.length ? 120 : 0);
 }
 
@@ -416,7 +432,13 @@ async function verejneApi(request, env, ctx, url) {
   // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
   const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam", "n", "mesic", "rezim", "tema", "od", "do", "hodnoceni", "dotaz"];
   const ciste = new URL(url.origin + url.pathname);
-  for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, k === "ids" ? 4000 : 200)); }
+  for (const k of POVOLENE) {
+    let v = url.searchParams.get(k);
+    if (v == null) continue;
+    // Hledaný text: velikost písmen a mezery nemění výsledek → stejný klíč mezipaměti („Zaklínač“ = „ zaklínač “).
+    if (k === "q" || k === "dotaz") { v = v.trim().toLowerCase().replace(/\s+/g, " "); url.searchParams.set(k, v); }
+    ciste.searchParams.set(k, v.slice(0, k === "ids" ? 4000 : 200));
+  }
   const klic = new Request(ciste.toString(), { method: "GET" });
   const ulozeno = await cache.match(klic);
   if (ulozeno) return ulozeno;
@@ -435,8 +457,8 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/zive") odpoved = await apiZive(env);
     else if (url.pathname === "/api/streameri") odpoved = await apiStreameri(url, env);
     else if (url.pathname === "/api/hry") odpoved = await apiHry(env);
-    else if (url.pathname === "/api/prehled") odpoved = json(await apiPrehled(env, naStreamera), 200, 300);
-    else if (url.pathname === "/api/cesko") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiCesko(env), 200, 900); }
+    else if (url.pathname === "/api/prehled") odpoved = json(await zMezipameti(env.DB, "prehled", 30 * 60e3, () => apiPrehled(env, naStreamera)), 200, 300);
+    else if (url.pathname === "/api/cesko") { await zajistiSchemaTwitch(env.DB); odpoved = json(await zMezipameti(env.DB, "cesko", 15 * 60e3, () => apiCesko(env)), 200, 900); }
     else if (url.pathname === "/api/hitparada") {
       await zajistiSchemaTwitch(env.DB);
       const t = String(url.searchParams.get("tyden") || "").slice(0, 10);
@@ -452,7 +474,9 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/report") {
       await zajistiSchemaTwitch(env.DB);
       const t = String(url.searchParams.get("tyden") || "").slice(0, 10);
-      const r = await apiReport(env, naStreamera, /^(\d{4}-W\d{2}|aktualni)$/.test(t) ? t : "");
+      const tid = /^(\d{4}-W\d{2}|aktualni)$/.test(t) ? t : "";
+      // Uzavřený týden se už nemění (1 den v D1), rozběhnutý se přepočítá nejvýš jednou za hodinu.
+      const r = await zMezipameti(env.DB, `report:${tid || "vychozi"}`, tid && tid !== "aktualni" ? 86400e3 : 60 * 60e3, () => apiReport(env, naStreamera, tid));
       odpoved = json(r, 200, r.cache);
     }
     else if (url.pathname === "/api/cestina") {
@@ -481,6 +505,11 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/databaze") {
       await zajistiSchemaTwitch(env.DB);
       const q = url.searchParams.get("q");
+      // Hledání volá IGDB (1–3 požadavky). Ochrana před zahlcením: nejvýš 40 nových hledání za minutu v jedné instanci
+      // (opakovaná hledání jdou z mezipaměti a do limitu se nepočítají). Audit 2026-11-27.
+      if ((q || url.searchParams.get("dotaz") || ["platforma", "zanr", "rezim", "tema", "od", "do", "hodnoceni", "cz", "cena"].some((k) => url.searchParams.get(k))) && !limitHledani()) {
+        return json({ chyba: "Moc hledání najednou, zkus to za chvíli." }, 429, 0, { "Retry-After": "30" });
+      }
       const sFiltry = ["platforma", "zanr", "rezim", "tema", "od", "do", "hodnoceni", "cz", "cena", "dotaz"].some((k) => url.searchParams.get(k));
       odpoved = sFiltry ? json(await apiHledatFiltry(env, url.searchParams), 200, 1800)
         : q ? json(await apiHledatDatabaze(env, q), 200, 3600) : json(await apiPopularniDatabaze(env), 200, 3600);
@@ -524,11 +553,20 @@ async function verejneApi(request, env, ctx, url) {
     }
     else return json({ chyba: "Nenalezeno" }, 404);
   } catch (e) {
-    if (/no such table/i.test(String(e))) {
-      ctx.waitUntil(Promise.all([zajistiSchema(env.DB), zajistiSchemaTwitch(env.DB)]));
-      return json(url.pathname === "/api/zive" ? { streamy: [], hry: [] } : [], 200);
+    const t = String(e?.message || e);
+    if (/no such table/i.test(t)) {
+      // Chybějící tabulka se založí na pozadí; návštěvník dostane poctivou odpověď „připravuje se“, ne prázdná data
+      // (prázdný seznam by vypadal, že nic neexistuje – audit 2026-11-27).
+      ctx.waitUntil(Promise.all([zajistiSchema(env.DB), zajistiSchemaTwitch(env.DB)]).catch(() => {}));
+      console.warn(`chybí tabulka (${url.pathname}):`, t);
+      return json({ chyba: "Data se právě připravují, zkus to za chvíli." }, 503, 0, { "Retry-After": "30" });
     }
-    console.error(e);
+    // Výpadek externí služby (IGDB, Twitch, Steam…) nebo limit databáze = 503, ne „interní chyba“.
+    if (/fetch|network|timeout|timed out|abort|IGDB|Twitch|token|ECONN|subrequest|D1_ERROR|too many/i.test(t)) {
+      console.warn(`služba nedostupná (${url.pathname}):`, t);
+      return json({ chyba: "Služba je teď nedostupná, zkus to za chvíli." }, 503, 0, { "Retry-After": "60" });
+    }
+    console.error(`chyba API (${url.pathname}):`, e);
     return json({ chyba: "Interní chyba" }, 500);
   }
   if (odpoved.status === 200 && /max-age/.test(odpoved.headers.get("Cache-Control") || "")) ctx.waitUntil(cache.put(klic, odpoved.clone()));
@@ -569,7 +607,17 @@ export default {
     }
     if (url.pathname.startsWith("/api/")) return verejneApi(request, env, ctx, url);
     if (url.pathname === "/robots.txt") return robots(request);
-    if (url.pathname === "/sitemap.xml") return sitemap(request, env);
+    if (url.pathname === "/sitemap.xml") {
+      // Mezipaměť na 6 h – sitemapu stahují roboti často a bez ní každé stažení čte ~15 tis. řádků (zátěžový test).
+      const c = caches.default, klic = new Request(`${url.origin}/sitemap.xml`);
+      const hit = await c.match(klic).catch(() => null);
+      if (hit) return hit;
+      const r = await sitemap(request, env);
+      const o = new Response(r.body, r);
+      o.headers.set("Cache-Control", "public, max-age=21600");
+      ctx.waitUntil(c.put(klic, o.clone()).catch(() => {}));
+      return o;
+    }
     if ((request.method === "GET" || request.method === "HEAD") && jeStranka(url.pathname)) {
       try { await zajistiSchemaTwitch(env.DB); } catch {}
       return vykresliStranku(request, env);
