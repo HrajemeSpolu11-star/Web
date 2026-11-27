@@ -8,6 +8,14 @@
 
 ---
 
+## 2026-11-27 – Nové logo: herní ovladač s pulzující křivkou (vybral uživatel)
+- Uživatel vybral z návrhů logo „herní ovladač s EKG křivkou“ (3. v horní řadě). Původní logo (EKG ve žlutém čtverci)
+  nahrazeno se souhlasem uživatele.
+- Hlavička: ovladač se světlou fialovou září, vlevo kříž, vpravo čtyři tlačítka, uprostřed růžová EKG křivka, která se
+  opakovaně vykresluje a „tepe“ (rychleji při najetí myší; při omezení animací v systému stojí).
+- Nové ikony: `ikona.svg`, `ikona-192/512.png`, `ikona-maskable-512.png`, `apple-touch-icon.png`; logo i v obrázcích ke sdílení.
+  Service worker `hp-offline-v6`.
+
 ## 2026-11-27 – Vráceno původní logo, náhledy streamů na Kicku, pravidlo „nic nemazat“
 - **Vráceno: původní logo** (EKG ve žlutém čtverci, ikony a obrázky ke sdílení). Nové logo „trojúhelník + EKG“ uživatel
   odmítl. Další návrhy loga se nejdřív ukážou k výběru.

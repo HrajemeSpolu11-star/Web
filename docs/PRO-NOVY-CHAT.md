@@ -47,7 +47,7 @@ navázat bez čtení celé historie. **Aktualizuj ho, když se změní stav nebo
 ## Rozhodnutí a přání uživatele (důležité)
 - **PRAVIDLO: z hotového se nic nemaže** (výslovné přání 27. 11.). Nic hotového neodstraňovat ani nenahrazovat bez souhlasu;
   velké změny vzhledu (logo, barvy, rozložení) nejdřív ukázat jako návrh a počkat na schválení.
-- Logo: návrh „přehrávací trojúhelník + EKG“ (27. 11.) uživatel odmítl („hnus“) → vráceno původní logo. Nové logo jen po výběru z návrhů.
+- Logo: návrh „přehrávací trojúhelník + EKG“ (27. 11.) uživatel odmítl („hnus“). Pak si sám vybral **herní ovladač s pulzující EKG křivkou** – to je aktuální logo (`.logo-ovladac`, `ikona.svg`). Neměnit bez souhlasu.
 - Streameři se mají ukazovat **hned**, bez čekání na počet streamů; živí nahoře.
 - Data o streamerech musí být **naprosto přesná** – jen z oficiálních API, nic nedomýšlet.
 - Horní menu jen **Novinky** a **Streameři**; vše o streamerech a hrách pod Streamery.

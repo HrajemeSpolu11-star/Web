@@ -140,15 +140,19 @@
     const z = g.createRadialGradient(W * 0.85, H * 0.1, 0, W * 0.85, H * 0.1, 700);
     z.addColorStop(0, "rgba(155,92,255,.38)"); z.addColorStop(1, "rgba(155,92,255,0)");
     g.fillStyle = z; g.fillRect(0, 0, W, H);
-    // neuronová síť z loga
-    const sit = (cx, cy, r, a) => {
-      const b = [-90, -30, 30, 90, 150, 210].map((u) => [cx + r * Math.cos(u * Math.PI / 180), cy + r * Math.sin(u * Math.PI / 180)]);
-      g.strokeStyle = `rgba(155,92,255,${0.45 * a})`; g.lineWidth = Math.max(2, r / 40);
-      b.forEach((p, i) => { g.beginPath(); g.moveTo(...p); g.lineTo(...b[(i + 1) % 6]); g.moveTo(...p); g.lineTo(cx, cy); g.stroke(); });
-      g.fillStyle = `rgba(155,92,255,${a})`; b.forEach((p) => { g.beginPath(); g.arc(...p, r / 9, 0, 7); g.fill(); });
-      g.fillStyle = `rgba(255,192,77,${a})`; g.beginPath(); g.arc(cx, cy, r / 4.5, 0, 7); g.fill();
+    // znak loga: herní ovladač s EKG křivkou (stejný jako v hlavičce webu)
+    const znak = (x, y, vel, a) => {
+      g.save(); g.translate(x, y); g.scale(vel / 64, vel / 64); g.globalAlpha = a;
+      g.fillStyle = "#140f33"; g.beginPath(); g.roundRect(0, 0, 64, 64, 18); g.fill();
+      const telo = new Path2D("M20 18.5h24c6.5 0 10.6 4.2 12 10.5l2.6 12c1 4.8-2.2 8.5-6.2 8.5-2.6 0-4.4-1.6-5.8-3.8l-3-4.7H20.4l-3 4.7c-1.4 2.2-3.2 3.8-5.8 3.8-4 0-7.2-3.7-6.2-8.5l2.6-12C9.4 22.7 13.5 18.5 20 18.5z");
+      const go = g.createLinearGradient(5, 18, 59, 50); go.addColorStop(0, "#efe8ff"); go.addColorStop(1, "#a98bff");
+      g.fillStyle = "#1d1645"; g.fill(telo); g.lineWidth = 3; g.lineJoin = "round"; g.strokeStyle = go; g.shadowColor = "rgba(169,139,255,.7)"; g.shadowBlur = 6; g.stroke(telo); g.shadowBlur = 0;
+      g.lineCap = "round"; g.lineWidth = 2.6; g.strokeStyle = "#efe8ff"; g.stroke(new Path2D("M17.5 26v8M13.5 30h8"));
+      g.fillStyle = "#c9b8ff"; for (const [cx, cy] of [[46.5, 26.8], [50.2, 30.4], [46.5, 34], [42.8, 30.4]]) { g.beginPath(); g.arc(cx, cy, 1.9, 0, 7); g.fill(); }
+      g.strokeStyle = "#ff3d7f"; g.shadowColor = "rgba(255,61,127,.8)"; g.shadowBlur = 5; g.stroke(new Path2D("M23 31h3.4l2.2-6 3.4 11 2.8-7.6 1.6 2.6h3.4"));
+      g.restore();
     };
-    sit(880, 210, 150, 0.35); sit(110, 110, 34, 1);
+    znak(760, 70, 280, 0.2); znak(76, 76, 72, 1);
     g.fillStyle = "#f4f1ff"; g.font = F(800, 46); g.textBaseline = "middle"; g.fillText("Herní puls", 165, 112);
     // štítek
     g.font = F(800, 34); const sw = g.measureText(stitek).width;

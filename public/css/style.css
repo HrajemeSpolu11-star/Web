@@ -1318,3 +1318,11 @@ html.bez-posunu{overflow:hidden}
 .live-thumb{position:relative;isolation:isolate}
 .live-thumb-zaloha{display:none}
 .live-thumb.bez-nahledu .live-thumb-zaloha,.live-thumb:not(:has(img[data-nahled])) .live-thumb-zaloha{display:block;position:absolute;inset:-20%;width:140%;height:140%;object-fit:cover;filter:blur(22px) saturate(1.2) brightness(.6);z-index:-1}
+
+/* Logo (27. 11., schváleno): herní ovladač s pulzující EKG křivkou. Křivka se opakovaně vykreslí a „tepne“ (záře). */
+.logo-ovladac{width:50px;height:33px;flex:none;display:block;overflow:visible}
+.logo-ovladac .lo-stopa{opacity:.22}
+.logo-ovladac .lo-krivka{stroke-dasharray:32;stroke-dashoffset:32;animation:lo-tep 2.4s ease-in-out infinite}
+@keyframes lo-tep{0%{stroke-dashoffset:32;opacity:.6}40%{stroke-dashoffset:0;opacity:1}55%{opacity:1;stroke-width:3.2}70%,100%{stroke-dashoffset:0;opacity:.85;stroke-width:2.6}}
+.logo:hover .lo-krivka{animation-duration:1s}
+@media(prefers-reduced-motion:reduce){.logo-ovladac .lo-krivka{animation:none;stroke-dashoffset:0}}
