@@ -48,7 +48,7 @@ export async function doplnPas(env, ctx, { nazev, st }) {
   };
   return {
     puls,
-    ceny: historie.length ? { historie: historie.slice(-400), rozbor: rozborCen(historie, { cena: st?.cena, sleva: st?.sleva, zdarma: st?.zdarma }) } : null,
+    ceny: historie.length ? { historie: historie.slice(-400), rozbor: rozborCen(historie, { cena: st?.cena, sleva: st?.sleva, zdarma: st?.zdarma, puvodni: st?.puvodni }) } : null,
     patche, dna,
     igdb: igdb && !igdb.nenalezeno ? { url: igdb.url, slug: igdb.slug || "", serie: igdb.serie, dlc: igdb.dlc, dlc_celkem: igdb.dlc_celkem } : null,
   };

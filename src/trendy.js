@@ -10,6 +10,7 @@ import { zajistiSchemaHlidac } from "./hlidac.js";
 import { normNazev } from "./hra-data.js";
 import { rozborCen } from "./ceny.js";
 import { slugHry } from "./twitch.js";
+import { sestavAnalytiku } from "./analytika.js";
 
 const DEN = 86400e3;
 const posun = (den, n) => new Date(Date.parse(den + "T12:00:00Z") + n * DEN).toISOString().slice(0, 10);
@@ -140,13 +141,14 @@ export async function sestavTrendy(env) {
   const db = env.DB, ted = Date.now();
   await zajistiSchemaHlidac(db);
   await db.batch(SCHEMA_HRACI.map((s) => db.prepare(s)));
-  const [c, s, k] = await Promise.allSettled([trendCesko(db, ted), trendSteam(db), cenovyRadar(db, ted)]);
-  const chyby = [c, s, k].filter((x) => x.status === "rejected").map((x) => String(x.reason?.message || x.reason).slice(0, 100));
+  const [c, s, k, a] = await Promise.allSettled([trendCesko(db, ted), trendSteam(db), cenovyRadar(db, ted), sestavAnalytiku(db, ted)]);
+  const chyby = [c, s, k, a].filter((x) => x.status === "rejected").map((x) => String(x.reason?.message || x.reason).slice(0, 100));
   const p = [];
   if (c.status === "fulfilled" || s.status === "fulfilled")
     p.push(db.prepare("INSERT OR REPLACE INTO katalog (klic, data, cas) VALUES ('trendy', ?, ?)").bind(JSON.stringify({
       cesko: c.status === "fulfilled" ? c.value : null, steam: s.status === "fulfilled" ? s.value : null }), ted));
   if (k.status === "fulfilled") p.push(db.prepare("INSERT OR REPLACE INTO katalog (klic, data, cas) VALUES ('cenovy_radar', ?, ?)").bind(JSON.stringify(k.value), ted));
+  if (a.status === "fulfilled") p.push(db.prepare("INSERT OR REPLACE INTO katalog (klic, data, cas) VALUES ('analytika', ?, ?)").bind(JSON.stringify(a.value), ted));
   if (p.length) await db.batch(p);
   if (!p.length) throw new Error(chyby.join("; ") || "nic se nespočítalo");
   return { cesko: c.value?.polozky?.length || 0, steam: s.value?.polozky?.length || 0, ceny: k.value?.hry?.length || 0, chyby };
@@ -164,4 +166,7 @@ export async function apiTrendy(env) {
 }
 export async function apiCenovyRadar(env) {
   return (await nactiKatalog(env.DB, "cenovy_radar")) || { hry: [], cas: null };
+}
+export async function apiAnalytika(env) {
+  return (await nactiKatalog(env.DB, "analytika")) || { dostupne: false, zanry: [], komunity: [], slevy: [], aktualizace: [], cas: null };
 }

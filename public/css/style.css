@@ -1366,3 +1366,49 @@ html.bez-posunu{overflow:hidden}
 .db-steam-odkaz{margin:8px 0 0;font-size:14px}.db-steam-odkaz a{color:var(--accent);font-weight:700}
 .serie li small{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 7px}
 .serie-cela{margin-top:8px}.serie-cela summary{cursor:pointer;color:var(--accent);font-weight:700;padding:6px 0}
+.clanek-hry{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:16px 0}
+.btn-db{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.sledovat{background:var(--card2);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;font-weight:700;border-radius:999px;padding:6px 12px;cursor:pointer;margin-right:6px}
+.sledovat.on{background:rgba(255,192,77,.16);border-color:var(--accent);color:var(--accent)}
+.sledovat:disabled{opacity:.6}
+.moje-hry{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.mh-hra{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;color:inherit;text-decoration:none}
+.mh-hra:hover{border-color:var(--accent)}
+.mh-hra img,.mh-hra .obal-bez{width:48px;height:64px;object-fit:cover;border-radius:6px;flex:none}
+.mh-hra b{display:block;font-size:14px;margin-bottom:4px}
+.mh-cipy{display:flex;flex-wrap:wrap;gap:4px}
+.mh-cip{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--card2);border:1px solid var(--line)}
+.mh-zive{border-color:#ff4d6d;color:#ff7a90}
+.mh-sleva{border-color:var(--accent);color:var(--accent)}
+.db-chytre{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}
+.db-chytre label{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.db-chytre label>span{color:var(--muted);font-weight:700}
+.db-chytre input,.db-chytre select{font:inherit;font-size:14px;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.db-veta input{width:100%}
+.db-filtry{margin-top:10px}
+.db-filtry summary{cursor:pointer;font-weight:700}
+.db-filtry-mriz{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:10px}
+.db-chytre-akce{display:flex;gap:8px;align-items:center;margin-top:12px}
+.db-chytre-akce button{font:inherit;font-weight:700;background:var(--accent);color:#1a1300;border:0;border-radius:999px;padding:8px 16px;cursor:pointer}
+.db-rozumim{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.db-vysl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.db-proc{display:flex;flex-wrap:wrap;gap:3px}
+.db-proc span{font-size:11px;color:var(--muted);background:var(--card2);border-radius:6px;padding:1px 6px}
+.poradce{border:1px solid var(--line);border-left:4px solid var(--muted);background:var(--card);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:13px}
+.poradce-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+.poradce-h span{color:var(--muted);font-weight:700}
+.poradce-h b{font-size:16px}
+.poradce ul{margin:4px 0 6px;padding-left:18px}
+.poradce li{margin:2px 0}
+.poradce-c{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:6px 0}
+.poradce-c div{background:var(--card2);border-radius:8px;padding:4px 8px}
+.poradce-c dt{font-size:11px;color:var(--muted)}
+.poradce-c dd{margin:0;font-weight:700}
+.pc-koupit{border-left-color:#3ddc84}.pc-koupit .poradce-h b{color:#3ddc84}
+.pc-dobra{border-left-color:var(--accent)}.pc-dobra .poradce-h b{color:var(--accent)}
+.pc-pockat{border-left-color:#ff8a5c}.pc-pockat .poradce-h b{color:#ff8a5c}
+.an-zanry{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.an-z{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.an-z-t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.an-z-t em{font-style:normal;font-weight:700;margin-left:6px}
+.an-z-t em.plus{color:#3ddc84}.an-z-t em.minus{color:#ff6b6b}

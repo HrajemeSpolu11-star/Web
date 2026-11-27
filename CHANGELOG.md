@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-11-27 – Jedno ID hry, Sledovat hru + Moje hry, chytré hledání, nákupní poradce, analytika
+- **Jedno ID hry**: každá hra má trvalé ID z databáze her (IGDB slug). Kategorie Twitche a hry ze Steamu se s ním propojují
+  přes oficiální vazby (Twitch → IGDB, IGDB → Steam), ne podle názvu. Hry streamera a stránka hry z Twitche odkazují na profil
+  v databázi („Celý profil hry v databázi“), článek ukazuje „Hry v článku“, karta v databázi najde streamy a ceny přes ID.
+- **Sledovat hru**: tlačítko „☆ Sledovat hru“ na kartě v databázi a na stránce hry. Se zapnutými upozorněními přijde push
+  při nové aktualizaci, začátku slevy, v den vydání a při zprávě o hře. Na Domů nový blok **Moje hry** (sleva, aktualizace,
+  živé streamy, vydání). Bez účtu – seznam je v prohlížeči.
+- **Chytré hledání** v databázi: věta česky („kooperační horor na PS5 s češtinou do 500 Kč“) nebo filtry (platforma, žánr,
+  režim, téma, roky, hodnocení, čeština, cena). U výsledků je vidět, proč se hodí. Původní hledání podle názvu zůstává.
+- **Nákupní poradce** pod cenovým radarem: koupit teď / dobrá cena / spíš počkat / zatím nevíme s důvody, průměrné ceny
+  30 a 90 dní, běžná cena a upozornění na „nafouknutou“ původní cenu. I ve srovnávači.
+- **Analytika** – nová záložka „Žánry a komunity“ v Trendech: žánry na české scéně, rostoucí komunity, nejčastěji ve slevě,
+  nejvíc aktualizací.
+- Nic se neodebralo. Nové soubory: `src/propojeni.js`, `src/sledovani.js`, `src/hledani.js`, `src/analytika.js`.
+
 ## 2026-11-27 – Oprava: série her byla useknutá (končila starými díly)
 - Příčina: seznam dílů série se seřadil od nejstaršího a pak se usekl na prvních 24 (stránka hry ze Steamu) / 30 (databáze)
   → u dlouhých sérií (Resident Evil) chyběly všechny novější díly a série „končila“ rokem 2011.

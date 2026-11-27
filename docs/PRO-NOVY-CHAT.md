@@ -94,7 +94,8 @@ Podrobnosti: `docs/ARCHITEKTURA.md`, `docs/API.md`, `docs/DATABAZE.md`, `docs/NA
 ## Databáze her (od 2026-11-27)
 `/databaze` + `/databaze/<slug>`: každá hra z IGDB, popis česky (AI, označený), podobné hry. Karta je „bohatá“ (přání uživatele):
 spojuje IGDB + Steam + GOG + Epic + naše měření (živí streameři, statistiky, pulsometr, ceny). Databáze je i v horní liště.
-Navržený další krok (uživatel zatím neschválil): „Sledovat hru“ s upozorněním (vydání, aktualizace, sleva, novinka).
+„Sledovat hru“ s upozorněním (vydání, aktualizace, sleva, novinka) – **hotovo 2026-11-27** spolu s blokem „Moje hry“ na Domů,
+jedním ID hry (IGDB slug) přes celý web, chytrým hledáním s filtry, nákupním poradcem a analytikou žánrů a komunit (viz ARCHITEKTURA.md).
 
 ## Navigace (od 2026-11-27)
 Lišta: Domů, Novinky, Radar, Slevy, Kalendář, Aktualizace, Hry, Streameři (uživatel chtěl vytáhnout části Hry nahoru).

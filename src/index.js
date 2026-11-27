@@ -27,9 +27,12 @@ import { apiVyroci, sberVyroci } from "./vyroci.js";
 import { apiCoHrat, apiVyssiNizsi } from "./nastroje.js";
 import { apiCeskaScena } from "./studia.js";
 import { apiRadar } from "./radar.js";
-import { sestavTrendy, apiTrendy, apiCenovyRadar } from "./trendy.js";
+import { sestavTrendy, apiTrendy, apiCenovyRadar, apiAnalytika } from "./trendy.js";
 import { doplnPas, apiSrovnani } from "./pas.js";
 import { apiHraDatabaze, apiHledatDatabaze, apiPopularniDatabaze, sestavPopularni, prelozPopularni } from "./databaze.js";
+import { propojHry, hryVTextu, zajistiSchemaPropojeni } from "./propojeni.js";
+import { kontrolaSledovanych, apiMojeHry } from "./sledovani.js";
+import { apiHledatFiltry, filtryDatabaze } from "./hledani.js";
 import { apiWishlist } from "./wishlist.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
@@ -116,11 +119,11 @@ async function apiClanky(url, env) {
 async function apiClanek(id, env) {
   if (/^p[0-9a-f]{15}$/.test(id)) {
     const r = await env.DB.prepare("SELECT * FROM prispevky WHERE id = ? AND stav = 'publikovano'").bind(id).first();
-    return r ? json(naPrispevek(r), 200, 60) : json({ chyba: "Nenalezeno" }, 404);
+    return r ? json({ ...naPrispevek(r), hry: await hryVTextu(env.DB, `${r.nadpis} ${r.perex || ""}`).catch(() => []) }, 200, 60) : json({ chyba: "Nenalezeno" }, 404);
   }
   if (!/^[0-9a-f]{24}$/.test(id)) return json({ chyba: "Neplatné id" }, 400);
   const r = await env.DB.prepare("SELECT * FROM clanky WHERE id = ?").bind(id).first();
-  return r ? json(naClanek(r), 200, 300) : json({ chyba: "Nenalezeno" }, 404);
+  return r ? json({ ...naClanek(r), hry: await hryVTextu(env.DB, `${r.nadpis} ${r.perex || ""}`).catch(() => []) }, 200, 300) : json({ chyba: "Nenalezeno" }, 404);
 }
 
 // ---------- Streameři ----------
@@ -184,7 +187,8 @@ async function apiStreamer(platforma, login, env) {
   if (!r) return json({ chyba: "Nenalezeno" }, 404);
   const [sn, hry] = await env.DB.batch([
     env.DB.prepare("SELECT den, sledujici, max_divaku, minut FROM snimky WHERE user_id = ? AND den >= date('now', '-90 day') ORDER BY den").bind(r.id),
-    env.DB.prepare("SELECT hra, minut FROM hry_streamera WHERE user_id = ? ORDER BY minut DESC LIMIT 8").bind(r.id),
+    env.DB.prepare(`SELECT x.hra, x.minut, (SELECT h.igdb_slug FROM hry h WHERE h.nazev = x.hra LIMIT 1) AS igdb_slug
+      FROM hry_streamera x WHERE x.user_id = ? ORDER BY x.minut DESC LIMIT 8`).bind(r.id),
   ]);
   const od30 = new Date(ted - 30 * 86400e3).toISOString().slice(0, 10);
   return json({
@@ -223,7 +227,8 @@ async function apiHra(slug, env, ctx) {
   const ted = Date.now();
   await zajistiSchemaTwitch(env.DB);
   await zajistiSchemaObsah(env.DB);
-  const h = await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE slug = ?").bind(slug).first();
+  await zajistiSchemaPropojeni(env.DB);
+  const h = await env.DB.prepare("SELECT slug, nazev, twitch_id, igdb_slug FROM hry WHERE slug = ?").bind(slug).first();
   if (!h) return json({ chyba: "Nenalezeno" }, 404);
   return hraOdpoved(env, ctx, h, infoHry(env, ctx, h.slug, h.nazev).catch(() => null), ted);
 }
@@ -279,8 +284,12 @@ async function bohataKarta(env, ctx, d) {
   const ted = Date.now();
   await zajistiSchemaTwitch(env.DB);
   await zajistiSchemaObsah(env.DB);
-  const tw = await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE nazev = ? COLLATE NOCASE LIMIT 1").bind(d.nazev).first();
+  await zajistiSchemaPropojeni(env.DB);
+  // Jedno ID: kategorie Twitche a hra ze Steamu se hledají nejdřív podle oficiální vazby na IGDB, až pak podle názvu.
+  const tw = await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE igdb_slug = ? ORDER BY posledni DESC LIMIT 1").bind(d.slug).first()
+    || await env.DB.prepare("SELECT slug, nazev, twitch_id FROM hry WHERE nazev = ? COLLATE NOCASE LIMIT 1").bind(d.nazev).first();
   const h = tw || { slug: null, nazev: d.nazev, twitch_id: null };
+  if (!d.steam_id) d.steam_id = (await env.DB.prepare("SELECT id FROM steam_hry WHERE igdb_slug = ? LIMIT 1").bind(d.slug).first())?.id || "";
   const [scena, info] = await Promise.all([
     scenaHry(env, h, ted),
     (d.steam_id ? infoHrySteam(env, ctx, d.steam_id) : infoHry(env, ctx, `db-${d.slug}`, d.nazev)).catch(() => null),
@@ -312,6 +321,8 @@ async function hraOdpoved(env, ctx, h, infoP, ted, steamId = null) {
   const pas = await doplnPas(env, ctx, { nazev: info?.steam?.nazev || h.nazev, st: info?.steam || null }).catch((e) => { console.error("pas:", e); return null; });
   return json({
     slug: h.slug, nazev: h.nazev, steam_id: steamId || info?.steam?.id || null,
+    // Jedno ID hry: profil v databázi (z oficiální vazby Twitch → IGDB, Steam → IGDB, nebo z IGDB pasu).
+    igdb_slug: h.igdb_slug || pas?.igdb?.slug || (info?.steam?.id ? (await env.DB.prepare("SELECT igdb_slug FROM steam_hry WHERE id = ?").bind(String(info.steam.id)).first().catch(() => null))?.igdb_slug : null) || null,
     info, pas, ...scena,
   }, 200, 120);
 }
@@ -380,7 +391,7 @@ async function verejneApi(request, env, ctx, url) {
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
   // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
-  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam", "n"];
+  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam", "n", "rezim", "tema", "od", "do", "hodnoceni", "dotaz"];
   const ciste = new URL(url.origin + url.pathname);
   for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, k === "ids" ? 4000 : 200)); }
   const klic = new Request(ciste.toString(), { method: "GET" });
@@ -435,7 +446,13 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/databaze") {
       await zajistiSchemaTwitch(env.DB);
       const q = url.searchParams.get("q");
-      odpoved = q ? json(await apiHledatDatabaze(env, q), 200, 3600) : json(await apiPopularniDatabaze(env), 200, 3600);
+      const sFiltry = ["platforma", "zanr", "rezim", "tema", "od", "do", "hodnoceni", "cz", "cena", "dotaz"].some((k) => url.searchParams.get(k));
+      odpoved = sFiltry ? json(await apiHledatFiltry(env, url.searchParams), 200, 1800)
+        : q ? json(await apiHledatDatabaze(env, q), 200, 3600) : json(await apiPopularniDatabaze(env), 200, 3600);
+    }
+    else if (url.pathname === "/api/databaze-filtry") {
+      await zajistiSchemaTwitch(env.DB);
+      odpoved = json(await filtryDatabaze(env), 200, 86400);
     }
     else if (url.pathname.startsWith("/api/databaze/")) {
       await zajistiSchemaTwitch(env.DB);
@@ -458,6 +475,8 @@ async function verejneApi(request, env, ctx, url) {
       else ctx.waitUntil(sberKataloguPokudStary(env).catch((e) => console.error("katalog:", e)));
       odpoved = json(k, 200, k.cas ? 600 : 0);
     }
+    else if (url.pathname === "/api/analytika") odpoved = json(await apiAnalytika(env), 200, 900);
+    else if (url.pathname === "/api/moje-hry") odpoved = json(await apiMojeHry(env, url.searchParams.get("s")), 200, 120);
     else if (url.pathname.startsWith("/api/hra-steam/")) odpoved = await apiHraSteam(url.pathname.slice(15), env, ctx);
     else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(dekoduj(url.pathname.slice(9)), env, ctx);
     else if (url.pathname.startsWith("/api/streamer-extra/")) {
@@ -575,13 +594,19 @@ export default {
       ctx.waitUntil(behUlohy(env, "databaze", async () => {
         const pop = await sestavPopularni(env).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) }));
         const pr = await prelozPopularni(env, 2).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) }));
-        return { pop, pr };
+        const pj = await propojHry(env).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) }));
+        const sl = await kontrolaSledovanych(env).catch((e) => ({ chyba: String(e.message || e).slice(0, 100) }));
+        return { pop, pr, pj, sl };
       }, (v) => {
         const casti = [];
         if (v.pop?.her) casti.push(`Obnovila seznam ${pl(v.pop.her, "populární hry", "populárních her", "populárních her")} v databázi.`);
         if (v.pop?.chyba) casti.push(`Seznam populárních her: ${v.pop.chyba}.`);
         if (v.pr?.prelozeno) casti.push(`Přeložila do češtiny popis ${pl(v.pr.prelozeno, "hry", "her", "her")}.`);
         if (v.pr?.chyba) casti.push(`Překlad: ${v.pr.chyba}.`);
+        if (v.pj?.twitch || v.pj?.steam) casti.push(`Propojila s databází her ${pl(v.pj.twitch, "kategorii Twitche", "kategorie Twitche", "kategorií Twitche")} a ${pl(v.pj.steam, "hru ze Steamu", "hry ze Steamu", "her ze Steamu")}.`);
+        if (v.pj?.chyba) casti.push(`Propojení her: ${v.pj.chyba}.`);
+        if (v.sl?.zprav) casti.push(`Poslala ${pl(v.sl.zprav, "upozornění", "upozornění", "upozornění")} ke sledovaným hrám.`);
+        if (v.sl?.chyba) casti.push(`Sledované hry: ${v.sl.chyba}.`);
         return casti.length ? casti.join(" ") : null;
       }));
       // Trendy (rostoucí/upadající hry) a cenový radar: každé 3 hodiny, jen čtení z D1 + 2 zápisy.

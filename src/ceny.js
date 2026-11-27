@@ -43,5 +43,32 @@ export function rozborCen(radky, ted = {}, cas = Date.now()) {
   else if (sleva > 0) vysledek.verdikt = { druh: "sleva" };
   else if (obdobi.length) vysledek.verdikt = { druh: "pockat" };
   else vysledek.verdikt = { druh: "bez" };
+  vysledek.poradce = nakupniPoradce(r, obdobi, { cena, sleva, puvodni: Number(ted.puvodni), zdarma: !!ted.zdarma }, vysledek, cas);
   return vysledek;
+}
+
+// Nákupní poradce: průměrné ceny, běžná (neslevová) cena, kontrola „nafouknuté“ slevy a doporučení s důvody.
+// Pevná pravidla nad naměřenými daty – nic se nepředpovídá, každý důvod říká, z čeho vychází.
+function nakupniPoradce(r, obdobi, t, v, cas) {
+  const prumer = (dni) => { const x = r.filter((y) => msDne(y.den) >= cas - dni * DEN).map((y) => y.cena); return x.length ? Math.round((x.reduce((a, b) => a + b, 0) / x.length) * 100) / 100 : null; };
+  const bezSlevy = r.filter((x) => !x.sleva).map((x) => x.cena);
+  const bezne = bezSlevy.length >= 3 ? median(bezSlevy) : null;
+  const p = { prumer30: prumer(30), prumer90: prumer(90), bezna: bezne, skutecna_sleva: null, nafouknuta: false, druh: null, duvody: [] };
+  if (bezne && t.sleva > 0 && bezne > 0) p.skutecna_sleva = Math.max(0, Math.round((1 - t.cena / bezne) * 100));
+  // „Původní“ cena ve slevě je o víc než 5 % vyšší než běžná cena, kterou jsme naměřili mimo slevy.
+  if (bezne && t.sleva > 0 && Number.isFinite(t.puvodni) && t.puvodni > bezne * 1.05) p.nafouknuta = true;
+  const D = p.duvody;
+  if (t.zdarma || t.cena === 0) { p.druh = "zdarma"; return p; }
+  if (v.dni < 30) { p.druh = "nevime"; D.push({ k: "malo", dni: v.dni }); return p; }
+  if (p.nafouknuta) D.push({ k: "nafouknuta", puvodni: t.puvodni, bezna: bezne, skutecna: p.skutecna_sleva });
+  if (t.sleva > 0) {
+    if (v.nejnizsi_ted) { p.druh = p.nafouknuta && (p.skutecna_sleva ?? 0) < 10 ? "dobra" : "koupit"; D.push({ k: "nejnizsi", od: v.od }); }
+    else if (t.cena <= v.min * 1.1) { p.druh = "dobra"; D.push({ k: "blizko", min: v.min, min_den: v.min_den }); }
+    else { p.druh = p.nafouknuta && (p.skutecna_sleva ?? 0) < 10 ? "pockat" : "dobra"; D.push({ k: "bylo_levneji", min: v.min, min_den: v.min_den }); }
+    if (p.prumer90 && t.cena < p.prumer90) D.push({ k: "pod_prumerem", prumer90: p.prumer90 });
+  } else if (obdobi.length) {
+    p.druh = "pockat";
+    D.push({ k: "slevy", pocet: obdobi.length, obvykla: v.obvykla_sleva, posledni: v.posledni_sleva, nejnizsi: v.min });
+  } else { p.druh = "nevime"; D.push({ k: "bez_slev", dni: v.dni }); }
+  return p;
 }

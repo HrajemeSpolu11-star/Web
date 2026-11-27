@@ -3,6 +3,7 @@
 // VAPID klíče si Worker vygeneruje sám při prvním použití a uloží do D1 (tabulka nastaveni).
 import { zajistiSchemaHlidac, hlidat, nehlidat } from "./hlidac.js";
 import { teloPozadavku } from "./telo.js";
+import { sledovat, nesledovat, zajistiSchemaSledovani } from "./sledovani.js";
 
 const ZPRAV_NA_PUSH = 4; // service worker zobrazí každou zvlášť
 
@@ -184,8 +185,8 @@ export async function pushApi(request, env) {
   // (ne přes /nehlidat ani /zrusit), nejvýš 30 nových odběrů za minutu a do pevného stropu 20 000.
   const ex = await db.prepare("SELECT 1 AS x FROM push_odbery WHERE id = ?").bind(id).first();
   if (!ex) {
-    if (cesta === "/nehlidat") return json({ ok: true, hlidam: 0 });
-    if (cesta === "/odber" || cesta === "/hlidat") {
+    if (cesta === "/nehlidat" || cesta === "/nesledovat") return json({ ok: true, hlidam: 0 });
+    if (cesta === "/odber" || cesta === "/hlidat" || cesta === "/sledovat") {
       const poc = await db.prepare("SELECT COUNT(*) AS n FROM push_odbery").first();
       if ((poc?.n || 0) >= MAX_ODBERU || !await smimNovyOdber(db)) return json({ chyba: "Upozornění jsou teď přeplněná, zkus to později." }, 503);
     }
@@ -199,9 +200,9 @@ export async function pushApi(request, env) {
     return json({ ok: true, oblibenych: obl.length });
   }
   if (cesta === "/zrusit") {
-    await zajistiSchemaHlidac(db);
+    await zajistiSchemaHlidac(db); await zajistiSchemaSledovani(db);
     await db.batch([db.prepare("DELETE FROM push_odbery WHERE id = ?").bind(id), db.prepare("DELETE FROM push_zpravy WHERE odber_id = ?").bind(id),
-      db.prepare("DELETE FROM hlidani WHERE odber_id = ?").bind(id)]);
+      db.prepare("DELETE FROM hlidani WHERE odber_id = ?").bind(id), db.prepare("DELETE FROM sledovani WHERE odber_id = ?").bind(id)]);
     return json({ ok: true });
   }
   if (cesta === "/hlidat" || cesta === "/nehlidat") {
@@ -210,6 +211,13 @@ export async function pushApi(request, env) {
     if (cesta === "/hlidat") await db.prepare(`INSERT INTO push_odbery (id, endpoint, oblibeni, vytvoreno, upraveno) VALUES (?, ?, '[]', ?, ?)
       ON CONFLICT(id) DO NOTHING`).bind(id, endpoint, ted, ted).run();
     const v = cesta === "/hlidat" ? await hlidat(db, id, b) : await nehlidat(db, id, b);
+    return json(v.chyba ? { chyba: v.chyba } : v, v.status || 200);
+  }
+  if (cesta === "/sledovat" || cesta === "/nesledovat") {
+    const ted = Date.now();
+    if (cesta === "/sledovat") await db.prepare(`INSERT INTO push_odbery (id, endpoint, oblibeni, vytvoreno, upraveno) VALUES (?, ?, '[]', ?, ?)
+      ON CONFLICT(id) DO NOTHING`).bind(id, endpoint, ted, ted).run();
+    const v = cesta === "/sledovat" ? await sledovat(db, id, b) : await nesledovat(db, id, b);
     return json(v.chyba ? { chyba: v.chyba } : v, v.status || 200);
   }
   if (cesta === "/zpravy") {

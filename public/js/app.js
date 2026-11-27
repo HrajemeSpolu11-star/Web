@@ -244,6 +244,78 @@
     finally { b.disabled = false; }
   }, true);
 
+  // ---------- Sledované hry („Sledovat hru“ + blok Moje hry na Domů) ----------
+  // Seznam je jen v prohlížeči. Když jsou zapnutá upozornění, server zná pouze ID hry u tvého push odběru.
+  function sledovane() { try { return JSON.parse(localStorage.getItem("hp_sledovane") || "[]"); } catch { return []; } }
+  const ulozSledovane = (l) => { try { localStorage.setItem("hp_sledovane", JSON.stringify(l.slice(0, 100))); } catch {} };
+  const sleduji = (slug) => sledovane().some((x) => x.slug === slug);
+  const tlacitkoSledovat = (h) => !h?.slug ? "" : `<button type="button" class="sledovat${sleduji(h.slug) ? " on" : ""}" data-sledovat="${esc(h.slug)}"
+      data-nazev="${esc(h.nazev || "")}" data-steam="${esc(h.steam_id || "")}" aria-pressed="${sleduji(h.slug)}">${sleduji(h.slug) ? "★ Sleduji" : "☆ Sledovat hru"}</button>`;
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-sledovat]");
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const slug = b.dataset.sledovat, zapnout = !sleduji(slug), nazev = b.dataset.nazev || "";
+    const l = sledovane().filter((x) => x.slug !== slug);
+    if (zapnout) l.unshift({ slug, nazev, steam_id: b.dataset.steam || null });
+    ulozSledovane(l);
+    document.querySelectorAll(`[data-sledovat="${CSS.escape(slug)}"]`).forEach((x) => {
+      x.classList.toggle("on", zapnout); x.setAttribute("aria-pressed", zapnout); x.textContent = zapnout ? "★ Sleduji" : "☆ Sledovat hru";
+    });
+    b.disabled = true;
+    let upozorneni = false, chyba = "";
+    try {
+      if (pushPodpora() && (zapnout || pushZapnuto())) {
+        const sub = await odberPush();
+        const r = await fetch(`/api/push/${zapnout ? "sledovat" : "nesledovat"}`, { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: sub.endpoint, slug, nazev, steam_id: b.dataset.steam || null }) });
+        const v = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(v.chyba || "Nepodařilo se uložit.");
+        upozorneni = true;
+      }
+    } catch (err) { chyba = err.message || ""; }
+    finally { b.disabled = false; }
+    if (!zapnout) achievement("Už nesleduji", nazev);
+    else achievement("Sleduji hru", upozorneni ? "Dám ti vědět o aktualizaci, slevě, vydání a novinkách. Najdeš ji na Domů v bloku Moje hry."
+      : `Najdeš ji na Domů v bloku Moje hry.${chyba ? ` Upozornění nejdou: ${chyba}` : ""}`);
+  }, true);
+  // Když si někdo zapne upozornění později, pošleme serveru i dříve sledované hry (jednou za den).
+  async function synchronizujSledovane() {
+    const l = sledovane();
+    if (!l.length || !pushZapnuto() || !pushPodpora()) return;
+    try { if (Date.now() - Number(localStorage.getItem("hp_sled_sync") || 0) < 864e5) return; } catch { return; }
+    try {
+      const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+      const sub = reg && await reg.pushManager.getSubscription();
+      if (!sub) return;
+      for (const h of l.slice(0, 100)) await fetch("/api/push/sledovat", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: sub.endpoint, slug: h.slug, nazev: h.nazev, steam_id: h.steam_id }) });
+      localStorage.setItem("hp_sled_sync", String(Date.now()));
+    } catch {}
+  }
+  setTimeout(synchronizujSledovane, 4000);
+  async function blokMojeHry(el) {
+    const l = sledovane();
+    if (!el || !l.length) return;
+    let d;
+    try { d = await nacti(`moje-hry?s=${enc(l.slice(0, 40).map((x) => x.slug).join(","))}`); } catch { return; }
+    const jm = new Map(l.map((x) => [x.slug, x.nazev]));
+    el.innerHTML = `<div class="section-title">Moje hry · <span class="dim">${esc(pl(l.length, "sledovaná hra", "sledované hry", "sledovaných her"))}</span></div>
+      <div class="moje-hry">${(d.hry || []).map((h) => {
+        const cipy = [];
+        if (h.zive) cipy.push(`<span class="mh-cip mh-zive">${esc(pl(h.zive, "stream živě", "streamy živě", "streamů živě"))}</span>`);
+        if (h.steam?.zdarma) cipy.push(`<span class="mh-cip mh-sleva">zdarma</span>`);
+        else if (h.steam?.sleva > 0) cipy.push(`<span class="mh-cip mh-sleva">−${Number(h.steam.sleva) || 0} % · ${esc(cena(h.steam.cena, h.steam.mena))}</span>`);
+        if (h.patch && Date.now() - Date.parse(h.patch.datum) < 7 * 864e5) cipy.push(`<span class="mh-cip">aktualizace ${esc(kdy(Date.parse(h.patch.datum)))}</span>`);
+        if (h.vydano && Date.parse(h.vydano) > Date.now()) cipy.push(`<span class="mh-cip">${esc(dnyDoVydani(h.vydano))}</span>`);
+        const nazev = h.nazev || jm.get(h.slug) || h.slug;
+        return `<a class="mh-hra" href="/databaze/${esc(h.slug)}">${https(h.obal) ? `<img src="${esc(h.obal)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="obal-bez">${esc(nazev[0] || "?")}</span>`}
+          <div><b>${esc(nazev)}</b><div class="mh-cipy">${cipy.join("") || `<span class="dim">nic nového</span>`}</div></div></a>`;
+      }).join("")}</div>
+      <p class="source-note">Seznam máš jen v tomto prohlížeči. Údaje z uložených dat webu (Steam, Twitch, Kick, IGDB).</p>`;
+    el.hidden = false;
+  }
+
   function radekHry(h, { hlidac = false } = {}) {
     const cenaTxt = h.cena == null ? (h.vychazi ? "zatím se neprodává" : "") : h.cena === 0 ? "Zdarma"
       : `${h.sleva ? `<s>${esc(cena(h.puvodni, h.mena))}</s> <em>−${Number(h.sleva) || 0} %</em> ` : ""}<strong>${esc(cena(h.cena, h.mena))}</strong>`;
@@ -654,6 +726,33 @@
       <small class="dim">Není to předpověď, jen to, co jsme naměřili. ${puvod("mereno", "Steam")}</small></div>` : "";
   }
 
+  // ---------- Nákupní poradce (pevná pravidla nad naměřenými cenami) ----------
+  const PORADCE = { koupit: ["Koupit teď", "pc-koupit"], dobra: ["Dobrá cena", "pc-dobra"], pockat: ["Spíš počkat", "pc-pockat"], nevime: ["Zatím nevíme", "pc-nevime"] };
+  function poradceText(p, m) {
+    return (p?.duvody || []).map((d) => ({
+      malo: `Cenu měříme teprve ${pl(d.dni, "den", "dny", "dní")} – na radu je brzy.`,
+      nafouknuta: `Pozor: „původní“ cena ${cena(d.puvodni, m)} je vyšší, než jakou jsme mimo slevy obvykle měřili (${cena(d.bezna, m)}). Skutečná sleva je asi −${d.skutecna ?? 0} %.`,
+      nejnizsi: `Nejnižší cena od ${datumKr(d.od)}, kdy cenu měříme.`,
+      blizko: `Jen kousek nad naměřeným minimem ${cena(d.min, m)}${d.min_den ? ` (${datumKr(d.min_den)})` : ""}.`,
+      bylo_levneji: `Už byla levněji: ${cena(d.min, m)}${d.min_den ? ` (${datumKr(d.min_den)})` : ""}.`,
+      pod_prumerem: `Pod průměrnou cenou za 90 dní (${cena(d.prumer90, m)}).`,
+      slevy: `Teď bez slevy. Za dobu měření byla ve slevě ${d.pocet}×${d.obvykla ? `, obvykle −${d.obvykla} %` : ""}${d.posledni ? `, naposledy ${datumKr(d.posledni)}` : ""}; nejníž ${cena(d.nejnizsi, m)}.`,
+      bez_slev: `Za ${dobaMereni(d.dni)} měření nebyla ve slevě – kdy bude, nevíme.`,
+    }[d.k])).filter(Boolean);
+  }
+  function poradceBlok(r, st) {
+    const p = r?.poradce;
+    if (!p || !PORADCE[p.druh]) return "";
+    const m = st?.mena || "CZK";
+    const [nadpis, tr] = PORADCE[p.druh];
+    const cisla = [p.prumer30 != null && ["průměr 30 dní", cena(p.prumer30, m)], p.prumer90 != null && ["průměr 90 dní", cena(p.prumer90, m)],
+      p.bezna != null && ["běžná cena bez slevy", cena(p.bezna, m)], p.skutecna_sleva != null && ["skutečná sleva", `−${p.skutecna_sleva} %`]].filter(Boolean);
+    return `<div class="poradce ${tr}"><div class="poradce-h"><span>Nákupní poradce</span><b>${esc(nadpis)}</b></div>
+      <ul>${poradceText(p, m).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+      ${cisla.length ? `<dl class="poradce-c">${cisla.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : ""}
+      <small class="dim">Doporučení z cen, které jsme naměřili na Steamu – ne předpověď. ${puvod("mereno", "Steam")}</small></div>`;
+  }
+
   // ---------- Lehká herní DNA ----------
   const hodinyHrani = (s) => { const h = s / 3600; return h < 2 ? (Math.round(h * 10) / 10).toLocaleString(LOC) : String(Math.round(h)); };
   function dnaBlok(dna) {
@@ -784,7 +883,40 @@
   const obalHry = (h, cip = "") => `<a class="obal" href="/databaze/${esc(h.slug)}">
       ${https(h.obal) ? `<img src="${esc(h.obal)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="obal-bez">${esc((h.nazev || "?")[0])}</span>`}
       ${cip ? `<span class="obal-cip">${esc(cip)}</span>` : ""}<b>${esc(h.nazev)}</b><small>${h.rok ? esc(String(h.rok)) : ""}${h.platformy?.length ? `${h.rok ? " · " : ""}${esc(h.platformy.slice(0, 3).join(", "))}` : ""}</small></a>`;
+  // Chytré hledání: věta česky nebo filtry. Stejné názvy parametrů jako /api/databaze.
+  const FILTRY_DB = ["dotaz", "platforma", "zanr", "rezim", "tema", "od", "do", "hodnoceni", "cz", "cena"];
+  let nabidkaFiltru = null;
+  function formFiltry(p, nab) {
+    const vyber = (k, list, prazdne) => `<label><span>${prazdne}</span><select name="${k}"><option value="">${"Jakékoliv"}</option>${(list || []).map((x) =>
+      `<option value="${esc(String(x.id))}"${p.get(k) === String(x.id) ? " selected" : ""}>${esc(x.nazev)}</option>`).join("")}</select></label>`;
+    const vybrano = FILTRY_DB.slice(1).some((k) => p.get(k));
+    return `<form class="db-chytre" id="f-chytre" role="search">
+      <label class="db-veta"><span>Chytré hledání – napiš, co hledáš</span>
+        <input name="dotaz" type="search" maxlength="160" autocomplete="off" value="${esc(p.get("dotaz") || "")}" placeholder="Např. kooperační horor na PS5 s češtinou do 500 Kč"></label>
+      <details class="db-filtry"${vybrano ? " open" : ""}><summary>Filtry</summary><div class="db-filtry-mriz">
+        ${vyber("platforma", nab?.platformy, "Platforma")}${vyber("zanr", nab?.zanry, "Žánr")}${vyber("rezim", nab?.rezimy, "Režim")}${vyber("tema", nab?.temata, "Téma")}
+        <label><span>Vyšlo od roku</span><input name="od" type="number" min="1970" max="2100" inputmode="numeric" value="${esc(p.get("od") || "")}"></label>
+        <label><span>Vyšlo do roku</span><input name="do" type="number" min="1970" max="2100" inputmode="numeric" value="${esc(p.get("do") || "")}"></label>
+        <label><span>Hodnocení aspoň</span><select name="hodnoceni"><option value="">Jakékoliv</option>${[60, 70, 80, 90].map((x) => `<option value="${x}"${p.get("hodnoceni") === String(x) ? " selected" : ""}>${x}/100</option>`).join("")}</select></label>
+        <label><span>Čeština</span><select name="cz"><option value="">Nezáleží</option><option value="1"${p.get("cz") === "1" ? " selected" : ""}>Aspoň české texty</option><option value="2"${p.get("cz") === "2" ? " selected" : ""}>Český dabing</option></select></label>
+        <label><span>Cena na Steamu do (Kč)</span><input name="cena" type="number" min="0" max="10000" inputmode="numeric" value="${esc(p.get("cena") || "")}" placeholder="0 = zdarma"></label>
+      </div></details>
+      <div class="db-chytre-akce"><button type="submit">Najít hry</button>${vybrano || p.get("dotaz") ? `<a class="btn-sek" href="/databaze">Zrušit filtry</a>` : ""}</div>
+    </form>`;
+  }
+  function pripojFiltry() {
+    const f = document.getElementById("f-chytre");
+    if (!f) return;
+    f.onsubmit = (e) => {
+      e.preventDefault();
+      const p = new URLSearchParams();
+      for (const [k, v] of new FormData(f)) if (String(v).trim() !== "") p.set(k, String(v).trim());
+      jdi(p.toString() ? `/databaze?${p}` : "/databaze");
+    };
+  }
   async function strankaDatabaze() {
+    const sp = new URLSearchParams(location.search);
+    if (FILTRY_DB.some((k) => sp.get(k))) return strankaDatabazeFiltry(sp);
     const q = (new URLSearchParams(location.search).get("q") || "").trim().slice(0, 60);
     nastavTitulek(q ? `Hledání „${q}“ – databáze her` : "Databáze her – popis česky, platformy, data vydání");
     const hlava = hubHry("databaze", "Databáze her", "Přes 300 tisíc her od klasik po novinky – i hry jen pro konzole. Popis česky, platformy a data vydání, obrázky, hodnocení, série a podobné hry.");
@@ -805,7 +937,41 @@
         ${d.hry.length ? `<div class="police police-mriz db-mriz">${d.hry.slice(0, 48).map((h, i) => obalHry(h, i < 10 ? `#${i + 1}` : "")).join("")}</div>` : `<p class="dim">Seznam populárních her se připravuje (obnovuje se jednou denně).</p>`}`}
       <p class="source-note">Údaje o hrách jsou z databáze IGDB, kterou doplňuje komunita a vydavatelé. ${puvod("databaze", "IGDB")} Popularita podle návštěvnosti IGDB.</p>`;
     pripoj();
+    // Chytré hledání pod běžným hledáním (seznamy filtrů se načtou z IGDB jednou za týden).
+    const fe = document.getElementById("f-db");
+    if (fe) {
+      fe.insertAdjacentHTML("afterend", `<div id="db-chytre-misto">${formFiltry(sp, nabidkaFiltru)}</div>`);
+      pripojFiltry();
+      if (!nabidkaFiltru) nacti("databaze-filtry").then((n) => { nabidkaFiltru = n; const m = document.getElementById("db-chytre-misto");
+        if (m && !m.contains(document.activeElement)) { m.innerHTML = formFiltry(sp, n); pripojFiltry(); } }).catch(() => {});
+    }
     if (!q) document.getElementById("q-db")?.focus({ preventScroll: true });
+  }
+
+  async function strankaDatabazeFiltry(sp) {
+    nastavTitulek("Chytré hledání – databáze her");
+    const hlava = hubHry("databaze", "Databáze her", "Najdi hru podle platformy, žánru, režimu, roku, hodnocení, češtiny nebo ceny – nebo to napiš jednou větou.");
+    if (!nabidkaFiltru) nabidkaFiltru = await nacti("databaze-filtry").catch(() => null);
+    app.innerHTML = `${hlava}${formFiltry(sp, nabidkaFiltru)}${kostra(6, "banner")}`;
+    pripojFiltry();
+    const p = new URLSearchParams();
+    for (const k of FILTRY_DB) if (sp.get(k)) p.set(k, sp.get(k).slice(0, 160));
+    let d;
+    try { d = await nacti(`databaze?${p}`); } catch { app.innerHTML = `${hlava}${formFiltry(sp, nabidkaFiltru)}<p class="empty">Databáze je teď nedostupná, zkus to za chvíli.</p>`; pripojFiltry(); return; }
+    if (!location.pathname.startsWith("/databaze")) return;
+    const f = d.filtry || {}, nab = d.nabidka || nabidkaFiltru || {};
+    const jm = (list, id) => (list || []).find((x) => x.id === id)?.nazev;
+    const rozumim = [f.platforma && jm(nab.platformy, f.platforma), f.zanr && jm(nab.zanry, f.zanr), f.rezim && jm(nab.rezimy, f.rezim), f.tema && jm(nab.temata, f.tema),
+      f.od && f.do && f.od === f.do ? `rok ${f.od}` : [f.od && `od ${f.od}`, f.do && `do ${f.do}`].filter(Boolean).join(" "), f.hodnoceni && `hodnocení ${f.hodnoceni}+`,
+      f.cz === 2 ? "český dabing" : f.cz === 1 ? "čeština" : "", f.cena === 0 ? "zdarma" : f.cena != null ? `do ${f.cena} Kč` : "", f.q && `název „${f.q}“`].filter(Boolean);
+    app.innerHTML = `${hlava}${formFiltry(sp, nab)}
+      ${rozumim.length ? `<p class="db-rozumim"><b>Hledám:</b> ${rozumim.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</p>` : ""}
+      <div class="section-title">${d.hry.length ? `Nalezeno: ${esc(pl(d.hry.length, "hra", "hry", "her"))}${d.hry.length >= 48 ? " (prvních 48)" : ""}` : "Nic jsme nenašli"}</div>
+      ${d.hry.length ? `<div class="police police-mriz db-mriz">${d.hry.map((h) => `<div class="db-vysl">${obalHry(h, h.hodnoceni ? `${h.hodnoceni}/100` : "")}
+          ${h.proc?.length ? `<div class="db-proc">${h.proc.map((x) => `<span>✓ ${esc(x)}</span>`).join("")}</div>` : ""}</div>`).join("")}</div>`
+        : `<p class="empty">Zkus ubrat některý filtr${f.cz || f.cena != null ? " – čeština a cena jsou známé jen u her, které jsme propojili se Steamem" : ""}.</p>`}
+      <p class="source-note">Platforma, žánr, režim, téma, rok a hodnocení podle IGDB. Čeština a cena podle Steamu – jen u her, které máme propojené se Steamem; ostatní hry tyto filtry vyřadí. Větu převádíme na filtry pevnými pravidly (ne AI) – co pravidla nepoznají, hledá se jako název hry. ${puvod("databaze", "IGDB")}</p>`;
+    pripojFiltry();
   }
 
   async function strankaHraDatabaze(slugHry) {
@@ -891,9 +1057,9 @@
       <div class="hra-mriz">
       <aside class="hra-bok" aria-label="Pulsometr, ceny a kde hrát">
         ${pulsBlok(pas.puls)}
-        ${obchody.length ? `<div class="section-title">Kde hrát a koupit</div><div class="obchody">${obchody.join("")}</div>${cenovyText(pas.ceny?.rozbor, st)}` : ""}
+        ${obchody.length ? `<div class="section-title">Kde hrát a koupit</div><div class="obchody">${obchody.join("")}</div>${cenovyText(pas.ceny?.rozbor, st)}${poradceBlok(pas.ceny?.rozbor, st)}` : ""}
         ${steamId ? `<p class="db-steam-odkaz"><a href="/hra/steam/${esc(enc(steamId))}">Stránka hry ze Steamu – historie cen, srovnání</a></p>` : ""}
-        ${steamId && !(st?.zdarma || d.steam?.zdarma) ? `<div class="hra-hlidat">${tlacitkoHlidat({ id: steamId, nazev: d.nazev })}</div>` : ""}
+        <div class="hra-hlidat">${tlacitkoSledovat({ slug: slugHry, nazev: d.nazev, steam_id: steamId })}${steamId && !(st?.zdarma || d.steam?.zdarma) ? tlacitkoHlidat({ id: steamId, nazev: d.nazev }) : ""}</div>
         ${fakta.length ? `<dl class="fakta">${fakta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
         ${steamId ? `<p class="pas-srov"><a class="btn-sek" href="/porovnat-hry?ids=${esc(enc(steamId))}">Porovnat s jinou hrou</a></p>` : ""}
         ${d.oficialni ? `<p class="pas-srov"><a class="btn-sek" href="${esc(bezpecnaUrl(d.oficialni))}" target="_blank" rel="noopener noreferrer">Oficiální web hry</a></p>` : ""}
@@ -1010,7 +1176,8 @@
   ];
   async function strankaTrendy() {
     nastavTitulek("Rostoucí a upadající hry – trendy na Steamu a českých streamech");
-    const oblast = new URLSearchParams(location.search).get("o") === "steam" ? "steam" : "cesko";
+    const oParam = new URLSearchParams(location.search).get("o");
+    const oblast = oParam === "steam" ? "steam" : oParam === "analytika" ? "analytika" : "cesko";
     const hlava = hubHry("trendy", "Rostoucí a upadající hry", "Které hry nabírají hráče a diváky a které je ztrácejí. Jen z čísel, která opravdu měříme.");
     if (!state.trendy || Date.now() - state.trendyCas > 18e5) {
       app.innerHTML = `${hlava}${kostra(6)}`;
@@ -1018,7 +1185,8 @@
     }
     if (!location.pathname.startsWith("/trendy")) return;
     const t = state.trendy, x = t[oblast];
-    const prepinac = `<nav class="hub-tabs" aria-label="Oblast"><a href="/trendy" class="${oblast === "cesko" ? "on" : ""}">Česká scéna (streamy)</a><a href="/trendy?o=steam" class="${oblast === "steam" ? "on" : ""}">Steam (hráči)</a></nav>`;
+    const prepinac = `<nav class="hub-tabs" aria-label="Oblast"><a href="/trendy" class="${oblast === "cesko" ? "on" : ""}">Česká scéna (streamy)</a><a href="/trendy?o=steam" class="${oblast === "steam" ? "on" : ""}">Steam (hráči)</a><a href="/trendy?o=analytika" class="${oblast === "analytika" ? "on" : ""}">Žánry a komunity</a></nav>`;
+    if (oblast === "analytika") return strankaAnalytika(hlava, prepinac);
     let obsah;
     if (!x || !x.dostupne) {
       const od = x?.od ? datumKr(x.od) : null;
@@ -1043,6 +1211,41 @@
     }
     app.innerHTML = `${hlava}${prepinac}${obsah}`;
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
+  }
+
+  // ---------- Analytika žánrů a komunit (záložka na /trendy) ----------
+  async function strankaAnalytika(hlava, prepinac) {
+    app.innerHTML = `${hlava}${prepinac}${kostra(5)}`;
+    let a;
+    try { a = await nacti("analytika"); } catch { app.innerHTML = `${hlava}${prepinac}<p class="empty">Analytiku se nepodařilo načíst.</p>`; return; }
+    if (!location.pathname.startsWith("/trendy")) return;
+    const zmena = (z) => z == null ? "" : `<em class="${z >= 0 ? "plus" : "minus"}">${z > 0 ? "+" : ""}${z} %</em>`;
+    const odkazHryA = (h) => h.igdb_slug ? `/databaze/${enc(h.igdb_slug)}` : h.slug ? `/hra/${enc(h.slug)}` : h.id ? `/hra/steam/${enc(h.id)}` : "/trendy";
+    const obr = (h) => https(h.obrazek) ? `<img class="tr-obr" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="tr-obr tr-bez"></span>`;
+    const maxZ = Math.max(1, ...(a.zanry || []).map((z) => z.hodin));
+    const casti = [];
+    if (!a.dostupne) casti.push(`<p class="info-box">Žánry a komunity spočítáme, až budeme mít aspoň 14 celých dní záznamů ze streamů.${a.od ? ` Měříme od ${esc(datumKr(a.od))}.` : ""}</p>`);
+    else {
+      casti.push(`<section class="blok"><div class="section-title">Žánry na české scéně – hodiny sledování za 7 dní</div>
+        ${(a.zanry || []).length ? `<div class="an-zanry">${a.zanry.map((z) => `<div class="an-z"><div class="an-z-t"><b>${esc(z.zanr)}</b><span>${esc(num(z.hodin))} h ${zmena(z.zmena)}</span></div>
+          <div class="bar"><i data-w="${Math.round((z.hodin / maxZ) * 100)}"></i></div>
+          <small class="dim">${esc(pl(z.her, "hra", "hry", "her"))}${z.top?.length ? ` · nejvíc ${esc(z.top.join(", "))}` : ""}</small></div>`).join("")}</div>` : `<p class="dim">Zatím málo spárovaných her.</p>`}
+        <p class="source-note">Hodiny sledování na českých streamech (Twitch a Kick) ${esc(datumKr(a.obdobi.od))}–${esc(datumKr(a.obdobi.do))} proti 7 dnům předtím. Žánr podle Steamu; hra může mít víc žánrů, proto se hodiny nesčítají do 100 %. Spárovat se Steamem umíme ${a.pokryti != null ? `${esc(String(a.pokryti))} %` : "část"} sledovaných hodin – zbytek (např. hry jen pro konzole) v žánrech chybí. ${puvod("mereno", "Twitch + Kick + Steam", a.cas)}</p></section>`);
+      casti.push(`<section class="blok"><div class="section-title">Rostoucí české komunity</div>
+        ${(a.komunity || []).length ? `<div class="slist">${a.komunity.map((h) => `<a class="srow trend-r" href="${esc(odkazHryA(h))}">${obr(h)}<div class="info"><h3>${esc(h.hra)}</h3></div>
+          <div class="num tr-num"><b>${esc(pl(h.streamu, "stream", "streamy", "streamů"))}</b><small>minulý týden ${esc(num(h.streamu_pred))}</small></div></a>`).join("")}</div>` : `<p class="dim">Tento týden žádná hra nepřibrala streamy.</p>`}
+        <p class="source-note">Nejvíc českých streamů, které hru hrály najednou na jedné platformě – tento týden proti minulému. Jen hry s aspoň 3 streamy. ${puvod("mereno", "Twitch + Kick", a.cas)}</p></section>`);
+    }
+    casti.push(`<section class="blok"><div class="section-title">Nejčastěji ve slevě (90 dní)</div>
+      ${(a.slevy || []).length ? `<div class="slist">${a.slevy.map((h) => `<a class="srow trend-r" href="${esc(odkazHryA(h))}">${obr(h)}<div class="info"><h3>${esc(h.nazev)}</h3></div>
+        <div class="num tr-num"><b>${esc(pl(h.dni, "den", "dny", "dní"))}</b><small>až −${esc(String(h.max))} %</small></div></a>`).join("")}</div>` : `<p class="dim">Zatím máme málo historie cen.</p>`}
+      <p class="source-note">Počet dní se slevou na Steamu za posledních 90 dní, jen hry, jejichž cenu měříme aspoň 60 dní. ${puvod("mereno", "Steam", a.cas)}</p></section>`);
+    casti.push(`<section class="blok"><div class="section-title">Nejvíc aktualizací (30 dní)</div>
+      ${(a.aktualizace || []).length ? `<div class="slist">${a.aktualizace.map((h) => `<a class="srow trend-r" href="${esc(odkazHryA(h))}">${obr(h)}<div class="info"><h3>${esc(h.nazev)}</h3><span class="dim">naposledy ${esc(kdy(Date.parse(h.posledni)))}</span></div>
+        <div class="num tr-num"><b>${esc(pl(h.pocet, "oznámení", "oznámení", "oznámení"))}</b></div></a>`).join("")}</div>` : `<p class="dim">Zatím žádné aktualizace.</p>`}
+      <p class="source-note">Oficiální oznámení vývojářů na Steamu u her, které sledujeme. ${puvod("oficialni", "Steam", a.cas)}</p></section>`);
+    app.innerHTML = `${hlava}${prepinac}${casti.join("")}`;
+    app.querySelectorAll(".bar i[data-w]").forEach((el) => { el.style.width = `${Math.max(2, Math.min(100, Number(el.dataset.w) || 0))}%`; });
   }
 
   // ---------- Srovnávač her ----------
@@ -1081,6 +1284,7 @@
     const rezimT = (h) => h.dna?.steam ? [h.dna.steam.sam && "sám", h.dna.steam.koop && "kooperace", h.dna.steam.online && "online"].filter(Boolean).join(", ") || "–" : "–";
     const radky = [
       ["Cena na Steamu", (h) => cenaT(h), puvod("oficialni", "Steam")],
+      ["Nákupní poradce", (h) => h.rozbor?.poradce && PORADCE[h.rozbor.poradce.druh] ? `<b>${esc(PORADCE[h.rozbor.poradce.druh][0])}</b>${h.rozbor.poradce.nafouknuta ? `<br><small>nafouknutá „původní“ cena</small>` : ""}` : "–", puvod("mereno", "Steam")],
       ["Cenový radar", (h) => h.rozbor ? (h.rozbor.nejnizsi_ted && h.sleva ? "nejlevnější od začátku měření" : h.rozbor.dni < 30 ? `měříme ${pl(h.rozbor.dni, "den", "dny", "dní")}` : `nejníž ${esc(cena(h.rozbor.min, h.mena))} · slev ${h.rozbor.slevovych_obdobi}×`) : "–", puvod("mereno", "Steam")],
       ["Cena na GOGu", (h) => h.gog?.cena != null ? `${esc(cena(h.gog.cena, h.gog.mena))}${h.gog.sleva ? ` <em>−${Number(h.gog.sleva) || 0} %</em>` : ""}` : "–", puvod("oficialni", "GOG")],
       ["Čeština", (h) => czT(h.cestina), puvod("oficialni", "Steam")],
@@ -1909,6 +2113,7 @@
       <p class="perex">${esc(c.perex)}</p>
       <div class="text">${c.md ? md(c.md) : ""}</div>
       ${c.url && !c.vlastni ? `<a class="btn-source" href="${esc(bezpecnaUrl(c.url))}" target="_blank" rel="noopener noreferrer">Číst celý článek na ${esc(c.zdroje?.[0]?.nazev || "zdroji")} →</a>` : ""}
+      ${(c.hry || []).length ? `<div class="clanek-hry"><b>Hry v článku:</b> ${c.hry.map((h) => `<a class="chip" href="/databaze/${esc(h.slug)}">${esc(h.nazev)}</a>`).join("")}</div>` : ""}
       <div class="sources"><b>${(c.zdroje || []).length > 1 ? "Zdroje" : "Zdroj"}:</b> ${(c.zdroje || []).map((z) => `<a href="${esc(bezpecnaUrl(z.url))}" target="_blank" rel="noopener noreferrer nofollow">${esc(z.nazev)}</a>`).join(", ")}
         <div class="ai-note">${c.ai ? "Článek napsala AI na základě uvedených zdrojů a prošel automatickou kontrolou faktů." : c.vlastni ? "Článek redakce Herní puls." : "Zpráva byla automaticky převzata z RSS kanálu zdroje. Celý článek najdeš u autora."}</div></div>
       ${streameri.length ? `<div class="section-title">Tuhle hru právě streamují · <a href="/hra/${esc(slug(hra))}">vše o hře</a></div><div class="live-grid">${streameri.map(kartaZive).join("")}</div>` : ""}
@@ -2028,7 +2233,7 @@
       <div id="extra"></div>
       ${body.length >= 2 ? `<div class="section-title">Vývoj sledujících</div><div class="graf" id="graf"></div>` : ""}
       ${(s.hry || []).length ? `<div class="section-title">Nejčastěji hrané hry</div><div class="hry">${s.hry.map((h) =>
-        `<a class="hra" href="/hra/${esc(h.slug || slug(h.hra))}"><div class="hra-t"><span>${esc(h.hra)}</span><span class="dim">${Math.round(h.minut / 60)} h</span></div>
+        `<a class="hra" href="${h.igdb_slug ? `/databaze/${esc(h.igdb_slug)}` : `/hra/${esc(h.slug || slug(h.hra))}`}"><div class="hra-t"><span>${esc(h.hra)}</span><span class="dim">${Math.round(h.minut / 60)} h</span></div>
          <div class="bar"><i data-w="${Math.round((h.minut / maxHra) * 100)}"></i></div></a>`).join("")}</div>` : ""}
       <p class="source-note">Údaje z oficiálního API ${s.platforma === "kick" ? "Kicku" : "Twitche"}. Na Herním pulsu sledujeme od ${esc(datumCz(s.prvni_videno))} ·
         profil aktualizován ${esc(datumCz(s.aktualizovano?.profil))}${s.platforma === "kick" ? "" : ` · sledující ${esc(datumCz(s.aktualizovano?.sledujici))}`}.
@@ -2251,9 +2456,10 @@
       <div class="hra-mriz">
       <aside class="hra-bok" aria-label="Cena a pulsometr">
       ${pulsBlok(pas.puls)}
-      ${obchody.length ? `<div class="section-title">Kde koupit</div><div class="obchody">${obchody.join("")}</div>${cenovyText(pas.ceny?.rozbor, st)}` : ""}
+      ${obchody.length ? `<div class="section-title">Kde koupit</div><div class="obchody">${obchody.join("")}</div>${cenovyText(pas.ceny?.rozbor, st)}${poradceBlok(pas.ceny?.rozbor, st)}` : ""}
       ${st && !st.zdarma ? `<div class="hra-hlidat">${tlacitkoHlidat({ id: st.id, nazev: st.nazev })}${tlacitkoObrazek("hra-obr")}<span class="dim">Pošleme upozornění, až bude ve slevě. <a href="/hlidac">Hlídač cen</a></span></div>` : ""}
       ${fakta.length ? `<dl class="fakta">${fakta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
+      ${h.igdb_slug ? `<div class="hra-hlidat">${tlacitkoSledovat({ slug: h.igdb_slug, nazev: h.nazev, steam_id: st?.id || h.steam_id })}</div><p class="pas-srov"><a class="btn-sek btn-db" href="/databaze/${esc(h.igdb_slug)}">Celý profil hry v databázi</a></p>` : ""}
       ${h.steam_id ? `<p class="pas-srov"><a class="btn-sek" href="/porovnat-hry?ids=${esc(enc(h.steam_id))}">Porovnat s jinou hrou</a></p>` : ""}
       </aside>
       <div class="hra-hlavni">
@@ -2540,6 +2746,7 @@
         <b>${esc(akce.nazev)}</b><span>${akce.bezi ? "probíhá · končí za" : "za"} <b data-odpocet="${esc(akce.bezi ? akce.do : akce.od)}"></b></span></a>` : ""}
 
       <div class="mozaika">
+        <section class="blok m12 domu-moje" id="moje-hry" hidden></section>
         ${ranni?.body?.length ? `<section class="ranni-karta ${tydne ? "m7" : "m12"}">
             <header><span class="ai-stitek">Sestavila AI</span><h2><a href="/ranni">${dnesRanni ? "Ranní přehled" : "Poslední ranní přehled"}</a></h2><span class="dim">${esc(denCz(ranni.den))}</span></header>
             ${bodyRanni(ranni, 5)}
@@ -2596,6 +2803,7 @@
         <span>${(() => { const n = new Set(state.clanky.map((c) => c.zdroje?.[0]?.nazev).filter(Boolean)).size; return n ? `čtu zprávy z ${pl(n, "webu", "webů", "webů")}` : "čtu herní weby"; })()}
         ${k.cas ? ` · obchody zkontrolovány v ${esc(hhmm(k.cas))}` : ""} · <u>deník AI</u></span></div></a>`;
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
+    blokMojeHry(app.querySelector("#moje-hry"));
     spustOdpocty();
   }
 

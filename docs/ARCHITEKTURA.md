@@ -131,3 +131,28 @@ Galerie a prohlížeč: `galerieHry()` / `otevriProhlizec()` v `app.js`, bez inl
   v `nastaveni`, klíč `preklad_YYYY-MM-DD`), kontrola čísel. Cron psaní: úloha „databaze“ (populární 1× denně ~5 dotazů IGDB,
   2 překlady/h). Odhad: zápisy ≤ ~300 řádků/den, AI ≤ 250 volání/den.
 - Trasy: `/databaze`, `/databaze/*` ve `wrangler.jsonc` i v `jeStranka()` (jinak F5 vrací 404).
+
+## Jedno ID hry, sledování, chytré hledání, nákupní poradce, analytika (2026-11-27)
+- **Jedno ID hry = IGDB slug** (`src/propojeni.js`). Vazby jen z oficiálních zdrojů, žádné hádání podle názvu:
+  - kategorie Twitche → `igdb_id` z Twitch Helix `/games` → slug z IGDB → `hry.igdb_id`, `hry.igdb_slug` (0 = Twitch vazbu nemá),
+  - hra ze Steamu → IGDB `external_games` (zdroj Steam) → `steam_hry.igdb_slug`, `igdb_cas` (nenalezené znovu po 30 dnech).
+  - Běží každou hodinu v úloze `databaze` (Cron psaní): max. 100 kategorií + 400 her ze Steamu, ~6 požadavků (1 Twitch + ~5 IGDB).
+    Zápisy: jen kontrolované řádky (první dny stovky za hodinu, pak jednotky).
+  - Použití: hry streamera a stránka hry z Twitche odkazují na `/databaze/<slug>`, karta v databázi hledá kategorii Twitche
+    a hru ze Steamu nejdřív podle slugu, článek ukazuje „Hry v článku“ (`hryVTextu()` – celé názvy propojených a populárních her v nadpisu/perexu).
+- **Sledovat hru** (`src/sledovani.js`): seznam v prohlížeči (`localStorage hp_sledovane`), se zapnutými upozorněními ještě tabulka
+  `sledovani (odber_id, slug, nazev, steam_id)` přes `POST /api/push/sledovat|nesledovat` (stejné pojistky jako hlídání ceny, max. 100 her).
+  Kontrola každou hodinu v úloze `databaze`: nová aktualizace (patche), začátek slevy (steam_hry), den vydání (igdb_detail), zpráva s názvem
+  v nadpisu (clanky). Zprávy jdou do `push_zpravy`, odešle je stávající fronta; max. 3 na odběr za běh. Jen D1, žádné externí požadavky.
+  Zápisy: 1 řádek `nastaveni.sledovani_beh` + řádek hry jen při změně slevy / dni vydání + zprávy.
+  `GET /api/moje-hry?s=slug,slug` – stav sledovaných her z uložených dat (sleva, aktualizace 14 dní, živé streamy, vydání) pro blok „Moje hry“ na Domů.
+- **Chytré hledání** (`src/hledani.js`): `/api/databaze?dotaz=…&platforma=&zanr=&rezim=&tema=&od=&do=&hodnoceni=&cz=&cena=`.
+  Česká věta → filtry pevnými pravidly (`rozeberDotaz`, ne AI); zbytek věty = hledaný název. Seznamy filtrů z IGDB (`katalog igdb_filtry`, 7 dní,
+  `/api/databaze-filtry`). Čeština a cena jen u her propojených se Steamem (ostatní filtr vyřadí). U výsledků „proč se hodí“ (splněné podmínky).
+  Požadavky: 1–2 na IGDB za hledání (mezipaměť 30 min).
+- **Nákupní poradce** (`src/ceny.js` → `rozbor.poradce`): průměr 30/90 dní, běžná cena = medián dní bez slevy (aspoň 3 dny),
+  „nafouknutá“ sleva = původní cena o víc než 5 % nad běžnou, skutečná sleva proti běžné ceně. Doporučení koupit / dobrá cena / spíš počkat /
+  zatím nevíme + důvody (pevná pravidla, ne předpověď). Na stránce hry ze Steamu, v databázi a ve srovnávači.
+- **Analytika** (`src/analytika.js`, katalog `analytika`, `/api/analytika`, záložka „Žánry a komunity“ na `/trendy?o=analytika`): počítá se
+  s trendy každé 3 h (jen čtení D1 + 1 zápis). Žánry podle Steamu (`steam_hry.zanry`) s podílem spárovaných hodin, rostoucí komunity
+  (max. souběžných streamů na jedné platformě, týden proti týdnu), nejčastěji ve slevě (90 dní), nejvíc aktualizací (30 dní).

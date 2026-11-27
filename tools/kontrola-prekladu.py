@@ -3,7 +3,7 @@
 # Obsah (nadpisy zpráv, názvy her a klipů) se záměrně nepřekládá – ten ve výpisu ignoruj.
 import json,sys
 from playwright.sync_api import sync_playwright
-STRANKY=['/','/novinky','/pruvodce','/co-hrat','/rozjede-se','/rozjede-se?hra=1091500','/vyssi-nizsi','/aktualizace','/ceska-scena','/ranni','/obchody','/vydani','/akce','/studia','/cestina','/hlidac','/zive','/streameri','/hry','/report','/prehled','/stav','/hra/steam/1091500','/hra/minecraft','/streamer/twitch/alfa','/porovnat','/radar','/trendy','/porovnat-hry?ids=1091500,2','/co-hrat?n=3','/databaze','/databaze/the-witcher-3','/neexistuje','/clanek/'+'a'*24]
+STRANKY=['/','/novinky','/pruvodce','/co-hrat','/rozjede-se','/rozjede-se?hra=1091500','/vyssi-nizsi','/aktualizace','/ceska-scena','/ranni','/obchody','/vydani','/akce','/studia','/cestina','/hlidac','/zive','/streameri','/hry','/report','/prehled','/stav','/hra/steam/1091500','/hra/minecraft','/streamer/twitch/alfa','/porovnat','/radar','/trendy','/porovnat-hry?ids=1091500,2','/co-hrat?n=3','/databaze','/databaze/the-witcher-3','/databaze?dotaz=kooperacni+horor','/trendy?o=analytika','/neexistuje','/clanek/'+'a'*24]
 JS=r"""() => {
  const ven = '.archiv-t b, .patch h3, .ranni-body, .obal b, .tep-t, .patch-shrnuti, .patch-skupina li, .patch-komu, .live-info .sub, .story b, .story span, h3, .rec b, .hk-t > b, .hrad-t b, .uvod-veta b, .vyd-t b, .ch-t b, .vn-hra b, .cz-studio span, .cz-studio b, [data-nepreklad], .titulek, .popis, article .text, .rep-vety, .ekg, svg, script, style, code, .pa-zprava, .hw-vysledek small, .brzy-h b, .zpr-studio b, .card p, .perex, .patch-hra, .welcome-bot';
  const re=(localStorage.getItem('hp_jazyk')==='sk')?/[ěřůĚŘŮ]|\b(se|jen|nebo|pro|zpráv|her|také|když|který|která|které|jsou|není|tady|zkontrol\w*|hodin|diváků|sledujících|streamů|dnes ve|během|právě|teď|nyní|vše|všechny|všechno|zatím|jestli|až|můžeš|chceš|hledat|načíst|odkaz|kdo|co)\b/:/[ěščřžůťďňĚŠČŘŽŮŤĎŇ]|\b(a|je|na|za|se|pro|jen|nebo|hra|hry|her|zpráv|dní|hodin)\b/;
@@ -17,7 +17,7 @@ jaz=sys.argv[1] if len(sys.argv)>1 else 'en'
 with sync_playwright() as p:
     b=p.chromium.launch(); vse={}
     pg=b.new_page(viewport={'width':1280,'height':900})
-    pg.add_init_script(f"localStorage.setItem('hp_uvitani','1');localStorage.setItem('hp_jazyk','{jaz}');localStorage.setItem('hp_pc',JSON.stringify({{gpu:'GeForce RTX 3060',cpu:'Ryzen 5 5600',ram:16}}))")
+    pg.add_init_script(f"localStorage.setItem('hp_uvitani','1');localStorage.setItem('hp_sledovane',JSON.stringify([{{slug:'the-witcher-3',nazev:'The Witcher 3'}}]));localStorage.setItem('hp_jazyk','{jaz}');localStorage.setItem('hp_pc',JSON.stringify({{gpu:'GeForce RTX 3060',cpu:'Ryzen 5 5600',ram:16}}))")
     for s in STRANKY:
         pg.goto('http://localhost:8775'+s); pg.wait_for_timeout(1300)
         for t in pg.evaluate(JS): vse.setdefault(t,[]).append(s)
