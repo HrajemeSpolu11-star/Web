@@ -1439,3 +1439,39 @@ html.bez-posunu{overflow:hidden}
 .plat-rozpad span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 .plat-rozpad .pr-tw::before{background:var(--live)}
 .plat-rozpad .pr-ki::before{background:var(--kick)}
+/* Hitparáda */
+.hp-sloupce{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.hp-sloupce{grid-template-columns:1fr}}
+.hp-r{align-items:center}
+.hp-rank{font-weight:800}
+.hp-top1{color:#ffd36b}.hp-top2{color:#d9dcf5}.hp-top3{color:#e3a66b}
+.hp-posun{display:inline-flex;align-items:center;justify-content:center;min-width:38px;font-size:11px;font-weight:800;padding:2px 6px;border-radius:999px;background:var(--card2);color:var(--muted);flex:none}
+.hp-nahoru{color:#3ddc84;background:rgba(61,220,132,.12)}
+.hp-dolu{color:#ff6b6b;background:rgba(255,107,107,.12)}
+.hp-nova{color:#1a1300;background:var(--accent)}
+.hp-navrat{color:#5cc8ff;background:rgba(92,200,255,.14)}
+.hp-archiv{margin-top:8px}.hp-archiv summary{cursor:pointer;font-weight:700;color:var(--muted)}
+.hp-odznak{display:flex;gap:14px;align-items:center;margin:14px 0;padding:12px 14px;border-radius:16px;border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 16%,transparent),var(--card))}
+.hp-odznak-c{flex:none;width:64px;height:64px;border-radius:16px;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-size:26px;font-weight:800}
+.hp-odznak b{display:block}
+.hp-odznak span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.hp-odznak-a{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px;font-weight:700}
+/* Měsíční zpráva */
+.zp-platformy{margin:10px 0 4px}
+.zp-pruh{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--card2)}
+.zp-pruh i{display:block;height:100%}
+.zp-tw{background:var(--live)}.zp-ki{background:var(--kick)}
+.zp-platformy p{font-size:13.5px;margin-top:6px}
+/* Historie v Česku */
+.hcz-cipy{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.hcz-cipy span{font-size:12.5px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.hcz-cipy b{color:var(--accent)}
+.hcz{display:flex;align-items:flex-end;gap:4px;height:170px;padding:6px 0;overflow-x:auto}
+.hcz-t{flex:1 0 16px;max-width:40px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
+.hcz-t i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent2) 70%,transparent));min-height:2px}
+.hcz-poz{font-size:10px;font-weight:800;color:var(--accent);min-height:12px}
+.hcz-zn{display:flex;gap:2px;min-height:15px}
+.hcz-zn em,.source-note em.hcz-p,.source-note em.hcz-s{font-style:normal;font-size:10px;font-weight:800;border-radius:4px;padding:0 3px}
+.hcz-p{background:rgba(92,200,255,.2);color:#5cc8ff}
+.hcz-s{background:rgba(61,220,132,.2);color:#3ddc84}

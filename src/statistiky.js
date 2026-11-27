@@ -181,3 +181,6 @@ export async function apiReport(env, naStreamera, tydenId) {
     tydny, data_od: od, cache: probiha ? 1800 : 86400,
   };
 }
+
+// Sdílené pomocné funkce (hitparáda, měsíční zpráva).
+export { posunDne, hodin, zmenaPct, pulnocPraha, pondeli, isoTyden, pondeliZTydne, zacatekDat, dotazHry };

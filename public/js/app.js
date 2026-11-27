@@ -47,7 +47,7 @@
       if (malyPohyb()) i.style.width = w; else requestAnimationFrame(() => requestAnimationFrame(() => (i.style.width = w)));
     });
     dekodujNadpisy(root);
-    root.querySelectorAll(".sloupce i[data-h]").forEach((i) => { i.style.height = Math.max(2, Math.min(100, +i.dataset.h || 0)) + "%"; });
+    root.querySelectorAll(".sloupce i[data-h], .hcz i[data-h]").forEach((i) => { i.style.height = Math.max(2, Math.min(100, +i.dataset.h || 0)) + "%"; });
     // Čísla „naběhnou“ jako skóre ve hře.
     if (!malyPohyb()) root.querySelectorAll("[data-count]").forEach((el) => {
       const cil = +el.dataset.count, pripona = el.dataset.suffix || "";
@@ -130,6 +130,18 @@
   // ---------- Sdílení jako obrázek ----------
   // Karta 1080×1350 se nakreslí přímo v prohlížeči (canvas) jen z textu a čísel – žádné cizí obrázky, nic se neposílá na server.
   // Na mobilu se otevře nabídka Sdílet (Instagram, WhatsApp, Discord…), jinde se obrázek stáhne.
+  // Znak loga (herní ovladač s EKG křivkou) na canvas – sdílené obrázky a odznaky.
+  function kresliZnak(g, x, y, vel, a) {
+    g.save(); g.translate(x, y); g.scale(vel / 64, vel / 64); g.globalAlpha = a;
+    g.fillStyle = "#140f33"; g.beginPath(); g.roundRect(0, 0, 64, 64, 18); g.fill();
+    const telo = new Path2D("M20 18.5h24c6.5 0 10.6 4.2 12 10.5l2.6 12c1 4.8-2.2 8.5-6.2 8.5-2.6 0-4.4-1.6-5.8-3.8l-3-4.7H20.4l-3 4.7c-1.4 2.2-3.2 3.8-5.8 3.8-4 0-7.2-3.7-6.2-8.5l2.6-12C9.4 22.7 13.5 18.5 20 18.5z");
+    const go = g.createLinearGradient(5, 18, 59, 50); go.addColorStop(0, "#efe8ff"); go.addColorStop(1, "#a98bff");
+    g.fillStyle = "#1d1645"; g.fill(telo); g.lineWidth = 3; g.lineJoin = "round"; g.strokeStyle = go; g.shadowColor = "rgba(169,139,255,.7)"; g.shadowBlur = 6; g.stroke(telo); g.shadowBlur = 0;
+    g.lineCap = "round"; g.lineWidth = 2.6; g.strokeStyle = "#efe8ff"; g.stroke(new Path2D("M17.5 26v8M13.5 30h8"));
+    g.fillStyle = "#c9b8ff"; for (const [cx, cy] of [[46.5, 26.8], [50.2, 30.4], [46.5, 34], [42.8, 30.4]]) { g.beginPath(); g.arc(cx, cy, 1.9, 0, 7); g.fill(); }
+    g.strokeStyle = "#ff3d7f"; g.shadowColor = "rgba(255,61,127,.8)"; g.shadowBlur = 5; g.stroke(new Path2D("M23 31h3.4l2.2-6 3.4 11 2.8-7.6 1.6 2.6h3.4"));
+    g.restore();
+  }
   async function sdilejObrazek({ stitek, nadpis, radky = [], odkaz }) {
     const W = 1080, H = 1350, c = document.createElement("canvas");
     c.width = W; c.height = H;
@@ -141,17 +153,7 @@
     z.addColorStop(0, "rgba(155,92,255,.38)"); z.addColorStop(1, "rgba(155,92,255,0)");
     g.fillStyle = z; g.fillRect(0, 0, W, H);
     // znak loga: herní ovladač s EKG křivkou (stejný jako v hlavičce webu)
-    const znak = (x, y, vel, a) => {
-      g.save(); g.translate(x, y); g.scale(vel / 64, vel / 64); g.globalAlpha = a;
-      g.fillStyle = "#140f33"; g.beginPath(); g.roundRect(0, 0, 64, 64, 18); g.fill();
-      const telo = new Path2D("M20 18.5h24c6.5 0 10.6 4.2 12 10.5l2.6 12c1 4.8-2.2 8.5-6.2 8.5-2.6 0-4.4-1.6-5.8-3.8l-3-4.7H20.4l-3 4.7c-1.4 2.2-3.2 3.8-5.8 3.8-4 0-7.2-3.7-6.2-8.5l2.6-12C9.4 22.7 13.5 18.5 20 18.5z");
-      const go = g.createLinearGradient(5, 18, 59, 50); go.addColorStop(0, "#efe8ff"); go.addColorStop(1, "#a98bff");
-      g.fillStyle = "#1d1645"; g.fill(telo); g.lineWidth = 3; g.lineJoin = "round"; g.strokeStyle = go; g.shadowColor = "rgba(169,139,255,.7)"; g.shadowBlur = 6; g.stroke(telo); g.shadowBlur = 0;
-      g.lineCap = "round"; g.lineWidth = 2.6; g.strokeStyle = "#efe8ff"; g.stroke(new Path2D("M17.5 26v8M13.5 30h8"));
-      g.fillStyle = "#c9b8ff"; for (const [cx, cy] of [[46.5, 26.8], [50.2, 30.4], [46.5, 34], [42.8, 30.4]]) { g.beginPath(); g.arc(cx, cy, 1.9, 0, 7); g.fill(); }
-      g.strokeStyle = "#ff3d7f"; g.shadowColor = "rgba(255,61,127,.8)"; g.shadowBlur = 5; g.stroke(new Path2D("M23 31h3.4l2.2-6 3.4 11 2.8-7.6 1.6 2.6h3.4"));
-      g.restore();
-    };
+    const znak = (x, y, vel, a) => kresliZnak(g, x, y, vel, a);
     znak(760, 70, 280, 0.2); znak(76, 76, 72, 1);
     g.fillStyle = "#f4f1ff"; g.font = F(800, 46); g.textBaseline = "middle"; g.fillText("Herní puls", 165, 112);
     // štítek
@@ -188,6 +190,33 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
   const tlacitkoObrazek = (id) => `<button type="button" class="btn-maly" id="${id}">Sdílet jako obrázek</button>`;
+  // Odznak pro streamery (PNG 640×360 – sedí do panelu pod streamem na Twitchi i Kicku). Kreslí se v prohlížeči, nic se neposílá.
+  async function stahniOdznak({ poradi, jmeno, tyden, popis }) {
+    const W = 640, H = 360, c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    try { await Promise.all([document.fonts.load('800 80px "Rubik"'), document.fonts.load('500 24px "Rubik"')]); } catch {}
+    const F = (v, s) => `${v} ${s}px "Rubik", system-ui, sans-serif`;
+    g.fillStyle = "#16132e"; g.beginPath(); g.roundRect(0, 0, W, H, 28); g.fill();
+    const z = g.createRadialGradient(W * 0.9, 0, 0, W * 0.9, 0, 460); z.addColorStop(0, "rgba(255,192,77,.35)"); z.addColorStop(1, "rgba(255,192,77,0)");
+    g.fillStyle = z; g.fillRect(0, 0, W, H);
+    g.strokeStyle = "rgba(255,192,77,.65)"; g.lineWidth = 4; g.beginPath(); g.roundRect(2, 2, W - 4, H - 4, 26); g.stroke();
+    kresliZnak(g, 36, 30, 52, 1);
+    g.fillStyle = "#f4f1ff"; g.font = F(800, 26); g.textBaseline = "middle"; g.fillText("Herní puls", 100, 56);
+    g.fillStyle = "#b9b2dc"; g.font = F(600, 20); g.fillText("Česká herní hitparáda", 100, 84);
+    g.fillStyle = "#ffc04d"; g.font = F(800, 150); g.textBaseline = "alphabetic"; g.fillText(`#${poradi}`, 32, 262);
+    const x = 40 + g.measureText(`#${poradi}`).width + 26;
+    g.fillStyle = "#f4f1ff"; g.font = F(800, 34);
+    let jm = String(jmeno); while (g.measureText(jm).width > W - x - 32 && jm.length > 3) jm = jm.slice(0, -2) + "…";
+    g.fillText(jm, x, 190);
+    g.fillStyle = "#b9b2dc"; g.font = F(500, 22); g.fillText(popis.slice(0, 40), x, 226); g.fillText(tyden, x, 258);
+    g.fillStyle = "#ffc04d"; g.fillRect(0, H - 12, W, 12);
+    g.fillStyle = "#b9b2dc"; g.font = F(500, 18); g.fillText(`${location.host}/hitparada · měřeno z oficiálních API Twitche a Kicku`, 36, H - 34);
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = `herni-puls-hitparada-${String(jmeno).toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
 
   // Odkaz na hru: hry ze Steamu mají vlastní stránku u nás (/hra/steam/ID), ostatní vedou do obchodu.
   const steamIdHry = (h) => h.obchod === "steam" || /store\.steampowered\.com\/app\/\d+/.test(h.url || "") ? String(h.id || (/app\/(\d+)/.exec(h.url || "") || [])[1] || "") : "";
@@ -450,7 +479,8 @@
     { id: "puls", nazev: "Puls her", barva: "#ff3d7f", polozky: [
       ["radar", "/radar", "Herní radar", "Co se právě děje: velké aktualizace, hry zdarma, rekordní ceny, rekordy streamerů, vydání."],
       ["trendy", "/trendy", "Rostoucí a upadající hry", "Které hry nabírají hráče a diváky a které je ztrácejí – podle skutečných čísel."],
-      ["porovnat-hry", "/porovnat-hry", "Srovnávač her", "Dvě až čtyři hry vedle sebe: cena, čeština, hráči, pulsometr a herní DNA."]] },
+      ["porovnat-hry", "/porovnat-hry", "Srovnávač her", "Dvě až čtyři hry vedle sebe: cena, čeština, hráči, pulsometr a herní DNA."],
+      ["hitparada", "/hitparada", "Česká hitparáda", "Týdenní žebříček her a streamerů české scény s archivem všech týdnů."]] },
     { id: "najit", nazev: "Najdi si hru", barva: "#ffc04d", polozky: [
       ["databaze", "/databaze", "Databáze her", "Přes 300 tisíc her i pro konzole: popis česky, platformy, data vydání, obrázky, podobné hry."],
       ["co-hrat", "/co-hrat", "Co dnes hrát?", "Vyber, s kým, za kolik a jaký žánr – doporučíme hry, které hráči nejvíc chválí."],
@@ -1084,6 +1114,7 @@
           ${stat.dny.length > 1 ? `<div class="sloupce" role="img" aria-label="Hodiny sledování po dnech">${stat.dny.map((x) => `<i data-h="${Math.round((x.hodin / maxDen) * 100)}" title="${esc(datumKr(x.den))}: ${x.hodin} h"></i>`).join("")}</div>
             <p class="source-note">Hodiny sledování po dnech za posledních 30 dní (od začátku měření). ${puvod("mereno", "Twitch + Kick")}</p>` : ""}`
           : `<p class="dim">Tuhle hru zatím nikdo z českých streamerů nevysílal (od začátku našeho měření). Jakmile ji někdo začne hrát, objeví se tu statistiky.</p>`}
+        ${historieCesko(sc.historie, { patche: pas.patche || [], ceny: pas.ceny?.historie || [] })}
         ${sc.nejvic.length ? `<div class="section-title">Kdo ji hraje nejvíc</div><div class="slist">${sc.nejvic.slice(0, 8).map((x, i) => radekStreamera(x, i, "hra")).join("")}</div>` : ""}
         ${(sc.klipy || []).length ? `<div class="section-title">Nejlepší klipy</div><div class="regal">${sc.klipy.map((v) => kartaVidea(v, true)).join("")}</div>` : ""}
         ${(sc.clanky || []).length ? `<div class="section-title">Novinky o hře</div><div class="grid">${sc.clanky.slice(0, 6).map((c) => kartaClanku(c, 1)).join("")}</div>` : ""}
@@ -1968,7 +1999,7 @@
   function hubHlava(aktivni) {
     const { streamy } = state.zive;
     const divaku = streamy.reduce((a, s) => a + (s.divaci || 0), 0);
-    const pod = [["zive", "/zive", "Živě"], ["zebricek", "/streameri", "Žebříček"], ["hry", "/hry", "Co hraje Česko"], ["report", "/report", "Týden na scéně"], ["prehled", "/prehled", "Přehled"]];
+    const pod = [["zive", "/zive", "Živě"], ["zebricek", "/streameri", "Žebříček"], ["hry", "/hry", "Co hraje Česko"], ["report", "/report", "Týden na scéně"], ["hitparada", "/hitparada", "Hitparáda"], ["zprava", "/zprava", "Měsíční zpráva"], ["prehled", "/prehled", "Přehled"]];
     const obl = new Set(oblibeni());
     const mojiZive = streamy.filter((s) => obl.has(klicS(s)));
     return `<div class="live-head"><h1>Čeští streameři</h1>
@@ -2232,6 +2263,10 @@
         <div class="stat"><b data-count="${s.max_divaku || 0}">${num(s.max_divaku || 0)}</b><span>nejvíc diváků najednou${merenoOd(s) ? `<small>od ${esc(merenoOd(s))}, kdy měříme</small>` : ""}</span></div>
         <div class="stat" id="stat-hodiny"><b data-count="${s.hodin30 || 0}" data-suffix=" h">${s.hodin30 || 0} h</b><span>${merenoOd(s) ? `odvysíláno od ${esc(merenoOd(s))}<small>od té doby ho měříme my</small>` : "odvysíláno za 30 dní"}</span></div>
       </div>
+      ${s.hitparada ? `<div class="hp-odznak"><div class="hp-odznak-c">#${esc(String(s.hitparada.poradi))}</div>
+        <div><b>${s.hitparada.probiha ? "Průběžně" : "Minulý týden"} #${esc(String(s.hitparada.poradi))} v české hitparádě streamerů</b>
+          <span>${esc(tydenText(s.hitparada.tyden))} · ${esc(num(s.hitparada.divaci))} diváků najednou · ${esc(pl(s.hitparada.tydnu, "týden", "týdny", "týdnů"))} v hitparádě, nejlépe #${esc(String(s.hitparada.nejlepsi))}</span>
+          <div class="hp-odznak-a"><button type="button" class="btn-maly" id="b-odznak">Stáhnout odznak pro kanál</button><a href="/hitparada/${esc(s.hitparada.probiha ? "aktualni" : s.hitparada.tyden)}">Hitparáda</a></div></div></div>` : ""}
       ${s.popis ? `<p class="popis">${esc(s.popis)}</p>` : ""}
       <div id="extra"></div>
       ${body.length >= 2 ? `<div class="section-title">Vývoj sledujících</div><div class="graf" id="graf"></div>` : ""}
@@ -2245,6 +2280,9 @@
     const g = document.getElementById("graf");
     if (g) graf(g, body);
     if (s.platforma !== "kick") nactiExtra(s);
+    const bOdz = document.getElementById("b-odznak");
+    if (bOdz) bOdz.onclick = () => stahniOdznak({ poradi: s.hitparada.poradi, jmeno: s.jmeno, tyden: `${tydenText(s.hitparada.tyden)}${s.hitparada.probiha ? " (průběžně)" : ""}`,
+      popis: `${num(s.hitparada.divaci)} diváků najednou · ${PLAT[s.platforma] || "Twitch"}` });
     const zpr = (t) => { document.getElementById("pa-zprava").textContent = t; };
     document.getElementById("b-obr").onclick = () => sdilejObrazek({ stitek: `${PLAT[s.platforma] || "Twitch"} streamer`, nadpis: s.jmeno,
       odkaz: `/streamer/${s.platforma || "twitch"}/${s.login}`,
@@ -2418,6 +2456,143 @@
     };
   }
 
+  // ---------- Historie hry v Česku: hodiny sledování po týdnech od začátku měření + hitparáda + aktualizace a slevy ----------
+  function historieCesko(hist, { patche = [], ceny = [] } = {}) {
+    if (!hist?.tydny?.length || hist.tydny.length < 2) return "";
+    const max = Math.max(1, ...hist.tydny.map((t) => t.hodin));
+    const tydenOd = (d) => { const x = new Date(String(d).slice(0, 10) + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
+    const patchTydny = new Set(patche.map((p) => tydenOd(p.datum)));
+    const slevaTydny = new Set();
+    for (let i = 1; i < ceny.length; i++) if ((ceny[i].sleva || 0) > 0 && !((ceny[i - 1].sleva || 0) > 0)) slevaTydny.add(tydenOd(ceny[i].den));
+    const nejlepsi = hist.tydny.reduce((a, t) => (t.hodin > (a?.hodin || 0) ? t : a), null);
+    return `<div class="section-title">Historie v Česku</div>
+      <div class="hcz-cipy"><span>měříme od ${esc(datumKr(hist.od))}</span>${hist.nejlepsi ? `<span>v hitparádě ${esc(pl(hist.tydnu_v_hitparade || 0, "týden", "týdny", "týdnů"))}, nejlépe <b>#${esc(String(hist.nejlepsi))}</b></span>` : `<span>zatím mimo hitparádu (top 20)</span>`}
+        ${nejlepsi ? `<span>nejsilnější týden ${esc(datumKr(nejlepsi.od))}: ${esc(num(nejlepsi.hodin))} h</span>` : ""}</div>
+      <div class="hcz" role="img" aria-label="Hodiny sledování po týdnech">${hist.tydny.map((t) => `<div class="hcz-t" title="${esc(`týden od ${datumKr(t.od)}: ${t.hodin} h${t.poradi ? ` · hitparáda #${t.poradi}` : ""}`)}">
+          <span class="hcz-poz">${t.poradi ? `#${t.poradi}` : ""}</span><i data-h="${Math.round((t.hodin / max) * 100)}"></i>
+          <span class="hcz-zn">${patchTydny.has(t.od) ? `<em class="hcz-p" title="aktualizace">A</em>` : ""}${slevaTydny.has(t.od) ? `<em class="hcz-s" title="začala sleva">%</em>` : ""}</span></div>`).join("")}</div>
+      <p class="source-note">Sloupce = hodiny sledování na českých streamech po týdnech, nad nimi pozice v hitparádě. <em class="hcz-p">A</em> = týden s oficiální aktualizací, <em class="hcz-s">%</em> = týden, kdy začala sleva na Steamu (jen z období, které měříme). ${puvod("mereno", "Twitch + Kick")}</p>`;
+  }
+
+  // ---------- Česká herní hitparáda (týdenní žebříček s archivem) ----------
+  const POSUN_HP = { nahoru: ["▲", "hp-nahoru"], dolu: ["▼", "hp-dolu"], stejne: ["=", "hp-stejne"], nova: ["NOVÉ", "hp-nova"], navrat: ["NÁVRAT", "hp-navrat"] };
+  function posunHp(x) {
+    const p = POSUN_HP[x.stav];
+    if (!p) return `<span class="hp-posun hp-stejne" aria-hidden="true">–</span>`;
+    const o = x.stav === "nahoru" || x.stav === "dolu" ? Math.abs((x.poradi_pred || 0) - x.poradi) : "";
+    return `<span class="hp-posun ${p[1]}" title="${x.poradi_pred ? `minulý týden #${x.poradi_pred}` : ""}">${p[0]}${o ? ` ${o}` : ""}</span>`;
+  }
+  const tydenText = (t) => t.replace(/^(\d{4})-W0?(\d+)$/, "týden $2/$1");
+  async function strankaHitparada(id) {
+    app.innerHTML = `${hubHlava("hitparada")}${kostra(6)}`;
+    let r;
+    try { r = await nacti("hitparada" + (id ? `?tyden=${enc(id)}` : "")); }
+    catch { app.innerHTML = `${hubHlava("hitparada")}<p class="empty">Hitparádu se nepodařilo načíst.</p>`; return; }
+    if (!location.pathname.startsWith("/hitparada")) return;
+    if (!r.tyden) { app.innerHTML = `${hubHlava("hitparada")}<p class="info-box">První hitparáda se právě sestavuje – zkus to za pár hodin.</p>`; return; }
+    nastavTitulek(`Česká herní hitparáda – ${tydenText(r.tyden)}${r.probiha ? " (průběžně)" : ""}`);
+    const maxH = Math.max(1, ...r.hry.map((h) => h.hodin));
+    const odkazTydne = (t) => `/hitparada/${t.probiha ? "aktualni" : t.id}`;
+    const radekHry = (h) => `<a class="srow hp-r" href="${esc(h.igdb_slug ? `/databaze/${h.igdb_slug}` : `/hra/${h.slug}`)}">
+        <span class="rank hp-rank${h.poradi <= 3 ? ` hp-top${h.poradi}` : ""}">${h.poradi}</span>${posunHp(h)}
+        <div class="info"><h3>${esc(h.hra)}</h3>
+          <div class="sub">${esc(pl(h.tydnu, "týden", "týdny", "týdnů"))} v hitparádě · nejlépe #${esc(String(h.nejlepsi))}${h.kick_podil ? ` · Kick ${h.kick_podil} %` : ""}</div>
+          <div class="bar"><i data-w="${Math.round((h.hodin / maxH) * 100)}"></i></div></div>
+        <div class="num"><b>${esc(num(h.hodin))}</b>hodin</div></a>`;
+    const radekStr = (x) => `<a class="srow hp-r" href="${esc(profilUrl(x))}">
+        <span class="rank hp-rank${x.poradi <= 3 ? ` hp-top${x.poradi}` : ""}">${x.poradi}</span>${posunHp(x)}${av(x)}
+        <div class="info"><h3>${esc(x.jmeno)} ${platBadge(x)}</h3><div class="sub">${esc(pl(x.tydnu, "týden", "týdny", "týdnů"))} v hitparádě · nejlépe #${esc(String(x.nejlepsi))} · ${esc(num(x.hodin))} h vysílání</div></div>
+        <div class="num"><b>${esc(num(x.divaci))}</b>diváků max.</div></a>`;
+    app.innerHTML = `${hubHlava("hitparada")}
+      <article class="report hitparada">
+        <header class="rep-head"><span class="ht-stitek">Česká herní hitparáda · ${esc(tydenText(r.tyden))}</span>
+          <h2>Co Česko hraje a sleduje</h2>
+          <p class="dim">${esc(datumCz(r.od))} – ${esc(datumCz(r.do))}${r.probiha ? " · týden ještě běží, pořadí je průběžné" : " · uzavřený týden"}</p>
+          ${r.tydny.length > 1 ? `<div class="rep-tydny">${r.tydny.slice(0, 12).map((t) => `<a class="ms-b${t.id === r.tyden ? " on" : ""}" href="${esc(odkazTydne(t))}">${t.probiha ? "Tento týden" : esc(datumCz(t.od).replace(/\s?\d{4}$/, ""))}</a>`).join("")}</div>` : ""}
+          ${r.tydny.length > 12 ? `<details class="hp-archiv"><summary>Celý archiv (${esc(pl(r.tydny.length, "týden", "týdny", "týdnů"))})</summary><div class="rep-tydny">${r.tydny.slice(12).map((t) => `<a class="ms-b" href="${esc(odkazTydne(t))}">${esc(datumCz(t.od))}</a>`).join("")}</div></details>` : ""}
+        </header>
+        ${r.neuplny ? `<p class="info-box">V tomto týdnu jsme teprve začali měřit – čísla nejsou za celý týden.</p>` : ""}
+        <div class="hp-sloupce">
+          <section><div class="section-title">Hry · hodiny sledování</div>
+            ${r.hry.length ? `<div class="slist">${r.hry.map(radekHry).join("")}</div>` : `<p class="dim">Zatím bez dat.</p>`}</section>
+          <section><div class="section-title">Streameři · nejvíc diváků najednou</div>
+            ${r.streameri.length ? `<div class="slist">${r.streameri.map(radekStr).join("")}</div>` : `<p class="dim">Zatím bez dat.</p>`}
+            <p class="source-note">Jsi v hitparádě? Na svém profilu si stáhneš odznak pro svůj kanál.</p></section>
+        </div>
+        <div class="rep-sdilet"><button type="button" class="btn-maly" id="sdilet">Sdílet odkaz</button> ${tlacitkoObrazek("sdilet-obr")}</div>
+        <p class="source-note">Hry: součet hodin sledování na českých streamech Twitche a Kicku za týden (pondělí–neděle). Streameři: nejvíc diváků najednou během týdne.
+          ▲▼ = posun proti minulému týdnu, NOVÉ = poprvé v hitparádě, NÁVRAT = vrací se po vypadnutí. Každý uzavřený týden se uloží do archivu a už se nemění.
+          ${puvod("mereno", "Twitch + Kick", r.cas)}</p>
+      </article>`;
+    const odkaz = `/hitparada/${r.probiha ? "aktualni" : r.tyden}`;
+    const bo = document.getElementById("sdilet-obr");
+    if (bo) bo.onclick = () => sdilejObrazek({ stitek: `Hitparáda · ${tydenText(r.tyden)}`, nadpis: "Co Česko hraje a sleduje", odkaz,
+      radky: r.hry.slice(0, 4).map((h) => [`#${h.poradi} ${h.hra.slice(0, 22)}`, `${num(h.hodin)} h sledování${h.stav === "nova" ? " · nově" : ""}`]) });
+    const b = document.getElementById("sdilet");
+    if (b) b.onclick = async () => {
+      const url = location.origin + odkaz;
+      try { if (navigator.share) await navigator.share({ title: document.title, url }); else { await navigator.clipboard.writeText(url); b.textContent = "Odkaz zkopírován"; } } catch { /* zrušeno */ }
+    };
+  }
+
+  // ---------- Měsíční zpráva o české scéně ----------
+  async function strankaZprava(id) {
+    app.innerHTML = `${hubHlava("zprava")}${kostra(6)}`;
+    let r;
+    try { r = await nacti("zprava" + (id ? `?mesic=${enc(id)}` : "")); }
+    catch { app.innerHTML = `${hubHlava("zprava")}<p class="empty">Zprávu se nepodařilo načíst.</p>`; return; }
+    if (!location.pathname.startsWith("/zprava")) return;
+    if (!r.mesic) { app.innerHTML = `${hubHlava("zprava")}<p class="info-box">Zatím nemáme data.</p>`; return; }
+    const s = r.souhrn;
+    nastavTitulek(`Měsíční zpráva o české scéně – ${r.nazev}`);
+    const maxH = Math.max(1, ...r.hry.map((h) => h.hodin));
+    app.innerHTML = `${hubHlava("zprava")}
+      <article class="report zprava">
+        <header class="rep-head"><span class="ht-stitek">Měsíční zpráva · ${esc(r.nazev)}</span>
+          <h2>Česká streamovací scéna v číslech</h2>
+          <p class="dim">${esc(datumCz(r.od))} – ${esc(datumCz(r.do))}${r.probiha ? " · měsíc ještě běží, čísla se průběžně mění" : ""}</p>
+          ${r.mesice.length > 1 ? `<div class="rep-tydny">${r.mesice.map((m) => `<a class="ms-b${m.id === r.mesic ? " on" : ""}" href="/zprava/${esc(m.id)}">${esc(m.nazev)}</a>`).join("")}</div>` : ""}
+        </header>
+        ${r.neuplny ? `<p class="info-box">Statistiky sbíráme od ${esc(datumCz(r.data_od))} – za tento měsíc nemáme všechny dny.</p>` : r.pokryti < 90 ? `<p class="info-box">Za tento měsíc máme ${Number(r.pokryti) || 0} % měření, čísla jsou proto o něco nižší.</p>` : ""}
+        ${r.vety.length ? `<p class="rep-vety">${r.vety.map(esc).join(" ")}</p>` : `<p class="dim">Za tento měsíc zatím nemáme dost dat.</p>`}
+        <div class="rep-dlazdice">
+          <div><b>${esc(num(s.hodin))}</b><span>hodin sledování${s.zmena != null ? ` <i class="${s.zmena >= 0 ? "zm-nahoru" : "zm-dolu"}">${s.zmena >= 0 ? "+" : ""}${s.zmena} %</i>` : ""}</span></div>
+          <div><b>${esc(String(s.podil_kick))} %</b><span>podíl Kicku${s.podil_kick_pred != null ? ` (minule ${esc(String(s.podil_kick_pred))} %)` : ""}</span></div>
+          <div><b>${esc(num(s.kanalu_twitch + s.kanalu_kick))}</b><span>aktivních kanálů</span></div>
+          <div><b>${esc(num(s.spicka?.divaci || 0))}</b><span>diváků ve špičce${s.spicka ? ` (${esc(new Date(s.spicka.cas).toLocaleString(LOC, { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))})` : ""}</span></div>
+        </div>
+        <div class="zp-platformy" aria-label="Twitch proti Kicku">
+          <div class="zp-pruh"><i class="zp-tw" data-w="${100 - s.podil_kick}"></i><i class="zp-ki" data-w="${s.podil_kick}"></i></div>
+          <p><span class="pbadge pb-twitch">Twitch</span> ${esc(num(s.hodin_twitch))} h · ${esc(num(s.kanalu_twitch))} kanálů &nbsp; <span class="pbadge pb-kick">Kick</span> ${esc(num(s.hodin_kick))} h · ${esc(num(s.kanalu_kick))} kanálů</p>
+        </div>
+        <div class="section-title">Nejsledovanější hry měsíce</div>
+        ${r.hry.length ? `<div class="slist">${r.hry.map((h) => `<a class="srow" href="/hra/${esc(h.slug)}"><span class="rank">${h.poradi}</span>
+          <div class="info"><h3>${esc(h.hra)} ${h.nova ? `<span class="hp-posun hp-nova">NOVÉ</span>` : h.zmena != null ? `<span class="hp-posun ${h.zmena >= 0 ? "hp-nahoru" : "hp-dolu"}">${h.zmena >= 0 ? "+" : ""}${h.zmena} %</span>` : ""}</h3>
+            <div class="sub">${h.poradi_pred ? `minulý měsíc #${h.poradi_pred}` : ""}${h.kick_podil ? `${h.poradi_pred ? " · " : ""}Kick ${h.kick_podil} %` : ""}</div>
+            <div class="bar"><i data-w="${Math.round((h.hodin / maxH) * 100)}"></i></div></div>
+          <div class="num"><b>${esc(num(h.hodin))}</b>hodin</div></a>`).join("")}</div>` : `<p class="dim">Zatím bez dat.</p>`}
+        <div class="rep-sloupce">
+          ${r.skokani.length ? `<section><div class="section-title">Největší skokani</div><div class="slist">${r.skokani.map((h) => `<a class="srow" href="/hra/${esc(h.slug)}"><div class="info"><h3>${esc(h.hra)}</h3></div><div class="num"><b class="zm-nahoru">+${esc(String(h.zmena))} %</b>${esc(num(h.hodin))} h</div></a>`).join("")}</div></section>` : ""}
+          <section><div class="section-title">Nejvíc diváků najednou</div>${r.streameri.length ? `<div class="slist">${r.streameri.map((x, i) => `<a class="srow" href="${esc(profilUrl(x))}"><span class="rank">${i + 1}</span>${av(x)}
+            <div class="info"><h3>${esc(x.jmeno)} ${platBadge(x)}</h3></div><div class="num"><b>${esc(num(x.divaci))}</b>diváků</div></a>`).join("")}</div>` : `<p class="dim">Zatím bez dat.</p>`}</section>
+        </div>
+        <div class="rep-sdilet"><button type="button" class="btn-maly" id="sdilet">Sdílet odkaz</button> ${tlacitkoObrazek("sdilet-obr")}</div>
+        <p class="source-note"><span>Všechna čísla jsou z vlastních měření oficiálních API Twitche a Kicku každých 15 minut, bez AI a bez odhadů. Aktivní kanál = vysílal aspoň chvíli s 3 a více diváky.</span>
+          ${r.probiha ? "<span>Srovnání s minulým měsícem bere stejný počet dní.</span> " : ""}<span>Srovnáváme jen s měsícem, který máme změřený celý.</span> ${puvod("mereno", "Twitch + Kick", r.cas)}</p>
+      </article>`;
+    app.querySelectorAll(".zp-pruh i[data-w]").forEach((el) => { el.style.width = `${Math.max(0, Math.min(100, Number(el.dataset.w) || 0))}%`; });
+    const odkaz = `/zprava/${r.mesic}`;
+    const bo = document.getElementById("sdilet-obr");
+    if (bo) bo.onclick = () => sdilejObrazek({ stitek: `Měsíční zpráva · ${r.nazev}`, nadpis: "Česká streamovací scéna v číslech", odkaz,
+      radky: [[`${num(s.hodin)} h`, `sledování${s.zmena != null ? ` (${s.zmena >= 0 ? "+" : ""}${s.zmena} %)` : ""}`], [`${s.podil_kick} %`, "hodin připadlo na Kick"],
+        r.hry[0] && [r.hry[0].hra.slice(0, 26), `nejsledovanější hra · ${num(r.hry[0].hodin)} h`], r.streameri[0] && [r.streameri[0].jmeno.slice(0, 24), `nejvíc diváků · ${num(r.streameri[0].divaci)}`]].filter(Boolean) });
+    const b = document.getElementById("sdilet");
+    if (b) b.onclick = async () => {
+      const url = location.origin + odkaz;
+      try { if (navigator.share) await navigator.share({ title: document.title, text: r.vety[0] || "", url }); else { await navigator.clipboard.writeText(url); b.textContent = "Odkaz zkopírován"; } } catch { /* zrušeno */ }
+    };
+  }
+
   async function strankaHra(sl, steamId = "") {
     app.innerHTML = `<div class="profile"><div class="kostra kostra-banner"></div>${kostra(4)}</div>`;
     let h;
@@ -2490,6 +2665,7 @@
         <p class="source-note">Hodiny sledování po dnech za posledních 30 dní (od začátku měření).</p>` : ""}
       ${h.zive.length ? `<div class="section-title">Právě živě</div><div class="live-grid">${h.zive.map(kartaZive).join("")}</div>` : ""}
       ${(h.klipy || []).length ? `<div class="section-title">Nejlepší klipy</div><div class="regal">${h.klipy.map((v) => kartaVidea(v, true)).join("")}</div>` : ""}
+      ${historieCesko(h.historie, { patche: pas.patche || [], ceny: hist })}
       ${h.nejvic.length ? `<div class="section-title">Kdo hraje nejvíc</div><div class="slist">${h.nejvic.map((s, i) => radekStreamera(s, i, "hra")).join("")}</div>` : ""}
       ${h.clanky.length ? `<div class="section-title">Novinky a recenze</div><div class="grid">${h.clanky.map((c) => kartaClanku(c, 1)).join("")}</div>` : ""}
       <p class="source-note">Ceny, čeština, hodnocení a počet hráčů jsou přímo z obchodů Steam a GOG${h.info?.cas ? ` (stav ${esc(kdy(new Date(h.info.cas)))})` : ""}; vždy platí cena v obchodě. Hodiny na streamech měříme sami z API Twitche a Kicku. <a href="/o-webu#data">Jak počítáme</a></p>
@@ -2694,7 +2870,7 @@
   };
   // Ikona každé stránky v rozcestníku Hry a v hlavičce stránky.
   const IKONA_STRANKY = { radar: "radar", trendy: "trendy", "porovnat-hry": "srovnani", "co-hrat": "hrat", "rozjede-se": "pc", cestina: "jazyk",
-    obchody: "slevy", hlidac: "hlidac", vydani: "kalendar", aktualizace: "aktualizace", akce: "akce", "ceska-scena": "cz", studia: "studia", "vyssi-nizsi": "vn", databaze: "databaze" };
+    obchody: "slevy", hlidac: "hlidac", vydani: "kalendar", aktualizace: "aktualizace", akce: "akce", "ceska-scena": "cz", studia: "studia", "vyssi-nizsi": "vn", databaze: "databaze", hitparada: "trendy" };
   const NASTROJE_DOMU = [
     ["/co-hrat", "Co dnes hrát?", "Pár ťuknutí a máš tip na hru.", "#ffc04d", "hrat"],
     ["/rozjede-se", "Rozjede se mi to?", "Porovnej svůj počítač s hrou.", "#39d5ff", "pc"],
@@ -2705,14 +2881,14 @@
     nastavTitulek("");
     if (!state.domu) {
       app.innerHTML = `<section class="uvod"><h1>Hry mají tep.<br>My ho <em>měříme.</em></h1></section>${kostra(3)}`;
-      const [ra, vd, vy, ak, pa, , rd] = await Promise.allSettled([nacti("ranni"), nacti("vydani?limit=10"), nacti("vyroci"), state.akce ? state.akce : nacti("akce"), nacti("aktualizace"), nactiKatalog(), nacti("radar")]);
+      const [ra, vd, vy, ak, pa, , rd, hp] = await Promise.allSettled([nacti("ranni"), nacti("vydani?limit=10"), nacti("vyroci"), state.akce ? state.akce : nacti("akce"), nacti("aktualizace"), nactiKatalog(), nacti("radar"), nacti("hitparada")]);
       const ok = (x) => (x.status === "fulfilled" ? x.value : null);
-      state.domu = { ranni: ok(ra), vydani: ok(vd), vyroci: ok(vy), aktualizace: ok(pa) };
+      state.domu = { ranni: ok(ra), vydani: ok(vd), vyroci: ok(vy), aktualizace: ok(pa), hitparada: ok(hp) };
       if (ok(rd)) { state.radar = rd.value; state.radarCas = Date.now(); }
       if (ak.status === "fulfilled") state.akce = ak.value;
     }
     if (location.pathname !== "/" && location.pathname !== "") return;
-    const { ranni, vydani, vyroci, aktualizace } = state.domu;
+    const { ranni, vydani, vyroci, aktualizace, hitparada } = state.domu;
     const k = state.katalog || {};
     const tydne = vyberHruTydne(k);
     const zdarmaVse = [...(k.epic_zdarma || []), ...(k.steam_zdarma || [])];
@@ -2764,6 +2940,13 @@
         ${radarDomu.length ? `<section class="blok m12 domu-radar">
           <div class="section-title">Na radaru · <a href="/radar">všechno, co se děje</a></div>
           <div class="radar-l radar-kratky">${radarDomu.map(radekRadaru).join("")}</div>
+        </section>` : ""}
+
+        ${hitparada?.hry?.length ? `<section class="blok m12 domu-hp">
+          <div class="section-title">Česká hitparáda · ${esc(tydenText(hitparada.tyden))}${hitparada.probiha ? " (průběžně)" : ""} · <a href="/hitparada">celý žebříček</a></div>
+          <div class="slist">${hitparada.hry.slice(0, 5).map((h) => `<a class="srow hp-r" href="${esc(h.igdb_slug ? `/databaze/${h.igdb_slug}` : `/hra/${h.slug}`)}"><span class="rank hp-rank${h.poradi <= 3 ? ` hp-top${h.poradi}` : ""}">${h.poradi}</span>${posunHp(h)}
+            <div class="info"><h3>${esc(h.hra)}</h3></div><div class="num"><b>${esc(num(h.hodin))}</b>hodin</div></a>`).join("")}</div>
+          <p class="source-note">Hodiny sledování na českých streamech Twitche a Kicku za týden. ${puvod("mereno", "Twitch + Kick")}</p>
         </section>` : ""}
 
         ${patche.length ? `<section class="blok m12 domu-patche">
@@ -2897,7 +3080,7 @@
     const sekce = casti[1] || "";
     // Sekce, které mají vlastní položku v liště (Radar, Slevy, Kalendář, Aktualizace), se rozsvítí samy; ostatní herní stránky pod „Hry“.
     const vlastni = { radar: "radar", obchody: "slevy", hlidac: "slevy", vydani: "kalendar", aktualizace: "aktualizace", databaze: "databaze" };
-    const tab = vlastni[sekce] ? vlastni[sekce] : ["zive", "streameri", "streamer", "hry", "prehled", "porovnat", "report"].includes(sekce) ? "streameri"
+    const tab = vlastni[sekce] ? vlastni[sekce] : ["zive", "streameri", "streamer", "hry", "prehled", "porovnat", "report", "hitparada", "zprava"].includes(sekce) ? "streameri"
       : ["pruvodce", "vydani", "akce", "studia", "studio", "cestina", "hlidac", "hra", "obchody", "co-hrat", "rozjede-se", "vyssi-nizsi", "aktualizace", "ceska-scena", "radar", "trendy", "porovnat-hry", "databaze"].includes(sekce) ? "hry"
       : ["", "stav"].includes(sekce) ? "domu" : ["novinky", "clanek", "ranni"].includes(sekce) ? "novinky" : "";
     document.querySelectorAll(".tabs a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
@@ -2910,6 +3093,8 @@
     else if (sekce === "hra") p = casti[2] === "steam" ? strankaHra("", casti[3] || "") : strankaHra(casti[2] || "");
     else if (sekce === "prehled") p = strankaPrehled();
     else if (sekce === "report") p = strankaReport(casti[2] || "");
+    else if (sekce === "hitparada") p = strankaHitparada(casti[2] || "");
+    else if (sekce === "zprava") p = strankaZprava(casti[2] || "");
     else if (sekce === "porovnat") p = strankaPorovnat();
     else if (sekce === "novinky") strankaNovinky();
     else if (sekce === "cestina") p = strankaCestina();

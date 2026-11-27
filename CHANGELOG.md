@@ -8,6 +8,18 @@
 
 ---
 
+## 2026-11-27 – Česká herní hitparáda, odznaky pro streamery, historie hry v Česku, měsíční zpráva
+- **Česká herní hitparáda** (`/hitparada`): týdenní žebříček 20 her (hodiny sledování) a 20 streamerů (nejvíc diváků najednou)
+  z Twitche i Kicku. Posun ▲▼ proti minulému týdnu, NOVÉ / NÁVRAT, počet týdnů v hitparádě, nejlepší pozice. Každý uzavřený týden
+  se uloží do archivu a už se nemění. Sdílení odkazu i obrázku. Odkazy: záložka ve Streamerech, položka v nabídce Hry, blok na Domů (top 5 her).
+- **Odznak pro streamery**: streamer v hitparádě má na profilu kartu s pozicí a tlačítko „Stáhnout odznak pro kanál“ (PNG 640×360 do panelu
+  na Twitchi / Kicku).
+- **Historie v Česku** na stránce hry a v databázi: hodiny sledování po týdnech od začátku měření, pozice v hitparádě, značky
+  aktualizací a začátků slev.
+- **Měsíční zpráva** (`/zprava`): hodiny sledování, Twitch proti Kicku, aktivní kanály, špička, nejsledovanější hry, skokani, nováčci,
+  top streameři a shrnutí větami – jen naměřená čísla, bez AI. Archiv všech měsíců.
+- Nic se neodebralo. Nové soubory `src/hitparada.js`, `src/zprava.js`. Znak loga pro obrázky je teď společná funkce `kresliZnak()`.
+
 ## 2026-11-27 – Rozbalovací nabídka „Hry“, rozpad streamů podle platformy
 - **Hry v horní liště** se po klepnutí rozbalí: „Všechno o hrách“ (rozcestník zůstává) a všechny stránky po skupinách
   (Puls her, Najdi si hru, Ušetři, Co se chystá, Kdo hry dělá, Zahraj si) s ikonami. Na mobilu vyjede nad spodní lištou.

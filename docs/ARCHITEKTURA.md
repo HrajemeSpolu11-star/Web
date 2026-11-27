@@ -156,3 +156,18 @@ Galerie a prohlížeč: `galerieHry()` / `otevriProhlizec()` v `app.js`, bez inl
 - **Analytika** (`src/analytika.js`, katalog `analytika`, `/api/analytika`, záložka „Žánry a komunity“ na `/trendy?o=analytika`): počítá se
   s trendy každé 3 h (jen čtení D1 + 1 zápis). Žánry podle Steamu (`steam_hry.zanry`) s podílem spárovaných hodin, rostoucí komunity
   (max. souběžných streamů na jedné platformě, týden proti týdnu), nejčastěji ve slevě (90 dní), nejvíc aktualizací (30 dní).
+
+## Hitparáda, odznaky, historie v Česku, měsíční zpráva (2026-11-27)
+- **Česká herní hitparáda** (`src/hitparada.js`, tabulka `hitparada (tyden, druh, od, data, uzavreno, cas)`): týden pondělí–neděle (Praha).
+  Hry = hodiny sledování z `hry_den` (top 20), streameři = nejvíc diváků najednou ze `snimky` (top 20). Posun proti minulému týdnu,
+  týdny v hitparádě a nejlepší pozice se berou z archivu. Uzavřený týden se zapíše jednou a už se nemění (`uzavreno = 1`),
+  rozběhnutý se přepisuje. Počítá se v úloze `trendy` (každé 3 h); první běh doplní nejvýš 8 chybějících uzavřených týdnů.
+  Zápisy: 2 řádky na běh (+ 2 za každý doplněný týden). `GET /api/hitparada?tyden=2026-W48|aktualni`, stránky `/hitparada`, `/hitparada/<týden>`.
+  Týden, kdy měření začalo uprostřed, má příznak `nastaveni.hitparada_neuplny_<týden>`.
+- **Odznak pro streamery**: `apiStreamer` vrací `hitparada` (pozice v poslední uzavřené, jinak rozběhnuté hitparádě). Odznak 640×360 PNG
+  se kreslí v prohlížeči (canvas, `stahniOdznak`), nic se neposílá na server.
+- **Historie v Česku** (`scenaHry().historie`): hodiny sledování hry po týdnech od začátku měření (`hry_den`, max. 60 týdnů) + pozice
+  v hitparádě; na stránce hry a v databázi se k týdnům přidají značky aktualizace (pas.patche) a začátku slevy (historie cen).
+- **Měsíční zpráva** (`src/zprava.js`): `GET /api/zprava?mesic=2026-11`, stránky `/zprava`, `/zprava/<měsíc>`. Hodiny Twitch/Kick, podíl Kicku,
+  aktivní kanály, špička scény, top 15 her, skokani, nově v top 15, top streameři, věty bez AI. Srovnání jen s celým změřeným měsícem,
+  u rozběhnutého měsíce se stejným počtem dní. Jen čtení D1 (6 dotazů × 2 měsíce), mezipaměť 30 min / 1 den.

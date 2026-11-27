@@ -11,6 +11,7 @@ import { normNazev } from "./hra-data.js";
 import { rozborCen } from "./ceny.js";
 import { slugHry } from "./twitch.js";
 import { sestavAnalytiku } from "./analytika.js";
+import { sestavHitparadu } from "./hitparada.js";
 
 const DEN = 86400e3;
 const posun = (den, n) => new Date(Date.parse(den + "T12:00:00Z") + n * DEN).toISOString().slice(0, 10);
@@ -141,8 +142,8 @@ export async function sestavTrendy(env) {
   const db = env.DB, ted = Date.now();
   await zajistiSchemaHlidac(db);
   await db.batch(SCHEMA_HRACI.map((s) => db.prepare(s)));
-  const [c, s, k, a] = await Promise.allSettled([trendCesko(db, ted), trendSteam(db), cenovyRadar(db, ted), sestavAnalytiku(db, ted)]);
-  const chyby = [c, s, k, a].filter((x) => x.status === "rejected").map((x) => String(x.reason?.message || x.reason).slice(0, 100));
+  const [c, s, k, a, hp] = await Promise.allSettled([trendCesko(db, ted), trendSteam(db), cenovyRadar(db, ted), sestavAnalytiku(db, ted), sestavHitparadu(env, ted)]);
+  const chyby = [c, s, k, a, hp].filter((x) => x.status === "rejected").map((x) => String(x.reason?.message || x.reason).slice(0, 100));
   const p = [];
   if (c.status === "fulfilled" || s.status === "fulfilled")
     p.push(db.prepare("INSERT OR REPLACE INTO katalog (klic, data, cas) VALUES ('trendy', ?, ?)").bind(JSON.stringify({

@@ -10,7 +10,7 @@ const zkrat = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); retur
 
 // Je cesta stránkou webu (SPA), kterou má Worker vykreslit s meta tagy?
 export function jeStranka(pathname) {
-  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia|pruvodce|obchody|ranni|aktualizace|ceska-scena|co-hrat|rozjede-se|vyssi-nizsi|radar|trendy|porovnat-hry|databaze)\/?$/.test(pathname) || /^\/databaze\/[a-z0-9-]{1,100}\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
+  return pathname === "/" || /^\/(novinky|zive|streameri|hry|prehled|porovnat|report|cestina|hlidac|stav|vydani|akce|studia|pruvodce|obchody|ranni|aktualizace|ceska-scena|co-hrat|rozjede-se|vyssi-nizsi|radar|trendy|porovnat-hry|databaze|hitparada|zprava)\/?$/.test(pathname) || /^\/hitparada\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) || /^\/zprava\/\d{4}-\d{2}\/?$/.test(pathname) || /^\/databaze\/[a-z0-9-]{1,100}\/?$/.test(pathname) || /^\/studio\/[a-z0-9-]+\/?$/.test(pathname) || /^\/report\/(\d{4}-W\d{2}|aktualni)\/?$/.test(pathname) ||
     /^\/(clanek|hra)\/[^/]+\/?$/.test(pathname) || /^\/hra\/steam\/\d{1,10}\/?$/.test(pathname) || /^\/streamer\/(twitch|kick)\/[^/]+\/?$/.test(pathname);
 }
 
@@ -21,7 +21,7 @@ async function metaProStranku(url, env) {
   const og = (n) => `${url.origin}/og/${n}.png`;
   const OG = { "/": "domu", "/novinky": "novinky", "/zive": "streameri", "/streameri": "streameri", "/prehled": "streameri", "/porovnat": "streameri",
     "/hry": "cesko", "/cestina": "cestina", "/hlidac": "hlidac", "/vydani": "domu", "/akce": "domu", "/studia": "domu",
-    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky", "/radar": "novinky", "/trendy": "cesko", "/porovnat-hry": "hra", "/databaze": "hra" };
+    "/obchody": "domu", "/ranni": "novinky", "/aktualizace": "novinky", "/radar": "novinky", "/trendy": "cesko", "/porovnat-hry": "hra", "/databaze": "hra", "/hitparada": "cesko", "/zprava": "report" };
   let m = { title: `${NAZEV} – herní novinky a čeští streameři`, popis: POPIS, obrazek: og(OG[p] || (p.startsWith("/report") ? "report" : p.startsWith("/hra/") ? "hra" : "domu")),
     velky: true, index: true, status: 200, typ: "website" };
   try {
@@ -43,6 +43,8 @@ async function metaProStranku(url, env) {
     else if (p === "/ceska-scena") m = { ...m, title: `Česká herní scéna – Warhorse, Bohemia, Amanita a další | ${NAZEV}`, popis: "Novinky, trailery a hry českých herních studií z jejich oficiálních kanálů na jednom místě." };
     else if (p === "/co-hrat") m = { ...m, title: `Co dnes hrát? Doporučení her podle tebe | ${NAZEV}`, popis: "Vyber, s kým hraješ, kolik chceš dát, jestli chceš češtinu a žánr – doporučíme hry, které hráči na Steamu nejvíc chválí." };
     else if (p === "/rozjede-se") m = { ...m, title: `Rozjede se mi to? Porovnání PC s požadavky hry | ${NAZEV}`, popis: "Zadej grafiku, procesor a paměť a porovnej je s minimálními a doporučenými požadavky hry ze Steamu." };
+    else if (p === "/hitparada" || p.startsWith("/hitparada/")) m = { ...m, obrazek: og("cesko"), title: `Česká herní hitparáda${p.length > 11 ? ` – týden ${p.slice(11).replace("aktualni", "průběžně")}` : ""} – co Česko hraje a sleduje | ${NAZEV}`, popis: "Týdenní žebříček her a streamerů české scény na Twitchi a Kicku: pořadí, posun proti minulému týdnu, týdny v žebříčku a archiv všech týdnů. Jen z naměřených čísel." };
+    else if (p === "/zprava" || p.startsWith("/zprava/")) m = { ...m, obrazek: og("report"), title: `Měsíční zpráva o české streamovací scéně${p.length > 8 ? ` – ${p.slice(8)}` : ""} | ${NAZEV}`, popis: "Hodiny sledování, Twitch proti Kicku, nejsledovanější hry, největší skokani a rekordy české scény za měsíc. Jen naměřená čísla z oficiálních API." };
     else if (p === "/databaze") m = { ...m, title: `Databáze her – popis česky, platformy, data vydání | ${NAZEV}`, popis: "Přes 300 tisíc her od klasik po novinky: český popis, platformy a data vydání, obrázky, trailery, hodnocení, PEGI, série, DLC a podobné hry." };
     else if (p.startsWith("/databaze/")) {
       const slug = decodeURIComponent(p.slice(10));
@@ -165,7 +167,7 @@ export async function sitemap(request, env) {
   const o = new URL(request.url).origin;
   const ted = new Date().toISOString().slice(0, 10);
   const adresy = [["/", ted, "hourly"], ["/novinky", ted, "hourly"], ["/zive", ted, "always"], ["/streameri", ted, "daily"], ["/hry", ted, "daily"], ["/report", ted, "weekly"], ["/cestina", ted, "daily"], ["/vydani", ted, "daily"], ["/akce", ted, "daily"], ["/studia", ted, "daily"], ...STUDIA.map((x) => [`/studio/${x.slug}`, ted, "daily"]), ["/hlidac", ted, "monthly"], ["/prehled", ted, "daily"],
-    ["/pruvodce", ted, "weekly"], ["/obchody", ted, "hourly"], ["/ranni", ted, "daily"], ["/aktualizace", ted, "daily"], ["/radar", ted, "hourly"], ["/trendy", ted, "daily"], ["/porovnat-hry", ted, "weekly"], ["/databaze", ted, "daily"], ["/ceska-scena", ted, "daily"],
+    ["/pruvodce", ted, "weekly"], ["/obchody", ted, "hourly"], ["/ranni", ted, "daily"], ["/aktualizace", ted, "daily"], ["/radar", ted, "hourly"], ["/trendy", ted, "daily"], ["/porovnat-hry", ted, "weekly"], ["/databaze", ted, "daily"], ["/hitparada", ted, "daily"], ["/zprava", ted, "weekly"], ["/ceska-scena", ted, "daily"],
     ["/co-hrat", ted, "daily"], ["/rozjede-se", ted, "monthly"], ["/vyssi-nizsi", ted, "daily"], ["/o-webu", ted, "monthly"]];
   try {
     const [st, hry, cl] = await env.DB.batch([

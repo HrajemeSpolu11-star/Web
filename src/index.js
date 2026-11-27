@@ -33,6 +33,9 @@ import { apiHraDatabaze, apiHledatDatabaze, apiPopularniDatabaze, sestavPopularn
 import { propojHry, hryVTextu, zajistiSchemaPropojeni } from "./propojeni.js";
 import { kontrolaSledovanych, apiMojeHry } from "./sledovani.js";
 import { apiHledatFiltry, filtryDatabaze } from "./hledani.js";
+import { apiHitparada, poziceStreamera, historieHryVHitparade } from "./hitparada.js";
+import { apiZprava } from "./zprava.js";
+import { pondeli, isoTyden } from "./statistiky.js";
 import { apiWishlist } from "./wishlist.js";
 
 const PLATFORMY = new Set(["PC", "PS5", "Xbox", "Switch"]);
@@ -185,6 +188,7 @@ async function apiStreamer(platforma, login, env) {
   const r = await env.DB.prepare("SELECT * FROM streameri s WHERE s.platforma = ? AND s.login = ? AND s.skryty = 0 ORDER BY s.posledni_zive DESC LIMIT 1")
     .bind(platforma, login.toLowerCase()).first();
   if (!r) return json({ chyba: "Nenalezeno" }, 404);
+  await zajistiSchemaPropojeni(env.DB);
   const [sn, hry] = await env.DB.batch([
     env.DB.prepare("SELECT den, sledujici, max_divaku, minut FROM snimky WHERE user_id = ? AND den >= date('now', '-90 day') ORDER BY den").bind(r.id),
     env.DB.prepare(`SELECT x.hra, x.minut, (SELECT h.igdb_slug FROM hry h WHERE h.nazev = x.hra LIMIT 1) AS igdb_slug
@@ -201,6 +205,7 @@ async function apiStreamer(platforma, login, env) {
     mereno_od: sn.results[0]?.den || null,
     hodin30: Math.round(sn.results.filter((x) => x.den >= od30).reduce((a, x) => a + (x.minut || 0), 0) / 60),
     snimky: sn.results, hry: hry.results.map((h) => ({ ...h, slug: slugHry(h.hra) })),
+    hitparada: await poziceStreamera(env.DB, platforma, login.toLowerCase()).catch(() => null),
     aktualizovano: { profil: r.profil_cas ? new Date(r.profil_cas).toISOString() : null, sledujici: r.sledujici_cas ? new Date(r.sledujici_cas).toISOString() : null },
   }, 200, 120);
 }
@@ -261,7 +266,25 @@ async function scenaHry(env, h, ted) {
       JOIN streameri s ON s.id = k.streamer_id WHERE k.hra_id = ? AND s.skryty = 0 ORDER BY k.zhlednuti DESC LIMIT 8`).bind(h.twitch_id || "-"),
   ]);
   const tyden = dny.results.filter((d) => d.den >= od7);
+  // Historie hry v Česku: hodiny sledování po týdnech od začátku měření + pozice v hitparádě.
+  const [vse, hp] = await Promise.all([
+    env.DB.prepare("SELECT den, SUM(divako_minut) AS dm, MAX(max_divaku) AS spicka FROM hry_den WHERE hra = ? GROUP BY den ORDER BY den").bind(h.nazev).all().catch(() => ({ results: [] })),
+    historieHryVHitparade(env.DB, h.nazev).catch(() => []),
+  ]);
+  const poTydnech = new Map();
+  for (const d of vse.results) {
+    const po = pondeli(d.den), x = poTydnech.get(po) || { od: po, tyden: isoTyden(po), dm: 0, spicka: 0 };
+    x.dm += d.dm || 0; x.spicka = Math.max(x.spicka, d.spicka || 0); poTydnech.set(po, x);
+  }
+  const poziceHp = new Map(hp.map((x) => [x.tyden, x.poradi]));
+  const historie = vse.results.length ? {
+    od: vse.results[0].den,
+    tydny: [...poTydnech.values()].sort((a, b) => a.od.localeCompare(b.od)).slice(-60)
+      .map((x) => ({ tyden: x.tyden, od: x.od, hodin: Math.round(x.dm / 60), spicka: x.spicka, poradi: poziceHp.get(x.tyden) || null })),
+    nejlepsi: hp.length ? Math.min(...hp.map((x) => x.poradi)) : null, tydnu_v_hitparade: hp.filter((x) => !x.probiha).length,
+  } : null;
   return {
+    historie,
     statistiky: {
       hodin7: Math.round(tyden.reduce((a, d) => a + (d.dm || 0), 0) / 60),
       spicka7: Math.max(0, ...tyden.map((d) => d.spicka || 0)),
@@ -391,7 +414,7 @@ async function verejneApi(request, env, ctx, url) {
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
   // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
-  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam", "n", "rezim", "tema", "od", "do", "hodnoceni", "dotaz"];
+  const POVOLENE = ["limit", "platforma", "q", "jazyk", "razeni", "hra", "tyden", "filtr", "ids", "den", "s", "cz", "cena", "zanr", "pred", "steam", "n", "mesic", "rezim", "tema", "od", "do", "hodnoceni", "dotaz"];
   const ciste = new URL(url.origin + url.pathname);
   for (const k of POVOLENE) { const v = url.searchParams.get(k); if (v != null) ciste.searchParams.set(k, v.slice(0, k === "ids" ? 4000 : 200)); }
   const klic = new Request(ciste.toString(), { method: "GET" });
@@ -414,6 +437,18 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/hry") odpoved = await apiHry(env);
     else if (url.pathname === "/api/prehled") odpoved = json(await apiPrehled(env, naStreamera), 200, 300);
     else if (url.pathname === "/api/cesko") { await zajistiSchemaTwitch(env.DB); odpoved = json(await apiCesko(env), 200, 900); }
+    else if (url.pathname === "/api/hitparada") {
+      await zajistiSchemaTwitch(env.DB);
+      const t = String(url.searchParams.get("tyden") || "").slice(0, 10);
+      const r = await apiHitparada(env, /^(\d{4}-W\d{2}|aktualni)$/.test(t) ? t : "");
+      odpoved = json(r, 200, r.cache || 900);
+    }
+    else if (url.pathname === "/api/zprava") {
+      await zajistiSchemaTwitch(env.DB);
+      const m = String(url.searchParams.get("mesic") || "").slice(0, 7);
+      const r = await apiZprava(env, /^\d{4}-\d{2}$/.test(m) ? m : "");
+      odpoved = json(r, 200, r.cache || 1800);
+    }
     else if (url.pathname === "/api/report") {
       await zajistiSchemaTwitch(env.DB);
       const t = String(url.searchParams.get("tyden") || "").slice(0, 10);
