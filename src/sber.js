@@ -1,6 +1,7 @@
 // Sběrač novinek – spouští ho Cron Trigger každých 15 minut.
 import { ZDROJE } from "./zdroje.js";
 import { parsujFeed } from "./rss.js";
+import { textOmezeny } from "./telo.js";
 
 const MAX_STARI_H = 12;          // starší zprávy se nezveřejní
 const ZDROJU_NA_BEH = 10;        // 19 zdrojů → každý zhruba jednou za 30 min (limit 50 požadavků: RSS 10 + studia ≤ 12)
@@ -79,7 +80,7 @@ async function stahniZdroj(zdroj, stav) {
   const r = await fetch(zdroj.url, { headers: hlavicky, signal: AbortSignal.timeout(10000), redirect: "follow" });
   if (r.status === 304) return { polozky: [], etag: stav.etag, lastmod: stav.lastmod, stav: "beze změn" };
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const xml = (await r.text()).slice(0, 2_000_000);
+  const xml = await textOmezeny(r, 2_000_000);
   if (!/<(rss|feed|rdf:RDF)[\s>]/i.test(xml)) throw new Error("není RSS");
   return { polozky: parsujFeed(xml), etag: r.headers.get("ETag"), lastmod: r.headers.get("Last-Modified"), stav: "ok" };
 }

@@ -6,6 +6,23 @@
 
 ---
 
+## 2026-11-27 – Opravy podle externího auditu (ChatGPT)
+- **Push upozornění**: `/nehlidat` už nezakládá odběr; tělo požadavku se čte s pevným limitem (ne až po stažení celé);
+  max. 30 nových odběrů za minutu pro celý web; neúspěšná odeslání mají postupné čekání (15 min → max. 12 h,
+  sloupce `pokusy`, `dalsi_pokus`) – jeden nefunkční odběr už neblokuje frontu ostatním. Index fronty.
+- **Kick**: nejdřív se zkusí Livestreams V2 (stránkování), když není nebo vrátí nečekaná data, použije se osvědčené V1.
+  Na /stav je vidět, které API běželo a jestli mohlo pokrytí být neúplné. (Že je V1 zastaralé, se ověřit nepodařilo.)
+- **Měření minut**: když zápis statistik selže, rezervace intervalu se vrátí – minuty se neztratí.
+- **AI**: Gemma (pro účet zakázaná) vyřazena ze seznamu. Články a kontrolu faktů nepíše slabý model 8B.
+  Automatické zveřejnění nově chce plný text u dvou zdrojů z různých webů a čísla v článku musí být v podkladech.
+- **Hlídač cen**: hry, které Steam nevrátí, se posunou na konec fronty; hlídané hry nezaberou každý běh celé místo.
+- **Steam hráči**: popisky opraveny na „denní špička za 24 h“ (dřív chybně „za týden“); aktuální počet se ukládá zvlášť.
+- **Limity velikosti**: RSS, YouTube, stránky studií a zdroje článků se čtou s limitem bajtů (proudově); admin
+  přijímá max. 64 / 256 kB. Nový soubor `src/telo.js`.
+- **Výkon**: kontrola stáří dat Twitche až po neúspěchu mezipaměti; indexy `hry_den(hra, den)` a `hry_streamera(hra)`
+  (sloupce, které se nemění → bez zápisů navíc).
+- Kalendář vydání označen jako „výběr populárních her z IGDB“.
+
 ## 2026-11-27 – Obrázky u aktualizací her, bezpečné přidávání her
 - **Chybějící obrázky u aktualizací**: novější hry mají na Steamu obrázek na adrese s jedinečným kódem, odhad
   `…/steam/apps/ID/header.jpg` nefungoval. API bere oficiální `header_image` z `steam_hry`; hry s novou aktualizací se do

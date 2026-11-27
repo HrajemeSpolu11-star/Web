@@ -1,7 +1,7 @@
 // Sběr českých streamerů z oficiálního Twitch API (Helix).
 // Všechna čísla pocházejí přímo z Twitche – nic se neodhaduje ani negeneruje.
 import { denPraha } from "./psani.js";
-import { SCHEMA_PREHLED, prikazScena, prikazMilnik, vyhodnotZmeny, nactiPredchozi, prikazyHryDen, rezervujMinuty } from "./prehled.js";
+import { SCHEMA_PREHLED, prikazScena, prikazMilnik, vyhodnotZmeny, nactiPredchozi, prikazyHryDen, rezervujMinuty, vratMinuty } from "./prehled.js";
 import { SCHEMA_PUSH, zaradUpozorneni, odesliFrontu } from "./push.js";
 
 const API = "https://api.twitch.tv/helix";
@@ -32,6 +32,8 @@ export const SCHEMA_TWITCH = [
   `CREATE TABLE IF NOT EXISTS hry_streamera (
      user_id TEXT NOT NULL, hra TEXT NOT NULL, minut INTEGER DEFAULT 0, posledni INTEGER,
      PRIMARY KEY (user_id, hra))`,
+  // Kdo hraje danou hru (stránka hry). Index jen na `hra` (nemění se), ne na `minut` – ten se mění každý běh = zápisy navíc.
+  `CREATE INDEX IF NOT EXISTS idx_hry_streamera_hra ON hry_streamera(hra)`,
 ];
 
 let migraceHotova = false;
@@ -177,7 +179,10 @@ export async function sberTwitch(env) {
         if (s.game_name && minut) prikazy.push(hra.bind(s.user_id, s.game_name, minut, ted));
       }
     }
-    if (prikazy.length) await db.batch(prikazy);
+    if (prikazy.length) {
+      try { await db.batch(prikazy); }
+      catch (e) { await vratMinuty(db, "twitch"); throw e; } // zápis selhal → interval vrátit, nezapočítá se dvakrát ani neztratí
+    }
     await zaradUpozorneni(env, zmeny.noveZive);
 
     // 2) Obnova profilů (popis, profilovka, banner, typ účtu) – nové a starší než 24 h.

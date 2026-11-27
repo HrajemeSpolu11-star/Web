@@ -2,6 +2,7 @@
 // Push se posílá BEZ obsahu (nic se nešifruje); service worker si zprávu vyzvedne z /api/push/zpravy.
 // VAPID klíče si Worker vygeneruje sám při prvním použití a uloží do D1 (tabulka nastaveni).
 import { zajistiSchemaHlidac, hlidat, nehlidat } from "./hlidac.js";
+import { teloPozadavku } from "./telo.js";
 
 const ZPRAV_NA_PUSH = 4; // service worker zobrazí každou zvlášť
 
@@ -20,6 +21,11 @@ let schemaHotova = false;
 export async function zajistiSchemaPush(db) {
   if (schemaHotova) return;
   await db.batch(SCHEMA_PUSH.map((s) => db.prepare(s)));
+  // Opakování doručení s prodlevou: počet neúspěchů a čas dalšího pokusu.
+  const { results } = await db.prepare("PRAGMA table_info(push_odbery)").all();
+  const ma = new Set(results.map((r) => r.name));
+  for (const sl of ["pokusy INTEGER DEFAULT 0", "dalsi_pokus INTEGER DEFAULT 0"]) if (!ma.has(sl.split(" ")[0])) await db.prepare(`ALTER TABLE push_odbery ADD COLUMN ${sl}`).run().catch(() => {});
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_push_zpravy_cekaji ON push_zpravy(odeslano, odber_id, id)").run().catch(() => {});
   schemaHotova = true;
 }
 
@@ -112,11 +118,19 @@ export async function odesliFrontu(env, max = 10) {
   const db = env.DB;
   await zajistiSchemaPush(db);
   // Nejstarší čekající zprávy první, ať odběr s opakovanou chybou neblokuje ostatní.
-  const { results } = await db.prepare(`SELECT o.id, o.endpoint, MIN(z.id) AS prvni FROM push_zpravy z JOIN push_odbery o ON o.id = z.odber_id
-    WHERE z.odeslano = 0 GROUP BY o.id ORDER BY prvni LIMIT ?`).bind(max).all();
+  // Odběr, kterému doručení selhalo, čeká s rostoucí prodlevou (15 min, 30 min, 1 h … max. 12 h) a neblokuje ostatní.
+  const ted = Date.now();
+  const { results } = await db.prepare(`SELECT o.id, o.endpoint, COALESCE(o.pokusy, 0) AS pokusy, MIN(z.id) AS prvni FROM push_zpravy z JOIN push_odbery o ON o.id = z.odber_id
+    WHERE z.odeslano = 0 AND COALESCE(o.dalsi_pokus, 0) <= ? GROUP BY o.id ORDER BY COALESCE(o.pokusy, 0), prvni LIMIT ?`).bind(ted, max).all();
   for (const o of results) {
     let vysledek;
     try { vysledek = await posliPush(env, o.endpoint); } catch (e) { console.warn("push:", e); vysledek = "znovu"; }
+    if (vysledek === "znovu") {
+      await db.prepare("UPDATE push_odbery SET pokusy = ?, dalsi_pokus = ? WHERE id = ?")
+        .bind(o.pokusy + 1, ted + Math.min(12 * 3600e3, 15 * 60e3 * 2 ** o.pokusy), o.id).run();
+      continue;
+    }
+    if (vysledek === "ok" && o.pokusy) await db.prepare("UPDATE push_odbery SET pokusy = 0, dalsi_pokus = 0 WHERE id = ?").bind(o.id).run();
     // Označíme jen zprávy, které existovaly před odesláním – nové počkají na další oznámení.
     // Jedno oznámení = nejvýš ZPRAV_NA_PUSH zpráv (tolik si jich service worker vyzvedne). Zbytek čeká na další push.
     if (vysledek === "ok") await db.prepare(`UPDATE push_zpravy SET odeslano = 1 WHERE id IN
@@ -137,6 +151,19 @@ function json(data, status = 200) {
 
 // /api/push/klic (GET), /api/push/odber, /zrusit, /zpravy, /hlidat, /nehlidat (POST)
 const MAX_ODBERU = 20000;
+const NOVYCH_ZA_MINUTU = 30;
+
+// Přečte tělo požadavku nejvýš do `max` bajtů (nečeká na celé, když je delší).
+export const prectiTelo = teloPozadavku;
+
+// Globální strop nových odběrů za minutu (počítadlo v tabulce nastaveni).
+async function smimNovyOdber(db) {
+  const minuta = Math.floor(Date.now() / 60e3);
+  const r = await db.prepare(`INSERT INTO nastaveni (klic, hodnota, plati_do) VALUES ('push_nove', '1', ?)
+    ON CONFLICT(klic) DO UPDATE SET hodnota = CASE WHEN nastaveni.plati_do = excluded.plati_do THEN CAST(nastaveni.hodnota AS INTEGER) + 1 ELSE 1 END,
+      plati_do = excluded.plati_do RETURNING hodnota`).bind(minuta).first().catch(() => null);
+  return Number(r?.hodnota || 0) <= NOVYCH_ZA_MINUTU;
+}
 
 export async function pushApi(request, env) {
   const url = new URL(request.url);
@@ -149,14 +176,19 @@ export async function pushApi(request, env) {
   // Omezení velikosti těla požadavku (odběr = adresa + seznam oblíbených).
   if (Number(request.headers.get("Content-Length") || 0) > 8192) return json({ chyba: "Příliš velký požadavek" }, 413);
   let b;
-  try { const t = await request.text(); if (t.length > 8192) throw 0; b = JSON.parse(t); } catch { return json({ chyba: "Neplatná data" }, 400); }
+  try { b = JSON.parse(await prectiTelo(request, 8192)); } catch { return json({ chyba: "Neplatná data" }, 400); }
   const endpoint = String(b?.endpoint || "");
   if (!platnyEndpoint(endpoint)) return json({ chyba: "Neplatný odběr" }, 400);
   const id = await otisk(endpoint);
-  // Pojistka proti zahlcení databáze vymyšlenými odběry: nové odběry jen do pevného stropu.
-  if (cesta === "/odber" || cesta === "/hlidat") {
-    const [ex, poc] = await db.batch([db.prepare("SELECT 1 AS x FROM push_odbery WHERE id = ?").bind(id), db.prepare("SELECT COUNT(*) AS n FROM push_odbery")]);
-    if (!ex.results.length && (poc.results[0]?.n || 0) >= MAX_ODBERU) return json({ chyba: "Upozornění jsou teď přeplněná, zkus to později." }, 503);
+  // Pojistky proti zahlcení databáze vymyšlenými odběry. Nový odběr smí vzniknout JEN přes /odber a /hlidat
+  // (ne přes /nehlidat ani /zrusit), nejvýš 30 nových odběrů za minutu a do pevného stropu 20 000.
+  const ex = await db.prepare("SELECT 1 AS x FROM push_odbery WHERE id = ?").bind(id).first();
+  if (!ex) {
+    if (cesta === "/nehlidat") return json({ ok: true, hlidam: 0 });
+    if (cesta === "/odber" || cesta === "/hlidat") {
+      const poc = await db.prepare("SELECT COUNT(*) AS n FROM push_odbery").first();
+      if ((poc?.n || 0) >= MAX_ODBERU || !await smimNovyOdber(db)) return json({ chyba: "Upozornění jsou teď přeplněná, zkus to později." }, 503);
+    }
   }
 
   if (cesta === "/odber") {
@@ -173,9 +205,9 @@ export async function pushApi(request, env) {
     return json({ ok: true });
   }
   if (cesta === "/hlidat" || cesta === "/nehlidat") {
-    // Odběr musí existovat (vznikne při zapnutí upozornění); hlídání bez něj nemá kam poslat zprávu.
+    // Odběr musí existovat; /hlidat ho založí (limity výše), /nehlidat nikdy.
     const ted = Date.now();
-    await db.prepare(`INSERT INTO push_odbery (id, endpoint, oblibeni, vytvoreno, upraveno) VALUES (?, ?, '[]', ?, ?)
+    if (cesta === "/hlidat") await db.prepare(`INSERT INTO push_odbery (id, endpoint, oblibeni, vytvoreno, upraveno) VALUES (?, ?, '[]', ?, ?)
       ON CONFLICT(id) DO NOTHING`).bind(id, endpoint, ted, ted).run();
     const v = cesta === "/hlidat" ? await hlidat(db, id, b) : await nehlidat(db, id, b);
     return json(v.chyba ? { chyba: v.chyba } : v, v.status || 200);

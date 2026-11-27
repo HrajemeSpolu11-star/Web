@@ -64,7 +64,7 @@ export async function apiVyssiNizsi(env) {
   return {
     den: denPraha(),
     sady: {
-      hraci: { nazev: "Hráči na Steamu", otazka: "Která hra měla víc hráčů najednou?", jednotka: "hráčů najednou", zdroj: "Steam – nejvíc hráčů najednou za poslední týden", hry: hraci },
+      hraci: { nazev: "Hráči na Steamu", otazka: "Která hra měla za posledních 24 h víc hráčů najednou?", jednotka: "hráčů ve špičce", zdroj: "Steam – nejvíc hráčů najednou za posledních 24 hodin (denní špička)", hry: hraci },
       cesko: { nazev: "Česká scéna", otazka: "Na co se Češi na streamech dívali víc?", jednotka: "hodin sledování", zdroj: "Naše měření českých streamů na Twitchi a Kicku za 7 dní",
         hry: c.results.filter((r) => r.dm >= 600).map((r) => ({ nazev: r.hra, hodnota: Math.round(r.dm / 60) })) },
       doporuceni: { nazev: "Oblíbenost", otazka: "Která hra má na Steamu víc doporučení?", jednotka: "doporučení", zdroj: "Steam – počet doporučení hráčů",

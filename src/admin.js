@@ -4,6 +4,7 @@ import { zajistiSchema } from "./sber.js";
 import { oznamClanek } from "./discord.js";
 import { zajistiSchemaTwitch } from "./twitch.js";
 import { stavYoutube } from "./obsah.js";
+import { teloPozadavku } from "./telo.js";
 
 const SITE = ["web", "youtube", "instagram", "tiktok", "x", "discord"];
 
@@ -73,7 +74,7 @@ export async function adminApi(request, env, ctx, uzivatel) {
   if (request.method === "POST" && ms) {
     await zajistiSchemaTwitch(db);
     let b;
-    try { b = await request.json(); } catch { return json({ chyba: "Neplatná data" }, 400); }
+    try { b = JSON.parse(await teloPozadavku(request, 64_000)); } catch { return json({ chyba: "Neplatná nebo příliš velká data" }, 400); }
     const odkazy = {};
     for (const k of SITE) {
       const v = String(b?.odkazy?.[k] || "").trim();
@@ -102,7 +103,7 @@ export async function adminApi(request, env, ctx, uzivatel) {
 
   if (request.method === "POST") {
     let b;
-    try { b = await request.json(); } catch { return json({ chyba: "Neplatná data" }, 400); }
+    try { b = JSON.parse(await teloPozadavku(request, 256_000)); } catch { return json({ chyba: "Neplatná nebo příliš velká data" }, 400); }
     const ted = Date.now();
 
     // Uložení / vytvoření článku z editoru.

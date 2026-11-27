@@ -108,8 +108,10 @@ async function sberJazyku(db, ted, limit = JAZYKU_NA_BEH) {
 async function sberCen(env, db, ted) {
   const { results } = await db.prepare(`SELECT g.id, g.nazev, g.cena, g.sleva FROM steam_hry g
     LEFT JOIN (SELECT DISTINCT steam_id FROM hlidani) h ON h.steam_id = g.id
-    WHERE h.steam_id IS NOT NULL OR g.cena_cas IS NULL OR g.cena_cas < ?
-    ORDER BY (h.steam_id IS NULL), COALESCE(g.cena_cas, 0) LIMIT ?`).bind(ted - 6 * 3600e3, CEN_POZADAVKU * 100).all();
+    WHERE g.cena_cas IS NULL OR g.cena_cas < ? OR (h.steam_id IS NOT NULL AND g.cena_cas < ?)
+    ORDER BY (h.steam_id IS NULL), COALESCE(g.cena_cas, 0) LIMIT ?`).bind(ted - 6 * 3600e3, ted - 50 * 60e3, CEN_POZADAVKU * 100).all();
+  // Hlídané hry nejdřív, ale jen když je jejich cena starší než ~hodina – jinak by stovky hlídaných her každý běh
+  // zabraly všechna místa a ostatní hry by se nikdy neobnovily.
   if (!results.length) return 0;
   const den = denPraha(ted);
   const prikazy = [];
@@ -120,7 +122,8 @@ async function sberCen(env, db, ted) {
     catch (e) { console.warn("ceny:", e.message); continue; }
     for (const r of davka) {
       const x = d?.[r.id];
-      if (!x?.success) continue;
+      // Steam hru nevrátil (stažená, region): posunout na konec fronty, cenu ponechat – jinak by blokovala ostatní.
+      if (!x?.success) { prikazy.push(db.prepare("UPDATE steam_hry SET cena_cas = ? WHERE id = ?").bind(ted, r.id)); continue; }
       // Bez price_overview je hra buď zdarma (to víme z jazyků/appdetails), nebo se zatím neprodává → cena neznámá.
       const p = Array.isArray(x.data) ? null : x.data?.price_overview;
       if (p) prikazy.push(db.prepare("UPDATE steam_hry SET cena = ?, puvodni = ?, sleva = ?, cena_cas = ? WHERE id = ?")

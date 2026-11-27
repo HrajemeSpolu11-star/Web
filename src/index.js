@@ -341,11 +341,6 @@ async function zamekNa(db, klic, ms) {
 async function verejneApi(request, env, ctx, url) {
   if (request.method !== "GET" && request.method !== "HEAD") return json({ chyba: "Metoda není povolena" }, 405);
 
-  // Když jsou data o streamerech starší než 10 min, stáhnou se hned z Twitche (na pozadí).
-  if (url.pathname === "/api/zive" || url.pathname === "/api/streameri" || url.pathname === "/api/hry") {
-    ctx.waitUntil(sberTwitchPokudStary(env).catch((e) => console.error("twitch na vyžádání:", e)));
-  }
-
   // Odpovědi se krátce drží v mezipaměti Cloudflare, aby návštěvy nezatěžovaly databázi.
   const cache = caches.default;
   // Klíč mezipaměti jen ze známých parametrů – náhodné ?x=… by jinak mezipaměť obcházely a zatěžovaly databázi.
@@ -355,6 +350,12 @@ async function verejneApi(request, env, ctx, url) {
   const klic = new Request(ciste.toString(), { method: "GET" });
   const ulozeno = await cache.match(klic);
   if (ulozeno) return ulozeno;
+
+  // Když jsou data o streamerech starší než 10 min, stáhnou se hned z Twitche (na pozadí).
+  // Až po neúspěchu mezipaměti – jinak by každá návštěva dělala dotaz do databáze.
+  if (url.pathname === "/api/zive" || url.pathname === "/api/streameri" || url.pathname === "/api/hry") {
+    ctx.waitUntil(sberTwitchPokudStary(env).catch((e) => console.error("twitch na vyžádání:", e)));
+  }
 
   let odpoved;
   try {
@@ -497,7 +498,8 @@ export default {
         }),
         behUlohy(env, "kick", async () => { await sberKick(env); return stav("kick_stav"); }, (s) => {
           if (s.ok === false) throw new Error(s.chyba || "neznámá chyba");
-          return `Na Kicku našla ${pl(s.zivych || 0, "živý český stream", "živé české streamy", "živých českých streamů")}.`;
+          return `Na Kicku našla ${pl(s.zivych || 0, "živý český stream", "živé české streamy", "živých českých streamů")}` +
+            `${s.api ? ` (API ${s.api}${s.uplne === false ? ", možná ne všechny – API víc nevrátí" : ""})` : ""}.`;
         }),
       ]));
     } else if (event.cron === CRON_PSANI) {

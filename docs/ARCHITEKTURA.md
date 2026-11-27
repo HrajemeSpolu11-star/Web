@@ -38,7 +38,7 @@ spustí se sběr hned na pozadí (`sberTwitchPokudStary`, zámek `nastaveni.twit
 6. Rozvrhy: `/schedule` (5 kanálů s nejvíc sledujícími, obnova po 12 h) → tabulka `rozvrh`.
 7. Odeslání upozornění (max. 10 push na běh).
 
-Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?slug=…` (25 na běh). Kick API nevrací sledující.
+Kick je jednodušší: nejdřív Livestreams V2 (`/public/v2/livestreams`, cursor, max. 2 stránky), při chybě V1 `/livestreams?language=cs&limit=100` (řazení podle diváků + podle začátku), profily `/channels?slug=…` (25 na běh). Kick API nevrací sledující.
 
 ## Rozpočet limitů (Free plán) – hlídat při změnách!
 - **Podrequesty (fetch) na běh: max 50.** Twitch běh: token (≤1) + streamy (≤6) + users (1) + followers (15) + schedule (5) + push (≤10) ≈ 38.
@@ -63,7 +63,7 @@ Kick je jednodušší: `/livestreams?language=cs&limit=100`, profily `/channels?
 - Kalendář vydání (`src/vydani.js`): IGDB `release_dates` + `game.first_release_date`; porty a plné verze po předběžném přístupu se označí `uz_vyslo` (i podle Steamu). Až 3 dotazy na IGDB (zjednodušení při chybě 400) + 1–2 na token.
 
 ## Souběžné běhy a přesnost statistik (od 2026-11-26)
-- Sběr Twitch/Kick běží z Cronu (`5,20,35,50`) i na vyžádání (`sberTwitchPokudStary`, když je poslední sběr starší než 10 min).
+- Sběr Twitch/Kick běží z Cronu (`5,20,35,50`) i na vyžádání (`sberTwitchPokudStary`, když je poslední sběr starší než 10 min – kontroluje se až po neúspěchu mezipaměti).
   Živá data (kdo vysílá) se jen přepisují, takže souběh nevadí.
 - **Minuty a hodiny sledování** (`snimky.minut`, `hry_streamera.minut`, `hry_den`) se navyšují o **skutečně uplynulý čas**
   od posledního započteného běhu (max. 15 min) – `rezervujMinuty()` v `src/prehled.js`, klíč `nastaveni.beh_twitch` / `beh_kick`.

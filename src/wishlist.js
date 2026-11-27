@@ -5,6 +5,7 @@
 // Požadavky: 1 (profil) + 1 (seznam) + až 5 (názvy po 100) = nejvýš 7 na jedno načtení; omezeno na 10 načtení za minutu.
 import { zajistiSchemaHlidac, prikazyPridejHry, hryPodleId, naHru } from "./hlidac.js";
 import { prikazyPridejSledovane, zajistiSchemaPatchu } from "./patche.js";
+import { textOmezeny } from "./telo.js";
 
 const MAX_HER = 500;
 const UA = "HerniPuls/1.0 (+https://web.hrajemespolu11.workers.dev)";
@@ -30,7 +31,7 @@ async function steamIdZVstupu(env, vstup) {
   // Bez klíče: veřejný XML profil (obsahuje SteamID64).
   const r = await fetch(`https://steamcommunity.com/id/${encodeURIComponent(jmeno)}/?xml=1`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) return null;
-  const x = /<steamID64>(\d{17})<\/steamID64>/.exec((await r.text()).slice(0, 5000));
+  const x = /<steamID64>(\d{17})<\/steamID64>/.exec(await textOmezeny(r, 20_000));
   return x ? x[1] : null;
 }
 

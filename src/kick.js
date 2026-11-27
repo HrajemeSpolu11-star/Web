@@ -2,7 +2,7 @@
 // Zapne se sám, jakmile je nastaven KICK_CLIENT_ID (wrangler.jsonc) a Secret KICK_CLIENT_SECRET.
 import { denPraha } from "./psani.js";
 import { zajistiSchemaTwitch, slugHry } from "./twitch.js";
-import { prikazScena, vyhodnotZmeny, nactiPredchozi, prikazyHryDen, rezervujMinuty } from "./prehled.js";
+import { prikazScena, vyhodnotZmeny, nactiPredchozi, prikazyHryDen, rezervujMinuty, vratMinuty } from "./prehled.js";
 import { zaradUpozorneni } from "./push.js";
 
 const API = "https://api.kick.com/public/v1";
@@ -31,6 +31,29 @@ async function token(env, obnovit = false) {
   return d.access_token;
 }
 
+// Livestreams V1 a V2 mají jinou strukturu – sjednocení na tvar V1, se kterým pracuje zbytek kódu.
+function normalizujKick(x) {
+  if (!x || typeof x !== "object") return {};
+  return {
+    broadcaster_user_id: x.broadcaster_user_id ?? x.broadcaster_user?.id ?? x.broadcaster?.user_id ?? x.channel?.user_id,
+    slug: x.slug ?? x.channel?.slug ?? x.broadcaster_user?.channel_slug ?? x.broadcaster?.slug,
+    viewer_count: Number(x.viewer_count ?? x.viewers ?? 0) || 0,
+    started_at: x.started_at ?? x.start_time ?? null,
+    stream_title: x.stream_title ?? x.title ?? x.session_title ?? "",
+    category: x.category ? { ...x.category, name: x.category.name ?? x.category.title } : null,
+    thumbnail: typeof x.thumbnail === "string" ? x.thumbnail : x.thumbnail?.url ?? x.thumbnail?.src ?? null,
+    profile_picture: x.profile_picture ?? x.broadcaster_user?.profile_picture ?? x.broadcaster?.profile_picture ?? null,
+  };
+}
+const API_V2 = "https://api.kick.com/public/v2";
+
+async function kickUrl(url, tok) {
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${tok}`, Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+  if (r.status === 401) { const e = new Error("401"); e.kod = 401; throw e; }
+  if (!r.ok) throw new Error(`Kick HTTP ${r.status}`);
+  return r.json();
+}
+
 async function kick(cesta, tok) {
   const r = await fetch(API + cesta, { headers: { Authorization: `Bearer ${tok}`, Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
   if (r.status === 401) { const e = new Error("401"); e.kod = 401; throw e; }
@@ -55,15 +78,38 @@ export async function sberKick(env) {
       try { return await kick(c, tok); }
       catch (e) { if (e.kod !== 401) throw e; tok = await token(env, true); return kick(c, tok); }
     };
+    const volejCesta = async (url) => {
+      try { return await kickUrl(url, tok); }
+      catch (e) { if (e.kod !== 401) throw e; tok = await token(env, true); return kickUrl(url, tok); }
+    };
 
-    // 1) Živé streamy v češtině. Oficiální API vrátí max. 100 a další stránky nemá → dva dotazy:
-    //    100 nejsledovanějších + 100 naposledy spuštěných (zachytí menší streamy). Sloučeno podle ID.
-    const [d, d2] = await Promise.all([
-      volej(`/livestreams?language=${JAZYK}&limit=100&sort=viewer_count`),
-      volej(`/livestreams?language=${JAZYK}&limit=100&sort=started_at`).catch(() => ({ data: [] })),
-    ]);
+    // 1) Živé streamy v češtině.
+    //    Nejdřív Livestreams V2 (stránkování přes cursor, až 1 000 na stránku) – pokud ho Kick nemá nebo vrátí chybu,
+    //    osvědčené V1 (max. 100 bez stránkování → 100 nejsledovanějších + 100 naposledy spuštěných).
+    //    Obě podoby odpovědi se převedou na stejný tvar (normalizujKick). Pokrytí se zapíše do výsledku (deník /stav).
+    let surove = [], zdrojApi = "v2", uplne = true;
+    try {
+      let cursor = "";
+      for (let i = 0; i < 2; i++) { // max. 2 stránky – Kick a Twitch běží v jednom Cronu a sdílí limit 50 podrequestů
+        const d = await volejCesta(`${API_V2}/livestreams?language_code=${JAZYK}&limit=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+        surove.push(...(Array.isArray(d?.data) ? d.data : Array.isArray(d?.data?.livestreams) ? d.data.livestreams : []));
+        cursor = d?.next_cursor || d?.data?.next_cursor || d?.pagination?.next_cursor || "";
+        if (!cursor) break;
+        if (i === 1) uplne = false;
+      }
+      // Pojistka: když V2 vrátí jinou strukturu, než čekáme (žádný stream nemá slug a ID), použije se V1.
+      if (!surove.map(normalizujKick).some((s) => s.slug && s.broadcaster_user_id)) throw new Error("V2 bez použitelných dat");
+    } catch {
+      zdrojApi = "v1"; surove = [];
+      const [d, d2] = await Promise.all([
+        volej(`/livestreams?language=${JAZYK}&limit=100&sort=viewer_count`),
+        volej(`/livestreams?language=${JAZYK}&limit=100&sort=started_at`).catch(() => { uplne = false; return { data: [] }; }),
+      ]);
+      surove = [...(d.data || []), ...(d2.data || [])];
+      if ((d.data || []).length >= 100) uplne = false; // V1 neumí další stránky – mohli jsme něco minout
+    }
     const vid = new Set();
-    const streamy = [...(d.data || []), ...(d2.data || [])].filter((s) => s.slug && s.broadcaster_user_id && !vid.has(s.broadcaster_user_id) && vid.add(s.broadcaster_user_id));
+    const streamy = surove.map(normalizujKick).filter((s) => s.slug && s.broadcaster_user_id && !vid.has(s.broadcaster_user_id) && vid.add(s.broadcaster_user_id));
 
     const upsert = db.prepare(`
       INSERT INTO streameri (id, platforma, login, jmeno, profilovka, prvni_videno, posledni_zive, posledni_stream, pocet_streamu, max_divaku, posledni_hra,
@@ -101,7 +147,10 @@ export async function sberKick(env) {
         if (nazevHry && minut) prikazy.push(hra.bind(id, nazevHry, minut, ted));
       }
     }
-    if (prikazy.length) await db.batch(prikazy);
+    if (prikazy.length) {
+      try { await db.batch(prikazy); }
+      catch (e) { await vratMinuty(db, "kick"); throw e; } // zápis selhal → interval vrátit, nezapočítá se dvakrát ani neztratí
+    }
     await zaradUpozorneni(env, zmeny.noveZive);
 
     // 2) Profily (popis, banner) – nové a starší než 24 h.
@@ -120,7 +169,7 @@ export async function sberKick(env) {
         profilu = (c.data || []).length;
       } catch (e) { console.warn("kick profily:", e); }
     }
-    await ulozStav({ ok: true, zivych: streamy.length, profilu });
+    await ulozStav({ ok: true, zivych: streamy.length, profilu, api: zdrojApi, uplne });
   } catch (e) {
     console.error("kick:", e);
     await ulozStav({ ok: false, chyba: String(e.message || e).slice(0, 200) });

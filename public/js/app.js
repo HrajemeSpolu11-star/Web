@@ -743,7 +743,7 @@
   async function strankaVydani() {
     nastavTitulek("Kalendář vydání her – co vychází a jestli bude česky");
     const f = new URLSearchParams(location.search).get("f") || "vse";
-    app.innerHTML = `${hubHry("vydani", "Kalendář vydání her", "Co vychází, kdy a na čem – a jestli bude hra v češtině.")}${kostra(6)}`;
+    app.innerHTML = `${hubHry("vydani", "Kalendář vydání her", "Výběr populárních her z IGDB: co vychází, kdy a na čem – a jestli bude hra v češtině.")}${kostra(6)}`;
     let d;
     try { d = await nacti("vydani"); } catch { d = { hry: [] }; }
     if (!location.pathname.startsWith("/vydani")) return;
@@ -760,7 +760,7 @@
     }
     const czTxt = (h) => h.cestina === 2 ? `<span class="cz cz-dabing">CZ dabing</span>` : h.cestina === 1 ? `<span class="cz">CZ texty</span>`
       : h.cestina === 0 ? `<span class="cz cz-ne">bez češtiny</span>` : `<span class="cz cz-nevim">čeština zatím neoznámena</span>`;
-    app.innerHTML = `${hubHry("vydani", "Kalendář vydání her", "Co vychází, kdy a na čem – a jestli bude hra v češtině.")}
+    app.innerHTML = `${hubHry("vydani", "Kalendář vydání her", "Výběr populárních her z IGDB: co vychází, kdy a na čem – a jestli bude hra v češtině.")}
       <div class="mini-seg cz-filtry" role="group">${[["vse", "Nové hry"], ["cz", "Jen s češtinou"], ["presne", "Jen s přesným datem"], ["porty", `Nové platformy a plné verze${pocetPortu ? ` (${pocetPortu})` : ""}`]].map(([k, v]) =>
         `<a class="ms-b${k === f ? " on" : ""}" href="/vydani${k === "vse" ? "" : `?f=${k}`}">${v}</a>`).join("")}</div>
       ${hry.length ? [...mesice].map(([m, list]) => `<div class="section-title">${esc(m.charAt(0).toUpperCase() + m.slice(1))}</div>
@@ -1827,7 +1827,7 @@
       <div class="hk-t"><b>${esc(h.nazev)}</b>${czStitek(h)}
         ${odpocet ? `<span class="hk-odpocet">${esc(odpocet)}</span>` : ""}
         ${h.cena != null ? `<span class="hk-cena">${h.puvodni && h.puvodni > h.cena ? `<s>${esc(cena(h.puvodni, h.mena))}</s> ` : ""}<b>${esc(cena(h.cena, h.mena))}</b></span>` : ""}
-        ${h.hracu ? `<span class="hk-hraci">${esc(num(h.hracu))} hráčů</span>` : ""}${hodnoceniHry(h)}</div></a>`;
+        ${h.hracu ? `<span class="hk-hraci" title="Nejvíc hráčů najednou za posledních 24 h (Steam)">${esc(num(h.hracu))} hráčů ve špičce</span>` : ""}${hodnoceniHry(h)}</div></a>`;
   }
   // Hodnocení hráčů ze Steamu – jen skutečná čísla ze Steamu, nic dopočítaného navíc.
   const hodnoceniHry = (h) => h.hodnoceni ? `<span class="hk-hod${h.hodnoceni.kladne >= 80 ? " hod-dobre" : h.hodnoceni.kladne < 50 ? " hod-spatne" : ""}">👍 ${h.hodnoceni.kladne} % z ${esc(num(h.hodnoceni.recenzi))} recenzí</span>` : "";
@@ -2020,7 +2020,7 @@
             <span class="rank">${i + 1}</span>${https(h.obrazek) ? `<img class="hra-cap" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="hra-cap"></div>`}
             <div class="info"><h3>${esc(h.nazev)}</h3>${hodnoceniHry(h)}<div class="bar"><i data-w="${Math.round((h.hracu || 0) / Math.max(1, hrane[0].hracu || 1) * 100)}"></i></div></div>
             <div class="num"><b>${esc(num(h.hracu || 0))}</b>hráčů</div></a>`).join("")}</div>
-          <p class="source-note">Nejvyšší počet hráčů současně za poslední týden podle Steamu.</p>` : `<p class="dim">Žebříček se načítá.</p>`}
+          <p class="source-note">Denní špička: nejvíc hráčů najednou za posledních 24 hodin podle Steamu (ne aktuální počet).</p>` : `<p class="dim">Žebříček se načítá.</p>`}
       </section>
 
       <section class="sekce">

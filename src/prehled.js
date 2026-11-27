@@ -15,6 +15,8 @@ export const SCHEMA_PREHLED = [
      divako_minut INTEGER DEFAULT 0, minut INTEGER DEFAULT 0, max_divaku INTEGER DEFAULT 0, max_streamu INTEGER DEFAULT 0,
      slot INTEGER DEFAULT 0, PRIMARY KEY (den, hra, platforma))`,
   `CREATE INDEX IF NOT EXISTS idx_hry_den_den ON hry_den(den)`,
+  // Stránka hry hledá podle názvu hry; hra/den se při navyšování nemění → index nepřidává zápisy při každém běhu.
+  `CREATE INDEX IF NOT EXISTS idx_hry_den_hra ON hry_den(hra, den)`,
 ];
 
 // Kolik minut má tento běh započítat do statistik (odvysílané minuty, hodiny sledování).
@@ -28,8 +30,19 @@ export async function rezervujMinuty(db, platforma, ted) {
   const pred = r?.plati_do || 0;
   const minut = Math.min(15, Math.floor((ted - pred) / 60e3));
   if (minut < 1) return 0;
-  const u = await db.prepare("UPDATE nastaveni SET plati_do = ? WHERE klic = ? AND plati_do = ?").bind(minut === 15 ? ted : pred + minut * 60e3, klic, pred).run();
-  return u.meta?.changes ? minut : 0;
+  const nove = minut === 15 ? ted : pred + minut * 60e3;
+  const u = await db.prepare("UPDATE nastaveni SET plati_do = ? WHERE klic = ? AND plati_do = ?").bind(nove, klic, pred).run();
+  if (!u.meta?.changes) return 0;
+  rezervace.set(platforma, { pred, nove });
+  return minut;
+}
+// Když zápis statistik po rezervaci selže, rezervaci vrátíme – interval se započítá při dalším běhu a nic se neztratí.
+const rezervace = new Map();
+export async function vratMinuty(db, platforma) {
+  const r = rezervace.get(platforma);
+  if (!r) return;
+  rezervace.delete(platforma);
+  await db.prepare("UPDATE nastaveni SET plati_do = ? WHERE klic = ? AND plati_do = ?").bind(r.pred, `beh_${platforma}`, r.nove).run().catch(() => {});
 }
 
 // Jeden zápis na hru a běh: součet diváků, počet streamů. Bere všechny streamy (i s 0 diváky), ať je to přesné.

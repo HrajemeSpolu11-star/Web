@@ -7,6 +7,7 @@
 import { idKanalu, parsujYoutube } from "./obsah.js";
 import { parsujFeed, textBezHtml } from "./rss.js";
 import { obnovNahledy, nactiNahledy } from "./nahled.js";
+import { textOmezeny } from "./telo.js";
 
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const STUDII_NA_BEH = 2;
@@ -82,7 +83,7 @@ const https = (u) => /^https:\/\//.test(String(u || "")) ? String(u) : "";
 async function stahni(url, typ = "json") {
   const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) throw new Error(`HTTP ${r.status} ${new URL(url).hostname}`);
-  return typ === "json" ? r.json() : (await r.text()).slice(0, 800_000);
+  return typ === "json" ? r.json() : await textOmezeny(r, 800_000);
 }
 
 async function youtubeStudia(db, st, stav) {

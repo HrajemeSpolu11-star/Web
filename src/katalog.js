@@ -70,7 +70,9 @@ async function steamNejhranejsi() {
     steam_hrane: ranks.map((r, i) => {
       const det = detaily[i].status === "fulfilled" ? detaily[i].value?.[r.appid]?.data : null;
       return {
-        id: String(r.appid), poradi: r.rank, hracu: r.peak_in_game || r.concurrent_in_game || null,
+        // peak_in_game = nejvíc hráčů najednou za posledních 24 h (denní špička). Aktuální počet je jiný údaj – nemícháme je.
+        id: String(r.appid), poradi: r.rank, hracu: Number.isFinite(r.peak_in_game) ? r.peak_in_game : null,
+        hracu_ted: Number.isFinite(r.concurrent_in_game) ? r.concurrent_in_game : null,
         nazev: txt(det?.name || `Hra ${r.appid}`), obrazek: https(det?.header_image),
         url: `https://store.steampowered.com/app/${encodeURIComponent(r.appid)}/`, obchod: "steam", hodnoceni: hod[i] || undefined,
       };

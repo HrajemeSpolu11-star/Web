@@ -3,6 +3,7 @@ import { ZDROJE } from "./zdroje.js";
 import { zeptejSe } from "./ai.js";
 import { zajistiSchema } from "./sber.js";
 import { oznamClanek } from "./discord.js";
+import { odpovedOmezena } from "./telo.js";
 
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const ZDROJ = Object.fromEntries(ZDROJE.map((z) => [z.id, z]));
@@ -81,7 +82,8 @@ async function textStranky(url, zdrojId) {
     const rw = new HTMLRewriter()
       .on("article p", { text(t) { if (vClanku.length < 6000) vClanku += t.text + (t.lastInTextNode ? "\n" : ""); } })
       .on("p", { text(t) { if (vsude.length < 6000) vsude += t.text + (t.lastInTextNode ? "\n" : ""); } });
-    await rw.transform(r).arrayBuffer();
+    if (Number(r.headers.get("content-length") || 0) > 3_000_000) return "";
+    await rw.transform(odpovedOmezena(r, 1_500_000)).arrayBuffer(); // obří stránky jen začátek
     const text = (vClanku.trim().length > 300 ? vClanku : vsude);
     return text.replace(/&nbsp;/g, " ").replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim().slice(0, 6000);
   } catch { return ""; }
@@ -181,7 +183,7 @@ async function napisClanekBezZamku(env, db, ted, limit, vynutit) {
   const { data, model } = await zeptejSe(env, [
     { role: "system", content: SYSTEM_PSANI },
     { role: "user", content: `Podklady:\n\n${podklady}\n\nNapiš článek.` },
-  ]);
+  ], { bezSlabych: true });
   const cl = vycisti(data);
 
   const problemy = kontrolaTextu(cl, podklady);
@@ -189,7 +191,7 @@ async function napisClanekBezZamku(env, db, ted, limit, vynutit) {
     const { data: k } = await zeptejSe(env, [
       { role: "system", content: SYSTEM_KONTROLA },
       { role: "user", content: `Podklady:\n\n${podklady}\n\nČlánek:\n${cl.nadpis}\n${cl.perex}\n${cl.odstavce.join("\n")}` },
-    ]);
+    ], { bezSlabych: true });
     if (k.v_poradku !== true) problemy.push(...(Array.isArray(k.problemy) && k.problemy.length ? k.problemy.map((p) => "fakta: " + String(p).slice(0, 200)) : ["kontrola faktů neprošla"]));
   } catch (e) {
     problemy.push("kontrolu faktů se nepodařilo provést");
@@ -197,8 +199,13 @@ async function napisClanekBezZamku(env, db, ted, limit, vynutit) {
 
   // Automaticky se zveřejní jen článek s pevnými podklady: aspoň jeden plný text zdroje (ne jen nadpis a perex)
   // a zprávu potvrzují aspoň 2 různé weby. Jinak čeká ke schválení. Kontrolu dělá stejná AI, proto tahle pojistka.
-  if (!texty.some((t) => t && t.length >= 800)) problemy.push("podklady: chybí plný text zdroje (jen nadpis a perex)");
-  if (new Set(polozky.map((p) => p.zdroj_id)).size < 2) problemy.push("podklady: zprávu potvrzuje jen jeden web");
+  // Přísněji (audit 27. 11.): plný text musí mít OBA hlavní zdroje z různých webů – jeden plný text + krátký perex nestačí.
+  if (texty.filter((t) => t && t.length >= 800).length < 2) problemy.push("podklady: plný text nemají aspoň dva zdroje (jen nadpis a perex)");
+  if (new Set(polozky.slice(0, 2).map((p) => p.zdroj_id)).size < 2) problemy.push("podklady: zprávu potvrzuje jen jeden web");
+  // Čísla v článku musí být v podkladech (stejná pojistka jako u ranního přehledu a aktualizací).
+  const cislaZdroje = new Set((podklady.match(/\d+(?:[.,]\d+)?/g) || []).map((x) => x.replace(",", ".")));
+  const cizi = [...`${cl.nadpis} ${cl.perex} ${cl.odstavce.join(" ")}`.matchAll(/\d+(?:[.,]\d+)?/g)].map((m) => m[0].replace(",", ".")).filter((c) => !cislaZdroje.has(c));
+  if (cizi.length) problemy.push(`fakta: čísla, která nejsou v podkladech: ${[...new Set(cizi)].slice(0, 5).join(", ")}`);
   const zverejnit = env.PUBLIKOVAT === "auto" && problemy.length === 0;
   const id = noveId();
   const zdroje = polozky.map((p) => ({ nazev: ZDROJ[p.zdroj_id]?.nazev || p.zdroj_id, url: p.url }));

@@ -17,10 +17,12 @@ async function groq(env, messages) {
 }
 
 // Workers AI: řada modelů – když jeden účet nesmí používat nebo nefunguje, zkusí se další.
-// (Gemma 3 přestala být pro tento účet dostupná: „5018: This account is not allowed to access…“.)
-const CF_MODELY = ["@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast", "@cf/google/gemma-3-12b-it"];
-async function workersAi(env, messages) {
-  const modely = [...new Set([env.CF_MODEL, ...CF_MODELY].filter(Boolean))];
+// Gemma 3 je pro tento účet zakázaná („5018: This account is not allowed to access…“) – v seznamu není.
+// Llama 3.1 8B je slabá: jen na krátká shrnutí, ne na samostatné články (volba bezSlabych).
+const CF_MODELY = ["@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast"];
+const SLABE = /8b|gemma/i;
+async function workersAi(env, messages, volby = {}) {
+  const modely = [...new Set([env.CF_MODEL, ...CF_MODELY].filter(Boolean))].filter((m) => !(volby.bezSlabych && SLABE.test(m)));
   const chyby = [];
   for (const model of modely) {
     try {
@@ -41,14 +43,14 @@ export function vytahniJson(text) {
 }
 
 // Zkusí Groq, při chybě Workers AI. Vrací { data (objekt z JSON), model }.
-export async function zeptejSe(env, messages) {
+export async function zeptejSe(env, messages, volby = {}) {
   const chyby = [];
   if (env.GROQ_API_KEY) {
     try { const r = await groq(env, messages); return { data: vytahniJson(r.text), model: r.model }; }
     catch (e) { chyby.push(String(e.message || e)); }
   }
   if (env.AI) {
-    try { const r = await workersAi(env, messages); return { data: vytahniJson(r.text), model: r.model }; }
+    try { const r = await workersAi(env, messages, volby); return { data: vytahniJson(r.text), model: r.model }; }
     catch (e) { chyby.push(String(e.message || e)); }
   }
   throw new Error("Žádný AI model nefungoval: " + (chyby.join("; ") || "není nastaven"));

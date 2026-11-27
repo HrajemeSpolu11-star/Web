@@ -477,6 +477,12 @@
     "diváků.": ["divákov.", "viewers."],
     "Oficiální poznámky vývojářů ze Steamu": ["Oficiálne poznámky vývojárov zo Steamu", "Official developer notes from Steam"],
     "Má": ["Má", "Does"], "víc, nebo míň než": ["viac, alebo menej ako", "have more or fewer than"],
+    "Denní špička: nejvíc hráčů najednou za posledních 24 hodin podle Steamu (ne aktuální počet).": ["Denná špička: najviac hráčov naraz za posledných 24 hodín podľa Steamu (nie aktuálny počet).", "Daily peak: most concurrent players in the last 24 hours per Steam (not the current count)."],
+    "Nejvíc hráčů najednou za posledních 24 h (Steam)": ["Najviac hráčov naraz za posledných 24 h (Steam)", "Peak concurrent players in the last 24 h (Steam)"],
+    "hráčů ve špičce": ["hráčov v špičke", "peak players"],
+    "Která hra měla za posledních 24 h víc hráčů najednou?": ["Ktorá hra mala za posledných 24 h viac hráčov naraz?", "Which game had more concurrent players in the last 24 h?"],
+    "Steam – nejvíc hráčů najednou za posledních 24 hodin (denní špička)": ["Steam – najviac hráčov naraz za posledných 24 hodín (denná špička)", "Steam – peak concurrent players in the last 24 hours (daily peak)"],
+    "Výběr populárních her z IGDB: co vychází, kdy a na čem – a jestli bude hra v češtině.": ["Výber populárnych hier z IGDB: čo vychádza, kedy a na čom – a či bude hra v češtine.", "A selection of popular games from IGDB: what's coming out, when, on what – and whether it will have Czech."],
     "Nové hry": ["Nové hry", "New games"], "Nové platformy a plné verze": ["Nové platformy a plné verzie", "New platforms and full releases"],
     "Kategorie": ["Kategórie", "Categories"], "Upozornění jsou teď přeplněná, zkus to později.": ["Upozornenia sú teraz preplnené, skús to neskôr.", "Notifications are full right now, try again later."],
     "Všechny": ["Všetky", "All"], "Jen s češtinou": ["Len s češtinou", "Czech only"], "Jen s přesným datem": ["Len s presným dátumom", "Exact date only"],
@@ -528,6 +534,7 @@
 
   // ---------- Věty s čísly a proměnnými částmi: [vzor, slovensky, anglicky] ----------
   const FRAZE = [
+    [/^(.+) hráčů ve špičce$/, "$1 hráčov v špičke", "$1 peak players"],
     [/^obchody zkontrolovány v (\S+)$/, "obchody skontrolované o $1", "stores checked at $1"],
     [/^čtu zprávy z (\d+) (?:webu|webů)$/, "čítam správy z $1 webov", "reading news from $1 sites"],
     [/^(\d+) (?:český stream|české streamy|českých streamů) právě živě · (.+) diváků$/, "$1 českých streamov práve naživo · $2 divákov", (m) => `${m[1]} Czech stream${+m[1] === 1 ? "" : "s"} live now · ${m[2]} viewers`],

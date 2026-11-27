@@ -5,6 +5,7 @@
 import { token, helix, zajistiSchemaTwitch } from "./twitch.js";
 import { ZDROJE } from "./zdroje.js";
 import { sberHlidace } from "./hlidac.js";
+import { textOmezeny } from "./telo.js";
 
 const NAZEV_ZDROJE = Object.fromEntries(ZDROJE.map((z) => [z.id, z.nazev]));
 
@@ -96,7 +97,7 @@ async function youtube(env, db, ted) {
       }
       const r = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${kanal}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10000) });
       if (!r.ok) throw new Error(`RSS HTTP ${r.status}`);
-      const videa = parsujYoutube((await r.text()).slice(0, 600_000)).filter((v) => v.cas > ted - 60 * 86400e3);
+      const videa = parsujYoutube(await textOmezeny(r, 600_000)).filter((v) => v.cas > ted - 60 * 86400e3);
       for (const v of videa) prikazy.push(db.prepare("INSERT OR IGNORE INTO videa (id, streamer_id, nazev, cas) VALUES (?, ?, ?, ?)").bind(v.shorts ? `s:${v.id}` : v.id, s.id, v.nazev, v.cas));
       vysledek.videi += videa.length;
       prikazy.push(db.prepare("INSERT OR REPLACE INTO obsah_stav (klic, data, zdroj, cas) VALUES (?, ?, ?, ?)").bind(`yt:${s.id}`, kanal, url, ted));
