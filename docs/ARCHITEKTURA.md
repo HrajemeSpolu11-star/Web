@@ -186,3 +186,10 @@ Podrobně v `docs/ZATEZOVY-TEST.md`, skripty v `tools/zatez/` (spouštět jen ru
 - Chyby API: chybějící tabulka = 503 „připravuje se“, výpadek externí služby = 503, jinak 500. Hledání v IGDB: 429 nad 40 nových
   hledání/min v instanci, dotaz `q`/`dotaz` se sjednocuje (malá písmena, mezery) pro mezipaměť.
 - Zbývající riziko při roce dat: `/api/streameri` (30denní součty pro každého streamera při každém načtení). Návrh: denní souhrny.
+
+## Dárky zdarma – GamerPower (2026-11-28)
+- `darky()` v `src/katalog.js`: `GET https://www.gamerpower.com/api/giveaways?sort-by=date` (veřejné, bez klíče, povinné uvedení zdroje).
+  Katalog `darky_hry` (hry zdarma, max. 40) a `darky_ostatni` (DLC/klíče/předměty a bety, max. 60). Vypršelé se vyřadí.
+  Na `/obchody` se hry spojí s Epic/Steam zdarma (bez duplicit podle názvu), ostatní v sekci „Klíče, DLC a bety zdarma“.
+  Konec nabídky se ukazuje jen jako datum (časové pásmo GamerPower neověřeno). 1 podrequest, 2 zápisy na běh katalogu.
+- Kolečka streamerů u her ve slevě: `ziveHry()` v `app.js` – shoda `normNazev` hry živého streamu s názvem hry v obchodě.

@@ -8,6 +8,16 @@
 
 ---
 
+## 2026-11-28 – Nová stránka Slevy: slevy nahoře, kolečka streamerů, víc her zdarma, klíče a bety
+- Přeskládaná stránka `/obchody` (schváleno uživatelem): **Zdarma teď** (malé karty) → **Ve slevě a právě se streamuje** (nové)
+  → **Největší slevy** → Ve slevě a česky → **Klíče, DLC a bety zdarma** (nové) → Hra týdne (velký blok přesunutý níž, beze změny)
+  → nejhranější, nejprodávanější, nové/brzy, trailery (beze změny).
+- Slevy v přehledné **mřížce** místo pásu s posuvníkem (12 karet + „Zobrazit všech“).
+- **Kolečka streamerů** pod hrou ve slevě: kdo z českých streamerů ji právě hraje (Twitch červeně, Kick zeleně), počet diváků,
+  klepnutím profil. Podle živých streamů, shoda názvu hry.
+- **Víc her zdarma:** kromě Epicu a Steamu i rozdávačky z GOG, Prime Gaming, itch.io a dalších podle GamerPower (gamerpower.com,
+  veřejné API, uveden zdroj). Nová sekce **Klíče, DLC a bety zdarma** s filtrem. 1 požadavek a 2 zápisy na běh katalogu.
+
 ## 2026-11-27 (večer) – Oprava: streameři se nenačítali
 - **Příčina (moje chyba v předchozí změně):** při nasazení se automaticky zakládal nový index nad tabulkou snímků streamerů.
   Cloudflare D1 počítá založení indexu jako zápis za každý existující řádek (desítky tisíc), takže spolu s běžným provozem

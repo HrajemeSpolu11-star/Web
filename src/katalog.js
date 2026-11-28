@@ -126,19 +126,42 @@ async function gog() {
   };
 }
 
+// Dárky z GamerPower (gamerpower.com – sleduje oficiální rozdávačky vydavatelů a obchodů: hry zdarma, klíče, DLC, předměty,
+// bety). Veřejné API bez klíče, povinné uvedení zdroje (na webu odkaz „Zdroj: GamerPower“). 1 požadavek na běh katalogu.
+const PLATFORMA_OBCHOD = [[/epic/i, "epic"], [/steam/i, "steam"], [/gog/i, "gog"]];
+function darekZGamerPower(g) {
+  const typ = /^game$|full game/i.test(g.type || "") ? "hra" : /beta|early access/i.test(g.type || "") ? "beta" : "predmet";
+  const platformy = txt(g.platforms, 120);
+  const obchod = (PLATFORMA_OBCHOD.find(([re]) => re.test(platformy)) || [null, platformy.split(",").map((x) => x.trim()).filter((x) => x && !/^pc$/i.test(x))[0] || "PC"])[1];
+  const konec = /^\d{4}-\d{2}-\d{2}/.test(g.end_date || "") ? new Date(String(g.end_date).replace(" ", "T") + "Z").toISOString() : null;
+  const hodnota = /^\$\d/.test(g.worth || "") ? txt(g.worth, 12) : null;
+  // Název bez přívěsků typu „(Epic Games) Giveaway“, ať se dá spárovat s hrou z obchodu.
+  const nazev = txt(String(g.title || "").replace(/\s*\((?:[^)]*(?:Games?|Store|Steam|GOG|Epic|Prime|itch)[^)]*)\)\s*/gi, " ").replace(/\s+(?:Giveaway|Key Giveaway|Free)\s*$/i, ""), 120);
+  return { id: String(g.id), nazev, titulek: txt(g.title, 160), typ, platformy, obchod, cena: 0, hodnota,
+    obrazek: https(g.image) || https(g.thumbnail), url: https(g.open_giveaway_url) || https(g.gamerpower_url),
+    zdroj_url: https(g.gamerpower_url), popis: txt(g.description, 240), do: konec, od: txt(g.published_date, 20) };
+}
+async function darky() {
+  const d = await json("https://www.gamerpower.com/api/giveaways?sort-by=date");
+  if (!Array.isArray(d)) throw new Error("GamerPower: neočekávaná odpověď");
+  const ted = Date.now();
+  const vse = d.filter((g) => g && g.status !== "Expired").map(darekZGamerPower).filter((g) => g.nazev && g.url && (!g.do || Date.parse(g.do) > ted));
+  return { darky_hry: vse.filter((g) => g.typ === "hra").slice(0, 40), darky_ostatni: vse.filter((g) => g.typ !== "hra").slice(0, 60) };
+}
+
 export async function sberKatalogu(env) {
   const db = env.DB;
   await db.prepare(SCHEMA).run();
   const ted = Date.now();
-  const nazvy = ["Steam", "Steam žebříček", "Epic", "GOG"];
-  const casti = await Promise.allSettled([steam(), steamNejhranejsi(), epic(), gog()]);
+  const nazvy = ["Steam", "Steam žebříček", "Epic", "GOG", "GamerPower"];
+  const casti = await Promise.allSettled([steam(), steamNejhranejsi(), epic(), gog(), darky()]);
   const prikazy = [];
   const chyby = [];
   for (const [i, c] of casti.entries()) {
     if (c.status === "rejected") { chyby.push(`${nazvy[i]}: ${String(c.reason?.message || c.reason).slice(0, 120)}`); continue; }
     for (const [klic, data] of Object.entries(c.value)) {
       // Prázdný výsledek nepřepíše starší data (obchod mohl mít výpadek).
-      if (!Array.isArray(data) || (!data.length && klic !== "epic_brzy" && klic !== "steam_zdarma")) continue;
+      if (!Array.isArray(data) || (!data.length && klic !== "epic_brzy" && klic !== "steam_zdarma" && !klic.startsWith("darky_"))) continue;
       prikazy.push(db.prepare("INSERT OR REPLACE INTO katalog (klic, data, cas) VALUES (?, ?, ?)").bind(klic, JSON.stringify(data), ted));
     }
   }

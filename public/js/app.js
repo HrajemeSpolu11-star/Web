@@ -3024,16 +3024,48 @@
     state.czSlevy = cz.status === "fulfilled" ? cz.value.hry || [] : [];
     state.katalog = k.status === "fulfilled" ? k.value : {};
   }
+  // Kdo z českých streamerů hru právě hraje (podle živých streamů Twitch + Kick, shoda názvu hry).
+  function ziveHry() {
+    const m = new Map();
+    for (const s of state.zive?.streamy || []) {
+      const n = normNazev(s.hra);
+      if (n.length < 3) continue;
+      if (!m.has(n)) m.set(n, []);
+      m.get(n).push(s);
+    }
+    for (const l of m.values()) l.sort((a, b) => (b.divaci || 0) - (a.divaci || 0));
+    return m;
+  }
+  // Malá kolečka streamerů pod kartou hry (odkaz na profil, tooltip se jménem a diváky).
+  function koleckaStreameru(l) {
+    if (!l?.length) return "";
+    const divaku = l.reduce((a, s) => a + (s.divaci || 0), 0);
+    return `<div class="sk-zive"><span class="sk-kolecka">${l.slice(0, 5).map((s) => `<a href="${esc(profilUrl(s))}" title="${esc(`${s.jmeno} · ${num(s.divaci || 0)} diváků · ${PLAT[s.platforma] || "Twitch"}`)}" class="sk-k sk-${esc(s.platforma || "twitch")}">
+        ${https(s.profilovka) ? `<img src="${esc(s.profilovka)}" alt="${esc(s.jmeno)}" loading="lazy" referrerpolicy="no-referrer">` : `<span>${esc(String(s.jmeno || "?")[0])}</span>`}</a>`).join("")}
+      ${l.length > 5 ? `<span class="sk-vic">+${l.length - 5}</span>` : ""}</span>
+      <span class="sk-txt"><i class="sk-tecka" aria-hidden="true"></i>${l.length === 1 ? `hraje ${esc(l[0].jmeno)}` : `hraje ${esc(pl(l.length, "streamer", "streameři", "streamerů"))}`} · ${esc(num(divaku))} diváků</span></div>`;
+  }
+  // Karta hry ve slevě do mřížky: karta (odkaz do obchodu/na hru) + pod ní kdo ji teď streamuje.
+  const kartaSlevy = (h, zive, opt = {}) => `<div class="sk-karta">${kartaHry(h, opt)}${koleckaStreameru(zive.get(normNazev(h.nazev)))}</div>`;
+  // Mřížka s prvními N kartami a tlačítkem „Zobrazit všechny“ (bez vodorovného posuvníku).
+  const mrizkaSlev = (list, zive, id, n = 12, opt) => !list.length ? `<p class="dim">Teď tu nic není – obchody se načítají, zkus to za chvíli.</p>`
+    : `<div class="sk-mriz${list.length > n ? " omezit" : ""}" id="${id}">${list.map((h, i) => kartaSlevy(h, zive, typeof opt === "function" ? opt(h, i) : opt)).join("")}</div>
+      ${list.length > n ? `<button type="button" class="btn-sek sk-vse" data-rozbal="${id}">Zobrazit všech ${list.length}</button>` : ""}`;
+
   async function strankaObchody() {
     nastavTitulek("Slevy a hry zdarma – Steam, Epic, GOG");
     if (!state.katalog || !state.studia) {
       app.innerHTML = `${hubHry("obchody", "Slevy a hry zdarma", "")}${kostra(3)}`;
-      const [, stu] = await Promise.allSettled([nactiKatalog(), state.studia ? state.studia : nacti("studia")]);
+      const [, stu] = await Promise.allSettled([nactiKatalog(), state.studia ? state.studia : nacti("studia"), state.zive?.streamy?.length ? null : nactiZive()]);
       if (stu.status === "fulfilled") state.studia = stu.value;
     }
     if (location.pathname.replace(/\/+$/, "") !== "/obchody") return;
+    const zive = ziveHry();
     const k = state.katalog;
-    const zdarmaVse = [...(k.epic_zdarma || []), ...(k.steam_zdarma || [])];
+    // Hry zdarma: Epic a Steam z obchodů + další rozdávačky z GamerPower (GOG, Prime Gaming, itch.io…), bez duplicit.
+    const zdarmaObchody = [...(k.epic_zdarma || []), ...(k.steam_zdarma || [])];
+    const uzZdarma = new Set(zdarmaObchody.map((h) => normNazev(h.nazev)));
+    const zdarmaVse = [...zdarmaObchody, ...(k.darky_hry || []).filter((h) => !uzZdarma.has(normNazev(h.nazev)) && uzZdarma.add(normNazev(h.nazev)))];
     const tydne = vyberHruTydne(k);
     // Hra týdne se v sekci „Hry zdarma“ neopakuje; když jiná hra zdarma není, sekce se skryje.
     const zdarma = zdarmaVse.filter((h) => h !== tydne);
@@ -3045,27 +3077,58 @@
     const maxSleva = Math.max(0, ...(k.steam_slevy || []).map((h) => h.sleva), ...(k.gog_slevy || []).map((h) => h.sleva));
     app.innerHTML = `
       ${hubHry("obchody", "Slevy a hry zdarma", "Hry zdarma na Epicu a Steamu, největší slevy na Steamu a GOGu a co se právě hraje. Ceny bereme přímo z obchodů.")}
-      <p class="home-shrnuti">${zdarmaVse.length ? `<a href="#hra-tydne"><b>${pl(zdarmaVse.length, "hra", "hry", "her")} zdarma</b></a>` : ""}
+      <p class="home-shrnuti">${zdarmaVse.length ? `<a href="#zdarma"><b>${pl(zdarmaVse.length, "hra", "hry", "her")} zdarma</b></a>` : ""}
         ${maxSleva ? `<a href="#slevy">slevy až <b>−${maxSleva} %</b></a>` : ""}
         ${hrane[0] ? `<a href="#hrane">nejhranější: <b>${esc(hrane[0].nazev)}</b></a>` : ""}</p>
 
-      ${hraTydne(k, tydne, zdarma.length ? "" : pristi)}
-      ${zdarma.length ? `<section id="zdarma" class="sekce sekce-zdarma">
-        <div class="section-title">Další hry zdarma ${aiCip("Epic · Steam", k.cas)}</div>
-        <div class="regal regal-velky">${zdarma.map((h) => kartaHry(h, { velka: true, odpocet: h.do ? zbyva(h.do) : "trvale" })).join("")}</div>
+      ${zdarmaVse.length ? `<section id="zdarma" class="sekce sekce-zdarma">
+        <div class="section-title">Zdarma teď ${aiCip("Epic · Steam", k.cas)}</div>
+        ${mrizkaSlev(zdarmaVse, zive, "m-zdarma", 8, (h) => ({ odpocet: h.zdroj_url ? (h.do ? `do ${datumKr(h.do)}` : "do vyčerpání") : h.do ? zbyva(h.do) : "trvale" }))}
         ${pristi ? `<p class="dalsi-zdarma">${pristi}</p>` : ""}
+        ${(k.darky_hry || []).length ? `<p class="source-note">Epic a Steam přímo z obchodů. Další rozdávačky (GOG, Prime Gaming, itch.io a jiné) podle <a href="https://www.gamerpower.com" target="_blank" rel="noopener noreferrer">GamerPower</a> – vede na oficiální stránku nabídky; některé chtějí přihlášení u obchodu nebo pořadatele.</p>` : ""}
       </section>` : ""}
+
+      ${(() => {
+        // Hry ve slevě, které právě hrají čeští streameři – podle diváků.
+        const videno = new Set(), l = [];
+        for (const h of [...(k.steam_slevy || []), ...(k.gog_slevy || []), ...(state.czSlevy || []), ...(k.steam_top || []), ...(k.steam_hrane || []), ...(k.gog_trend || [])]) {
+          const n = normNazev(h.nazev);
+          if (!(h.sleva > 0) || videno.has(n) || !zive.has(n)) continue;
+          videno.add(n); l.push(h);
+        }
+        l.sort((x, y) => zive.get(normNazev(y.nazev)).reduce((a, s) => a + (s.divaci || 0), 0) - zive.get(normNazev(x.nazev)).reduce((a, s) => a + (s.divaci || 0), 0));
+        return l.length ? `<section id="slevy-zive" class="sekce">
+          <div class="section-title">Ve slevě a právě se streamuje ${aiCip("Steam · GOG · Twitch · Kick", k.cas)}</div>
+          ${mrizkaSlev(l, zive, "m-slevy-zive", 8)}
+          <p class="source-note">Hry, které jsou teď ve slevě a zároveň je hraje někdo z českých streamerů (podle živých streamů na Twitchi a Kicku).</p>
+        </section>` : "";
+      })()}
 
       <section id="slevy" class="sekce">
         <div class="section-title">Největší slevy ${aiCip(state.slevyObchod === "gog" ? "GOG" : "Steam", k.cas)} ${prepinac("so", [["steam", "Steam"], ["gog", "GOG"]], state.slevyObchod)}</div>
-        ${regal(slevy, {})}
+        ${mrizkaSlev(slevy, zive, "m-slevy", 12)}
       </section>
 
       ${(state.czSlevy || []).length ? `<section class="sekce">
         <div class="section-title">Ve slevě a česky · <a href="/cestina">Má to češtinu?</a></div>
-        ${regal(state.czSlevy.slice(0, 15), {})}
+        ${mrizkaSlev(state.czSlevy.slice(0, 24), zive, "m-cz", 8)}
         <p class="source-note">Hry s českým textem nebo dabingem (podle údajů na Steamu), které jsou právě ve slevě. Chceš upozornit na slevu konkrétní hry? <a href="/hlidac">Hlídač cen</a></p>
       </section>` : ""}
+
+      ${(k.darky_ostatni || []).length ? (() => {
+        const typy = [["vse", "Vše"], ["predmet", "DLC, klíče a předměty"], ["beta", "Bety a předběžný přístup"]];
+        return `<section id="darky" class="sekce">
+        <div class="section-title">Klíče, DLC a bety zdarma <span class="dim">· ${esc(pl(k.darky_ostatni.length, "nabídka", "nabídky", "nabídek"))}</span></div>
+        <div class="mini-seg" role="group" aria-label="Druh nabídky">${typy.map(([t, n]) => `<button type="button" class="ms-b${t === (state.darkyTyp || "vse") ? " on" : ""}" data-darky="${t}">${n}</button>`).join("")}</div>
+        <div class="sk-mriz omezit" id="m-darky">${k.darky_ostatni.filter((d) => !state.darkyTyp || state.darkyTyp === "vse" || d.typ === state.darkyTyp).map((d) => `<a class="sk-karta dr-karta" href="${esc(bezpecnaUrl(d.url))}" target="_blank" rel="noopener noreferrer">
+            <div class="hk-obr">${https(d.obrazek) ? `<img src="${esc(d.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="obchod">${esc(d.typ === "beta" ? "Beta" : "DLC / předmět")}</span></div>
+            <div class="hk-t"><b>${esc(d.titulek || d.nazev)}</b><span class="dr-plat">${esc(d.platformy)}</span>
+              <span class="hk-odpocet">${d.do ? `do ${esc(datumKr(d.do))}` : "do vyčerpání"}</span>${d.hodnota ? `<span class="hk-hraci">v hodnotě ${esc(d.hodnota)}</span>` : ""}</div></a>`).join("")}</div>
+        ${k.darky_ostatni.length > 12 ? `<button type="button" class="btn-sek sk-vse" data-rozbal="m-darky">Zobrazit všechny</button>` : ""}
+        <p class="source-note">Rozdávačky vydavatelů a obchodů podle <a href="https://www.gamerpower.com" target="_blank" rel="noopener noreferrer">GamerPower</a> (sleduje jen oficiální nabídky). Klíče bývají omezené a některé nabídky chtějí registraci u pořadatele. Popisy jsou v originále.</p>
+      </section>`; })() : ""}
+
+      ${hraTydne(k, tydne, "")}
 
       <section id="hrane" class="sekce">
         <div class="section-title">Nejhranější na Steamu ${aiCip("Steam API", k.cas)}</div>
@@ -3093,6 +3156,8 @@
       <p class="source-note">Ceny a nabídky jsou z veřejných stránek obchodů Steam, Epic Games Store a GOG${k.cas ? `, aktualizováno ${esc(kdy(new Date(k.cas)))}` : ""}. Ceny se můžou lišit – vždy platí cena v obchodě. Kliknutím přejdeš do obchodu.</p>`;
     spustOdpocty();
     const prekresli = () => { strankaObchody().then(() => obarvi(app)); };
+    app.querySelectorAll("[data-darky]").forEach((b) => b.onclick = () => { state.darkyTyp = b.dataset.darky; prekresli(); });
+    app.querySelectorAll("[data-rozbal]").forEach((b) => b.onclick = () => { document.getElementById(b.dataset.rozbal)?.classList.remove("omezit"); b.remove(); });
     app.querySelectorAll("[data-so]").forEach((b) => b.onclick = () => { state.slevyObchod = b.dataset.so; prekresli(); });
     app.querySelectorAll("[data-to]").forEach((b) => b.onclick = () => { state.topObchod = b.dataset.to; prekresli(); });
     app.querySelectorAll("[data-nb]").forEach((b) => b.onclick = () => { state.noveBrzy = b.dataset.nb; prekresli(); });

@@ -1477,3 +1477,29 @@ html.bez-posunu{overflow:hidden}
 .hcz-s{background:rgba(61,220,132,.2);color:#3ddc84}
 .hp-velikost{margin:4px 0 6px}
 .hp-vel-popis{font-size:12.5px;margin:4px 0 8px}
+/* Slevy: mřížka karet (bez vodorovného posuvníku) a kolečka streamerů, kteří hru právě hrají */
+.sk-mriz{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.sk-mriz.omezit>.sk-karta:nth-child(n+13){display:none}
+#m-slevy-zive.omezit>.sk-karta:nth-child(n+9),#m-cz.omezit>.sk-karta:nth-child(n+9){display:none}
+@media(max-width:520px){.sk-mriz{grid-template-columns:1fr 1fr;gap:10px}.sk-mriz-zdarma{grid-template-columns:1fr 1fr}}
+.sk-karta{display:flex;flex-direction:column;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.sk-karta:hover{border-color:var(--accent)}
+.sk-karta .hk{flex:1 1 auto;width:100%;border:0;border-radius:0;background:none}
+.sk-karta .hk:hover{transform:none}
+.sk-zive{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--live) 7%,transparent)}
+.sk-kolecka{display:flex;align-items:center}
+.sk-k{width:28px;height:28px;border-radius:50%;overflow:hidden;border:2px solid var(--card);margin-left:-8px;display:grid;place-items:center;background:var(--card2);font-size:12px;font-weight:800;color:var(--text);box-shadow:0 0 0 2px var(--live)}
+.sk-k.sk-kick{box-shadow:0 0 0 2px var(--kick)}
+.sk-k:first-child{margin-left:0}
+.sk-k img{width:100%;height:100%;object-fit:cover}
+.sk-k:hover,.sk-k:focus-visible{transform:translateY(-2px);z-index:1}
+.sk-vic{margin-left:4px;font-size:11px;font-weight:800;color:var(--muted)}
+.sk-txt{font-size:11.5px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:5px;min-width:0}
+.sk-tecka{width:7px;height:7px;border-radius:50%;background:var(--live);display:inline-block;flex:none}
+.sk-vse{margin-top:10px}
+#m-zdarma.omezit>.sk-karta:nth-child(n+9){display:none}
+.dr-karta{color:inherit;text-decoration:none}
+.dr-karta .hk-obr{aspect-ratio:16/9;position:relative;background:var(--card2)}
+.dr-karta .hk-obr img{width:100%;height:100%;object-fit:cover}
+.dr-karta .hk-t{padding:10px;display:flex;flex-direction:column;gap:3px}
+.dr-plat{font-size:12px;color:var(--muted)}
