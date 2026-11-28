@@ -702,6 +702,14 @@
     const c = cas ? new Date(cas) : null;
     return `<span class="puvod puvod-${druh}" title="${esc(PUVOD_TIP[druh])}"><i aria-hidden="true"></i>${PUVOD[druh]}${zdroj && !(druh === "databaze" && zdroj === "IGDB") ? ` · ${esc(zdroj)}` : ""}${c && !isNaN(c) ? ` · ${esc(kdy(c))}` : ""}</span>`;
   }
+  // Malá barevná tečka místo celého štítku – pro řádky v tabulkách a seznamech, kde by štítek u každého údaje rušil.
+  // Na klepnutí / najetí ukáže, odkud údaj je; celé zdroje jsou jednou pod blokem.
+  function tecka(druh, zdroj = "") {
+    if (!PUVOD[druh]) return "";
+    const t = `${PUVOD[druh]}${zdroj && !(druh === "databaze" && zdroj === "IGDB") ? ` · ${zdroj}` : ""}`;
+    return `<span class="zt puvod-${druh}" tabindex="0" role="img" aria-label="${esc(t)}" title="${esc(t)}"><i aria-hidden="true"></i></span>`;
+  }
+  const legendaZdroju = (druhy) => `<span class="zt-legenda">${druhy.map((d) => `<span class="puvod-${d}"><i aria-hidden="true"></i>${PUVOD[d]}</span>`).join("")}</span>`;
   const datumKr = (d) => new Date(String(d).length === 10 ? d + "T12:00:00" : d).toLocaleDateString(LOC, { day: "numeric", month: "numeric", year: "numeric" });
   const dobaMereni = (dni) => dni >= 60 ? pl(Math.round(dni / 30), "měsíc", "měsíce", "měsíců") : pl(dni, "den", "dny", "dní");
 
@@ -729,7 +737,8 @@
         <p class="dim">Měří, jak živá je hra právě teď – ne jak je dobrá.</p></div>
       <ul class="puls-slozky">${p.slozky.map((s) => `<li><span class="ps-n">${PULS_NAZVY[s.klic] || s.klic} <small class="dim">váha ${s.vaha} %</small></span>
         <span class="bar"><i data-w="${Number(s.skore) || 0}"></i></span><b>${Number(s.skore) || 0}</b>
-        <small class="ps-h">${esc(hodnotaPulsu(s))} ${puvod(s.druh, s.zdroj)}</small></li>`).join("")}</ul>
+        <small class="ps-h">${esc(hodnotaPulsu(s))} ${tecka(s.druh, s.zdroj)}</small></li>`).join("")}</ul>
+      <p class="source-note">Zdroje: Steam, Twitch, Kick a naše měření. ${legendaZdroju(["oficialni", "mereno"])}</p>
       ${p.chybi?.length ? `<p class="dim puls-chybi">Nepočítáno, protože to pro tuhle hru nemáme: ${p.chybi.map((k) => PULS_NAZVY[k] || k).join(", ")}. Váhy ostatních ukazatelů se poměrně navýšily.</p>` : ""}
       <details class="puls-jak"><summary>Jak pulsometr počítáme</summary>
         <ul><li><b>Hráči na Steamu (30 %)</b> – kolik lidí hraje právě teď, podle oficiálního rozhraní Steamu. Škála je logaritmická: 1 000 hráčů ≈ 50 bodů, milion hráčů = 100 bodů.</li>
@@ -789,7 +798,7 @@
     if (!dna) return "";
     const ig = dna.igdb, stm = dna.steam, radky = [];
     const cipy = (list) => list.map((x) => `<span class="dna-c">${esc(x)}</span>`).join("");
-    if (ig?.pohled?.length) radky.push(["Jak se hraje", cipy(ig.pohled), puvod("databaze", "IGDB")]);
+    if (ig?.pohled?.length) radky.push(["Jak se hraje", cipy(ig.pohled), tecka("databaze", "IGDB")]);
     const skym = [];
     if (stm?.sam) skym.push("Pro jednoho");
     if (stm?.koop) skym.push("Kooperace");
@@ -800,17 +809,17 @@
     if (h?.offline_koop_max) igSkym.push(`na jednom zařízení až ${h.offline_koop_max} hráčů`);
     if (h?.splitscreen) igSkym.push("rozdělená obrazovka");
     if (h?.online_max) igSkym.push(`online až ${h.online_max} hráčů`);
-    if (skym.length) radky.push(["S kým", cipy(skym), puvod("oficialni", "Steam")]);
-    if (igSkym.length) radky.push(["Kolik hráčů", cipy(igSkym), puvod("databaze", "IGDB")]);
-    if (stm?.zanry?.length) radky.push(["Žánr", cipy(stm.zanry), puvod("oficialni", "Steam")]);
-    if (ig?.temata?.length) radky.push(["Témata", cipy(ig.temata), puvod("databaze", "IGDB")]);
+    if (skym.length) radky.push(["S kým", cipy(skym), tecka("oficialni", "Steam")]);
+    if (igSkym.length) radky.push(["Kolik hráčů", cipy(igSkym), tecka("databaze", "IGDB")]);
+    if (stm?.zanry?.length) radky.push(["Žánr", cipy(stm.zanry), tecka("oficialni", "Steam")]);
+    if (ig?.temata?.length) radky.push(["Témata", cipy(ig.temata), tecka("databaze", "IGDB")]);
     if (ig?.delka?.bezne || ig?.delka?.vse) radky.push(["Délka hraní", `${ig.delka.bezne ? `hlavní příběh ≈ ${hodinyHrani(ig.delka.bezne)} h` : ""}${ig.delka.bezne && ig.delka.vse ? " · " : ""}${ig.delka.vse ? `všechno ≈ ${hodinyHrani(ig.delka.vse)} h` : ""}
-      <small class="dim">(podle ${pl(Number(ig.delka.hlasu) || 0, "hráče", "hráčů", "hráčů")})</small>`, puvod("databaze", "IGDB")]);
-    if (dna.aktivita) radky.push(["Aktivita vývojářů", dna.aktivita.dni == null ? "za 90 dní žádná aktualizace" : `${pl(dna.aktivita.pocet90, "aktualizace", "aktualizace", "aktualizací")} za 90 dní, poslední před ${pl(dna.aktivita.dni, "dnem", "dny", "dny")}`, puvod("mereno", "Steam")]);
+      <small class="dim">(podle ${pl(Number(ig.delka.hlasu) || 0, "hráče", "hráčů", "hráčů")})</small>`, tecka("databaze", "IGDB")]);
+    if (dna.aktivita) radky.push(["Aktivita vývojářů", dna.aktivita.dni == null ? "za 90 dní žádná aktualizace" : `${pl(dna.aktivita.pocet90, "aktualizace", "aktualizace", "aktualizací")} za 90 dní, poslední před ${pl(dna.aktivita.dni, "dnem", "dny", "dny")}`, tecka("mereno", "Steam")]);
     if (!radky.length) return "";
     return `<div class="section-title">Herní DNA</div>
       <dl class="dna">${radky.map(([k, v, p]) => `<div><dt>${k}</dt><dd>${v}<span class="dna-p">${p}</span></dd></div>`).join("")}</dl>
-      <p class="source-note">Herní DNA skládáme jen ze skutečných údajů Steamu, databáze IGDB a z našeho měření. Co v nich není, si nevymýšlíme.</p>`;
+      <p class="source-note">Herní DNA skládáme jen ze skutečných údajů Steamu, databáze IGDB a z našeho měření. Co v nich není, si nevymýšlíme. ${legendaZdroju(["oficialni", "databaze", "mereno"])}</p>`;
   }
   // Série: na první pohled posledních 12 dílů (a tahle hra), celá série v rozbalovacím seznamu. Díly vedou na profil v databázi.
   function serieSeznam(serie) {
@@ -1040,18 +1049,18 @@
       d.rodic && ["Patří ke hře", `<a href="/databaze/${esc(d.rodic.slug)}">${esc(d.rodic.nazev)}</a>`],
     ].filter(Boolean);
     // Statistiky ze všech zdrojů – jen ty, které pro hru opravdu máme.
-    const dl = (hodnota, popisek, zdroj) => `<div class="db-stat"><b>${hodnota}</b><span>${popisek}</span>${zdroj}</div>`;
+    const dl = (hodnota, popisek, zdroj) => `<div class="db-stat"><b>${hodnota}</b><span>${popisek} ${zdroj}</span></div>`;
     const statistiky = [
-      st?.hraci_ted != null && dl(esc(num(st.hraci_ted)), "hraje právě teď na Steamu (celý svět)", puvod("oficialni", "Steam")),
-      d.steam_spicka && dl(esc(num(d.steam_spicka.hracu)), "denní špička hráčů na Steamu", puvod("mereno", "Steam")),
-      st?.hodnoceni && dl(`${Number(st.hodnoceni.kladne) || 0} %`, `kladných recenzí na Steamu (${esc(num(st.hodnoceni.recenzi))})`, puvod("oficialni", "Steam")),
-      st?.metacritic && dl(String(Number(st.metacritic)), "Metacritic", puvod("oficialni", "Steam")),
-      d.kritici && dl(String(Number(d.kritici.skore) || 0), `hodnocení kritiků (${pl(Number(d.kritici.pocet) || 0, "recenze", "recenze", "recenzí")})`, puvod("databaze", "IGDB")),
-      d.hraci && dl(String(Number(d.hraci.skore) || 0), `hodnocení hráčů IGDB (${esc(num(d.hraci.pocet))})`, puvod("databaze", "IGDB")),
-      gog?.hodnoceni && dl(`${gog.hodnoceni.toLocaleString(LOC)} / 5`, "hodnocení na GOGu", puvod("oficialni", "GOG")),
-      (stat.hodin7 || sc.zive.length) && dl(`${esc(num(stat.hodin7 || 0))} h`, "sledování na českých streamech za 7 dní", puvod("mereno", "Twitch + Kick")),
-      stat.spicka7 && dl(esc(num(stat.spicka7)), "diváků ve špičce (česká scéna, 7 dní)", puvod("mereno", "Twitch + Kick")),
-      pas.puls?.skore != null && dl(`${pas.puls.skore}/100`, "Herní pulsometr", puvod("mereno")),
+      st?.hraci_ted != null && dl(esc(num(st.hraci_ted)), "hraje právě teď na Steamu (celý svět)", tecka("oficialni", "Steam")),
+      d.steam_spicka && dl(esc(num(d.steam_spicka.hracu)), "denní špička hráčů na Steamu", tecka("mereno", "Steam")),
+      st?.hodnoceni && dl(`${Number(st.hodnoceni.kladne) || 0} %`, `kladných recenzí na Steamu (${esc(num(st.hodnoceni.recenzi))})`, tecka("oficialni", "Steam")),
+      st?.metacritic && dl(String(Number(st.metacritic)), "Metacritic", tecka("oficialni", "Steam")),
+      d.kritici && dl(String(Number(d.kritici.skore) || 0), `hodnocení kritiků (${pl(Number(d.kritici.pocet) || 0, "recenze", "recenze", "recenzí")})`, tecka("databaze", "IGDB")),
+      d.hraci && dl(String(Number(d.hraci.skore) || 0), `hodnocení hráčů IGDB (${esc(num(d.hraci.pocet))})`, tecka("databaze", "IGDB")),
+      gog?.hodnoceni && dl(`${gog.hodnoceni.toLocaleString(LOC)} / 5`, "hodnocení na GOGu", tecka("oficialni", "GOG")),
+      (stat.hodin7 || sc.zive.length) && dl(`${esc(num(stat.hodin7 || 0))} h`, "sledování na českých streamech za 7 dní", tecka("mereno", "Twitch + Kick")),
+      stat.spicka7 && dl(esc(num(stat.spicka7)), "diváků ve špičce (česká scéna, 7 dní)", tecka("mereno", "Twitch + Kick")),
+      pas.puls?.skore != null && dl(`${pas.puls.skore}/100`, "Herní pulsometr", tecka("mereno")),
     ].filter(Boolean);
     const obchod = (nazev, cls, url, radek, venku = true) => `<a class="obchod-r ${cls}" href="${esc(venku ? bezpecnaUrl(url) : url)}"${venku ? ` target="_blank" rel="noopener noreferrer"` : ""}><b>${nazev}</b><span>${radek}</span></a>`;
     const cenaTxt = (o) => o.zdarma || o.cena === 0 ? "Zdarma" : o.cena == null ? "Cena neuvedena"
@@ -1083,7 +1092,8 @@
           <p class="source-note">${prelozeno ? `${puvod("ai", "přeloženo z IGDB")} <details class="db-orig"><summary>Zobrazit originál (anglicky)</summary><p class="popis">${esc(d.popis_en)}</p></details>` : `${puvod("databaze", "IGDB")}${!en ? " Český překlad se připravuje – zkus stránku obnovit za pár minut." : ""}`}</p>` : `<p class="dim">Popis hry v databázi zatím není.</p>`}
         ${pribeh ? `<details class="db-pribeh"><summary>Příběh</summary><p class="popis">${esc(pribeh)}</p></details>` : ""}
       </div>
-      ${statistiky.length ? `<div class="section-title">Statistiky ze všech zdrojů</div><div class="db-staty">${statistiky.join("")}</div>` : ""}
+      ${statistiky.length ? `<div class="section-title">Statistiky ze všech zdrojů</div><div class="db-staty">${statistiky.join("")}</div>
+        <p class="source-note">Tečka u čísla ukazuje, odkud je – klepni na ni. ${legendaZdroju(["oficialni", "databaze", "mereno"])}</p>` : ""}
       <div class="hra-mriz">
       <aside class="hra-bok" aria-label="Pulsometr, ceny a kde hrát">
         ${pulsBlok(pas.puls)}
@@ -1104,7 +1114,7 @@
         ${hist.length >= 2 ? `<div class="section-title">Vývoj ceny na Steamu</div><div class="graf" id="graf-cena"></div>
           <p class="source-note">Nejnižší cena každého dne od ${esc(datumKr(hist[0].den))}, kdy cenu sledujeme (nejvýš 400 dní), v Kč. ${puvod("mereno", "Steam")}</p>` : ""}
         ${d.vydani?.length ? `<div class="section-title">Vydání podle platforem</div><dl class="fakta db-vydani">${d.vydani.map((v) => `<div><dt>${esc(v.platforma)}</dt><dd>${esc(new Date(v.datum).toLocaleDateString(LOC, { day: "numeric", month: "numeric", year: "numeric" }))}</dd></div>`).join("")}</dl>` : ""}
-        ${pas.dna ? dnaBlok(pas.dna) : dnaIgdb.length ? `<div class="section-title">Herní DNA</div><dl class="dna">${dnaIgdb.map(([k, l]) => `<div><dt>${k}</dt><dd>${chipy(l)}<span class="dna-p">${puvod("databaze", "IGDB")}</span></dd></div>`).join("")}</dl>` : ""}
+        ${pas.dna ? dnaBlok(pas.dna) : dnaIgdb.length ? `<div class="section-title">Herní DNA</div><dl class="dna">${dnaIgdb.map(([k, l]) => `<div><dt>${k}</dt><dd>${chipy(l)}<span class="dna-p">${tecka("databaze", "IGDB")}</span></dd></div>`).join("")}</dl>` : ""}
         ${(pas.patche || []).length ? `<div class="section-title">Poslední aktualizace · <a href="/aktualizace?hra=${esc(enc(steamId))}">všechny</a></div>
           <ul class="pas-patche">${pas.patche.map((x) => `<li><span class="rr-typ" data-barva="${(TYP_PATCHE[x.typ] || TYP_PATCHE.aktualizace)[1]}">${(TYP_PATCHE[x.typ] || TYP_PATCHE.aktualizace)[0]}</span>
             <a href="${esc(bezpecnaUrl(x.url))}" target="_blank" rel="noopener noreferrer"><b>${esc(x.nadpis)}</b></a><small class="dim">${esc(datumKr(x.datum))}</small>
@@ -1314,29 +1324,30 @@
     const maxHracu = (h) => { const x = h.dna?.igdb?.hraci; if (!x) return "–"; const m = Math.max(x.online_koop_max || 0, x.offline_koop_max || 0, x.online_max || 0); return m ? `až ${m}` : "neuvedeno"; };
     const rezimT = (h) => h.dna?.steam ? [h.dna.steam.sam && "sám", h.dna.steam.koop && "kooperace", h.dna.steam.online && "online"].filter(Boolean).join(", ") || "–" : "–";
     const radky = [
-      ["Cena na Steamu", (h) => cenaT(h), puvod("oficialni", "Steam")],
-      ["Nákupní poradce", (h) => h.rozbor?.poradce && PORADCE[h.rozbor.poradce.druh] ? `<b>${esc(PORADCE[h.rozbor.poradce.druh][0])}</b>${h.rozbor.poradce.nafouknuta ? `<br><small>nafouknutá „původní“ cena</small>` : ""}` : "–", puvod("mereno", "Steam")],
-      ["Cenový radar", (h) => h.rozbor ? (h.rozbor.nejnizsi_ted && h.sleva ? "nejlevnější od začátku měření" : h.rozbor.dni < 30 ? `měříme ${pl(h.rozbor.dni, "den", "dny", "dní")}` : `nejníž ${esc(cena(h.rozbor.min, h.mena))} · slev ${h.rozbor.slevovych_obdobi}×`) : "–", puvod("mereno", "Steam")],
-      ["Cena na GOGu", (h) => h.gog?.cena != null ? `${esc(cena(h.gog.cena, h.gog.mena))}${h.gog.sleva ? ` <em>−${Number(h.gog.sleva) || 0} %</em>` : ""}` : "–", puvod("oficialni", "GOG")],
-      ["Čeština", (h) => czT(h.cestina), puvod("oficialni", "Steam")],
-      ["Hodnocení hráčů", (h) => h.hodnoceni ? `${Number(h.hodnoceni.kladne) || 0} % z ${esc(num(h.hodnoceni.recenzi))}` : "–", puvod("oficialni", "Steam")],
-      ["Metacritic", (h) => h.metacritic ? String(Number(h.metacritic)) : "–", puvod("oficialni", "Steam")],
-      ["Hraje právě teď", (h) => h.hraci_ted != null ? esc(num(h.hraci_ted)) : "–", puvod("oficialni", "Steam")],
-      ["Pulsometr", (h) => h.puls ? pulsBlok(h.puls, true) : "–", puvod("mereno")],
-      ["Česká scéna (7 dní)", (h) => { const s = h.puls?.slozky?.find((x) => x.klic === "scena"); return s ? `${esc(num(s.hodnota))} h` : "–"; }, puvod("mereno", "Twitch + Kick")],
-      ["Režimy", rezimT, puvod("oficialni", "Steam")],
-      ["Počet hráčů", maxHracu, puvod("databaze", "IGDB")],
-      ["Pohled", (h) => esc((h.dna?.igdb?.pohled || []).join(", ") || "–"), puvod("databaze", "IGDB")],
-      ["Hlavní příběh", (h) => h.dna?.igdb?.delka?.bezne ? `≈ ${hodinyHrani(h.dna.igdb.delka.bezne)} h` : "–", puvod("databaze", "IGDB")],
-      ["Aktualizace (90 dní)", (h) => h.dna?.aktivita ? (h.dna.aktivita.dni == null ? "žádná" : `${h.dna.aktivita.pocet90}× · poslední před ${pl(h.dna.aktivita.dni, "dnem", "dny", "dny")}`) : "nesledujeme", puvod("mereno", "Steam")],
-      ["DLC a rozšíření", (h) => h.dlc_celkem != null ? String(h.dlc_celkem) : "–", puvod("databaze", "IGDB")],
-      ["Vydáno", (h) => esc(h.vydani || "–"), puvod("oficialni", "Steam")],
-      ["Vývojář", (h) => esc((h.vyvojari || []).join(", ") || "–"), puvod("oficialni", "Steam")],
+      ["Cena na Steamu", (h) => cenaT(h), tecka("oficialni", "Steam")],
+      ["Nákupní poradce", (h) => h.rozbor?.poradce && PORADCE[h.rozbor.poradce.druh] ? `<b>${esc(PORADCE[h.rozbor.poradce.druh][0])}</b>${h.rozbor.poradce.nafouknuta ? `<br><small>nafouknutá „původní“ cena</small>` : ""}` : "–", tecka("mereno", "Steam")],
+      ["Cenový radar", (h) => h.rozbor ? (h.rozbor.nejnizsi_ted && h.sleva ? "nejlevnější od začátku měření" : h.rozbor.dni < 30 ? `měříme ${pl(h.rozbor.dni, "den", "dny", "dní")}` : `nejníž ${esc(cena(h.rozbor.min, h.mena))} · slev ${h.rozbor.slevovych_obdobi}×`) : "–", tecka("mereno", "Steam")],
+      ["Cena na GOGu", (h) => h.gog?.cena != null ? `${esc(cena(h.gog.cena, h.gog.mena))}${h.gog.sleva ? ` <em>−${Number(h.gog.sleva) || 0} %</em>` : ""}` : "–", tecka("oficialni", "GOG")],
+      ["Čeština", (h) => czT(h.cestina), tecka("oficialni", "Steam")],
+      ["Hodnocení hráčů", (h) => h.hodnoceni ? `${Number(h.hodnoceni.kladne) || 0} % z ${esc(num(h.hodnoceni.recenzi))}` : "–", tecka("oficialni", "Steam")],
+      ["Metacritic", (h) => h.metacritic ? String(Number(h.metacritic)) : "–", tecka("oficialni", "Steam")],
+      ["Hraje právě teď", (h) => h.hraci_ted != null ? esc(num(h.hraci_ted)) : "–", tecka("oficialni", "Steam")],
+      ["Pulsometr", (h) => h.puls ? pulsBlok(h.puls, true) : "–", tecka("mereno")],
+      ["Česká scéna (7 dní)", (h) => { const s = h.puls?.slozky?.find((x) => x.klic === "scena"); return s ? `${esc(num(s.hodnota))} h` : "–"; }, tecka("mereno", "Twitch + Kick")],
+      ["Režimy", rezimT, tecka("oficialni", "Steam")],
+      ["Počet hráčů", maxHracu, tecka("databaze", "IGDB")],
+      ["Pohled", (h) => esc((h.dna?.igdb?.pohled || []).join(", ") || "–"), tecka("databaze", "IGDB")],
+      ["Hlavní příběh", (h) => h.dna?.igdb?.delka?.bezne ? `≈ ${hodinyHrani(h.dna.igdb.delka.bezne)} h` : "–", tecka("databaze", "IGDB")],
+      ["Aktualizace (90 dní)", (h) => h.dna?.aktivita ? (h.dna.aktivita.dni == null ? "žádná" : `${h.dna.aktivita.pocet90}× · poslední před ${pl(h.dna.aktivita.dni, "dnem", "dny", "dny")}`) : "nesledujeme", tecka("mereno", "Steam")],
+      ["DLC a rozšíření", (h) => h.dlc_celkem != null ? String(h.dlc_celkem) : "–", tecka("databaze", "IGDB")],
+      ["Vydáno", (h) => esc(h.vydani || "–"), tecka("oficialni", "Steam")],
+      ["Vývojář", (h) => esc((h.vyvojari || []).join(", ") || "–"), tecka("oficialni", "Steam")],
     ];
     app.innerHTML = `${hlava}${hledani}
       <div class="srov-wrap"><table class="srov"><thead><tr><th></th>${hry.map((h) => `<th><a href="/hra/steam/${esc(h.id)}">${https(h.obrazek) ? `<img src="${esc(h.obrazek)}" alt="" referrerpolicy="no-referrer">` : ""}<b>${esc(h.nazev)}</b></a>
         <button type="button" class="srov-pryc" data-id="${esc(h.id)}" aria-label="Odebrat ze srovnání">Odebrat</button></th>`).join("")}</tr></thead>
-      <tbody>${radky.map(([n, f, p]) => `<tr><th scope="row">${n}<span>${p}</span></th>${hry.map((h) => `<td>${f(h)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <tbody>${radky.map(([n, f, p]) => `<tr><th scope="row">${n} ${p}</th>${hry.map((h) => `<td>${f(h)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <p class="source-note">Tečka u řádku ukazuje, odkud údaj je – klepni na ni. ${legendaZdroju(["oficialni", "databaze", "mereno"])}</p>
       ${hry.length < 2 ? `<p class="dim">Přidej ještě aspoň jednu hru.</p>` : ""}
       ${d.hry.some((h) => h.nenalezeno) ? `<p class="dim">Některou hru jsme na Steamu nenašli, ve srovnání chybí.</p>` : ""}
       <p class="source-note">„–“ znamená, že údaj nemáme – nic nedoplňujeme odhadem. Ceny vždy platí v obchodě. Údaje z obchodů obnovujeme nejvýš po 12 hodinách.</p>`;

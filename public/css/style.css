@@ -1057,6 +1057,15 @@ h1{letter-spacing:-.03em}
 .puvod i{width:7px;height:7px;border-radius:50%;flex:none;background:#5cc8ff}
 .puvod-mereno i{background:#4fd88f}.puvod-oficialni i{background:#5cc8ff}.puvod-databaze i{background:#ffc04d}.puvod-ai i{background:#b47cff}
 .puvod-ai{border-color:#4b3a86}
+/* Malá tečka zdroje místo štítku u každého řádku; text se ukáže po klepnutí / najetí */
+.zt{position:relative;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;vertical-align:middle;cursor:help;border-radius:50%;outline-offset:2px}
+.zt i{width:7px;height:7px;border-radius:50%;background:#5cc8ff;opacity:.85}
+.zt.puvod-mereno i{background:#4fd88f}.zt.puvod-databaze i{background:#ffc04d}.zt.puvod-ai i{background:#b47cff}
+.zt:hover::after,.zt:focus::after{content:attr(aria-label);position:absolute;bottom:calc(100% + 6px);right:-6px;z-index:20;white-space:nowrap;font-size:12px;font-weight:600;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.zt-legenda{display:inline-flex;flex-wrap:wrap;gap:4px 12px;margin-left:4px;vertical-align:middle}
+.zt-legenda span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.zt-legenda i{width:7px;height:7px;border-radius:50%;background:#5cc8ff}
+.zt-legenda .puvod-mereno i{background:#4fd88f}.zt-legenda .puvod-databaze i{background:#ffc04d}
 
 .puls-blok{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:18px;margin:18px 0}
 .puls-blok h2{font:700 20px/1.2 var(--display);margin:0}

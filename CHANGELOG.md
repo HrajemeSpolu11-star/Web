@@ -8,6 +8,11 @@
 
 ---
 
+## 2026-11-28 – Zdroje údajů jako tečky místo štítků u každého řádku
+- Pulsometr, Herní DNA, statistiky hry a srovnání her: místo štítku „Oficiální data · Steam“ u každého řádku
+  je malá barevná tečka (klepnutím ukáže zdroj). Pod blokem je jednou legenda zdrojů. Nic se neodstranilo –
+  informace o zdroji zůstává u každého údaje, jen nepřekáží. Velké štítky v poznámkách pod bloky zůstaly.
+
 ## 2026-11-28 – Hry z Amazon Prime označené „s předplatným“
 - Nabídky Amazonu (Prime Gaming, dnes součást Amazon Luna) z GamerPower nejsou zdarma pro všechny – u karet je teď
   „s předplatným Amazon Prime“ a v poznámce vysvětlení.
