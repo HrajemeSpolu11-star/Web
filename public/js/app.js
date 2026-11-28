@@ -3083,9 +3083,9 @@
 
       ${zdarmaVse.length ? `<section id="zdarma" class="sekce sekce-zdarma">
         <div class="section-title">Zdarma teď ${aiCip("Epic · Steam", k.cas)}</div>
-        ${mrizkaSlev(zdarmaVse, zive, "m-zdarma", 8, (h) => ({ odpocet: h.zdroj_url ? (h.do ? `do ${datumKr(h.do)}` : "do vyčerpání") : h.do ? zbyva(h.do) : "trvale" }))}
+        ${mrizkaSlev(zdarmaVse, zive, "m-zdarma", 8, (h) => ({ odpocet: `${h.predplatne ? `s předplatným ${h.predplatne} · ` : ""}${h.zdroj_url ? (h.do ? `do ${datumKr(h.do)}` : "do vyčerpání") : h.do ? zbyva(h.do) : "trvale"}` }))}
         ${pristi ? `<p class="dalsi-zdarma">${pristi}</p>` : ""}
-        ${(k.darky_hry || []).length ? `<p class="source-note">Epic a Steam přímo z obchodů. Další rozdávačky (GOG, Prime Gaming, itch.io a jiné) podle <a href="https://www.gamerpower.com" target="_blank" rel="noopener noreferrer">GamerPower</a> – vede na oficiální stránku nabídky; některé chtějí přihlášení u obchodu nebo pořadatele.</p>` : ""}
+        ${(k.darky_hry || []).length ? `<p class="source-note">Epic a Steam přímo z obchodů. Další rozdávačky (GOG, Prime Gaming, itch.io a jiné) podle <a href="https://www.gamerpower.com" target="_blank" rel="noopener noreferrer">GamerPower</a> – vede na oficiální stránku nabídky; některé chtějí přihlášení u obchodu nebo pořadatele. Hry z Amazonu (Prime Gaming, dnes součást Amazon Luna) jsou jen pro předplatitele Amazon Prime.</p>` : ""}
       </section>` : ""}
 
       ${(() => {
@@ -3123,6 +3123,7 @@
         <div class="sk-mriz omezit" id="m-darky">${k.darky_ostatni.filter((d) => !state.darkyTyp || state.darkyTyp === "vse" || d.typ === state.darkyTyp).map((d) => `<a class="sk-karta dr-karta" href="${esc(bezpecnaUrl(d.url))}" target="_blank" rel="noopener noreferrer">
             <div class="hk-obr">${https(d.obrazek) ? `<img src="${esc(d.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="obchod">${esc(d.typ === "beta" ? "Beta" : "DLC / předmět")}</span></div>
             <div class="hk-t"><b>${esc(d.titulek || d.nazev)}</b><span class="dr-plat">${esc(d.platformy)}</span>
+              ${d.predplatne ? `<span class="dr-plat">potřebuje předplatné ${esc(d.predplatne)}</span>` : ""}
               <span class="hk-odpocet">${d.do ? `do ${esc(datumKr(d.do))}` : "do vyčerpání"}</span>${d.hodnota ? `<span class="hk-hraci">v hodnotě ${esc(d.hodnota)}</span>` : ""}</div></a>`).join("")}</div>
         ${k.darky_ostatni.length > 12 ? `<button type="button" class="btn-sek sk-vse" data-rozbal="m-darky">Zobrazit všechny</button>` : ""}
         <p class="source-note">Rozdávačky vydavatelů a obchodů podle <a href="https://www.gamerpower.com" target="_blank" rel="noopener noreferrer">GamerPower</a> (sleduje jen oficiální nabídky). Klíče bývají omezené a některé nabídky chtějí registraci u pořadatele. Popisy jsou v originále.</p>

@@ -8,6 +8,10 @@
 
 ---
 
+## 2026-11-28 – Hry z Amazon Prime označené „s předplatným“
+- Nabídky Amazonu (Prime Gaming, dnes součást Amazon Luna) z GamerPower nejsou zdarma pro všechny – u karet je teď
+  „s předplatným Amazon Prime“ a v poznámce vysvětlení.
+
 ## 2026-11-28 – Nová stránka Slevy: slevy nahoře, kolečka streamerů, víc her zdarma, klíče a bety
 - Přeskládaná stránka `/obchody` (schváleno uživatelem): **Zdarma teď** (malé karty) → **Ve slevě a právě se streamuje** (nové)
   → **Největší slevy** → Ve slevě a česky → **Klíče, DLC a bety zdarma** (nové) → Hra týdne (velký blok přesunutý níž, beze změny)

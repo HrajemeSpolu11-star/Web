@@ -137,7 +137,9 @@ function darekZGamerPower(g) {
   const hodnota = /^\$\d/.test(g.worth || "") ? txt(g.worth, 12) : null;
   // Název bez přívěsků typu „(Epic Games) Giveaway“, ať se dá spárovat s hrou z obchodu.
   const nazev = txt(String(g.title || "").replace(/\s*\((?:[^)]*(?:Games?|Store|Steam|GOG|Epic|Prime|itch)[^)]*)\)\s*/gi, " ").replace(/\s+(?:Giveaway|Key Giveaway|Free)\s*$/i, ""), 120);
-  return { id: String(g.id), nazev, titulek: txt(g.title, 160), typ, platformy, obchod, cena: 0, hodnota,
+  // Nabídky Amazonu (Prime Gaming / Luna) nejsou zdarma pro všechny – potřebují předplatné Amazon Prime.
+  const predplatne = /prime|amazon|luna/i.test(`${platformy} ${g.title || ""}`) ? "Amazon Prime" : null;
+  return { id: String(g.id), nazev, titulek: txt(g.title, 160), typ, platformy, obchod, cena: 0, hodnota, predplatne,
     obrazek: https(g.image) || https(g.thumbnail), url: https(g.open_giveaway_url) || https(g.gamerpower_url),
     zdroj_url: https(g.gamerpower_url), popis: txt(g.description, 240), do: konec, od: txt(g.published_date, 20) };
 }
