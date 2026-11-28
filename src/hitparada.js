@@ -53,11 +53,29 @@ async function pridejHistorii(db, druh, tyden, polozky) {
   });
 }
 
+// Stejná hra pod dvěma názvy kategorie (Twitch „Grand Theft Auto VI“ a Kick „Grand Theft Auto VI (GTA)“) = jeden řádek.
+// Shoda: stejné IGDB ID, nebo stejný název bez přípony v závorce. Ponechá se název s víc hodinami bez závorky.
+const zakladNazvu = (n) => String(n || "").replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase();
+function sloucitDuplicity(radky, igdb) {
+  const skupiny = new Map(), out = [];
+  for (const r of radky) {
+    const k = igdb.get(r.hra) ? `i:${igdb.get(r.hra)}` : `n:${zakladNazvu(r.hra)}`;
+    const k2 = `n:${zakladNazvu(r.hra)}`;
+    const x = skupiny.get(k) || skupiny.get(k2);
+    if (!x) { const novy = { ...r }; out.push(novy); skupiny.set(k, novy); skupiny.set(k2, novy); continue; }
+    x.dm = (x.dm || 0) + (r.dm || 0); x.m = (x.m || 0) + (r.m || 0); x.dm_kick = (x.dm_kick || 0) + (r.dm_kick || 0);
+    x.spicka = Math.max(x.spicka || 0, r.spicka || 0);
+    if (/\(/.test(x.hra) && !/\(/.test(r.hra)) x.hra = r.hra;
+    skupiny.set(k, x);
+  }
+  return out.sort((a, b) => (b.dm || 0) - (a.dm || 0));
+}
+
 async function spocitejTyden(db, po) {
   const ne = posunDne(po, 6), tyden = isoTyden(po);
   const idx = await maIndex(db, "idx_snimky_den");
   const [h, s, s2, s3, ig] = await db.batch([
-    dotazHry(db, po, ne, VELIKOST),
+    dotazHry(db, po, ne, VELIKOST + 10),
     // Tři žebříčky rovnou v databázi (vrací 3 × 20 řádků, ne tisíce). prumer = průměr denních špiček ve dnech, kdy vysílal.
     // S indexem snimky(den) se nejdřív sečtou snímky týdne; bez něj původní tvar přes streamery a primární klíč snímků.
     ...[["", "divaci DESC"], ["AND divaci BETWEEN 51 AND 300 AND minut >= 180 AND dni >= 2", "prumer DESC, minut DESC"],
@@ -74,7 +92,7 @@ async function spocitejTyden(db, po) {
     db.prepare("SELECT nazev, igdb_slug FROM hry WHERE igdb_slug IS NOT NULL AND posledni > ?").bind(Date.parse(po) - 30 * 86400e3),
   ]);
   const igdb = new Map(ig.results.map((r) => [r.nazev, r.igdb_slug]));
-  const hry = await pridejHistorii(db, "hry", tyden, h.results.filter((r) => (r.dm || 0) >= 60).map((r, i) => ({
+  const hry = await pridejHistorii(db, "hry", tyden, sloucitDuplicity(h.results, igdb).slice(0, VELIKOST).filter((r) => (r.dm || 0) >= 60).map((r, i) => ({
     poradi: i + 1, hra: r.hra, slug: slugHry(r.hra), igdb_slug: igdb.get(r.hra) || null, hodin: hodin(r.dm),
     kick_podil: r.dm ? Math.round(((r.dm_kick || 0) / r.dm) * 100) : 0, spicka: r.spicka || 0,
   })));
@@ -135,9 +153,17 @@ export async function apiHitparada(env, tydenId) {
     db.prepare("SELECT data FROM hitparada WHERE tyden = ? AND druh = 'mali'").bind(vybrany.tyden),
   ]);
   const parse = (r) => { try { return JSON.parse(r?.data || "[]"); } catch { return []; } };
+  const hry = parse(h.results[0]);
+  // Obrázek hry = oficiální obal kategorie na Twitchi (podle ID kategorie). Doplňuje se při čtení, takže ho má i archiv.
+  if (hry.length) {
+    const jmena = [...new Set(hry.map((x) => x.hra))].slice(0, 90);
+    const { results: kat } = await db.prepare(`SELECT nazev, twitch_id FROM hry WHERE nazev IN (${jmena.map(() => "?").join(",")})`).bind(...jmena).all().catch(() => ({ results: [] }));
+    const tw = new Map(kat.filter((r) => /^\d{1,15}$/.test(String(r.twitch_id || ""))).map((r) => [r.nazev, r.twitch_id]));
+    for (const x of hry) if (tw.has(x.hra)) x.obrazek = `https://static-cdn.jtvnw.net/ttv-boxart/${tw.get(x.hra)}-72x96.jpg`;
+  }
   return {
     tyden: vybrany.tyden, od: vybrany.od, do: posunDne(vybrany.od, 6), probiha: !vybrany.uzavreno, neuplny: !!n.results.length,
-    hry: parse(h.results[0]), streameri: parse(s.results[0]), stredni: parse(st.results[0]), mali: parse(ma.results[0]), cas: h.results[0] ? new Date(h.results[0].cas).toISOString() : null,
+    hry, streameri: parse(s.results[0]), stredni: parse(st.results[0]), mali: parse(ma.results[0]), cas: h.results[0] ? new Date(h.results[0].cas).toISOString() : null,
     tydny: tydny.map((t) => ({ id: t.tyden, od: t.od, probiha: !t.uzavreno })),
     cache: vybrany.uzavreno ? 3600 : 900,
   };

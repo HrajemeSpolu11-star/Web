@@ -4,6 +4,7 @@
 // kanálů platforem (src/studia.js), hra zdarma na Epicu z katalogu.
 import { zpravyPlatforem } from "./studia.js";
 import { obnovNahledy, nactiNahledy } from "./nahled.js";
+import { prenosyJakoAkce } from "./oficialni.js";
 
 // Obrázky akcí: z náhledu oficiálního webu (og:image). Obnovuje Cron katalogu.
 export const obnovObrazkyAkci = (db) => obnovNahledy(db, AKCE.map((a) => a.web), 4);
@@ -32,7 +33,12 @@ export async function apiAkce(env) {
   const db = env.DB;
   const ted = Date.now();
   const nahledy = await nactiNahledy(db, AKCE.map((a) => a.web)).catch(() => new Map());
-  const akce = AKCE.filter((a) => Date.parse(a.do || a.od) + (a.do ? 0 : 86400e3) > ted)
+  // Pevné akce + jednorázové přenosy z oficiálních rozvrhů na Twitchi (PlayStation, Xbox, Nintendo…). Přenos, který už v pevném
+  // seznamu je (začíná do 3 h od něj), se nepřidává podruhé.
+  const pevne = AKCE.filter((a) => Date.parse(a.do || a.od) + (a.do ? 0 : 86400e3) > ted);
+  const tw = (await prenosyJakoAkce(env).catch(() => [])).filter((p) => Date.parse(p.do || p.od) + (p.do ? 0 : 3 * 3600e3) > ted
+    && !pevne.some((a) => a.typ === "prenos" && Math.abs(Date.parse(a.od) - Date.parse(p.od)) < 3 * 3600e3));
+  const akce = [...pevne, ...tw]
     .map((a) => ({ ...a, bezi: Date.parse(a.od) <= ted, obrazek: nahledy.get(a.web)?.obrazek || "" }))
     .sort((a, b) => Date.parse(a.od) - Date.parse(b.od));
   const [prenosy, predplatne] = await Promise.all([

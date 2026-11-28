@@ -204,3 +204,9 @@ Podrobně v `docs/ZATEZOVY-TEST.md`, skripty v `tools/zatez/` (spouštět jen ru
 - **IsThereAnyDeal** (`src/itad.js`, od 2026-11-28): s Secretem `ITAD_KEY` nahradí CheapShark. `country=CZ`.
   Katalog: `/deals/v2` (1 požadavek) → `cs_slevy` + `cs_zdroj`. Hra: `/games/lookup/v1?appid` + `POST /games/prices/v3`
   → `zMezipameti("itad:<id>", 12 h)`. Steam = obchod 61. Bez klíče CheapShark a web ceny v USD neukazuje.
+
+## Oficiální kanály (2026-11-28)
+- `src/oficialni.js`: seznam `KANALY` (login Twitche, jméno). `/streams?user_login=…` v `zMezipameti("oficialni_zive", 3 min)`,
+  `/users` + `/schedule` za každý kanál v `zMezipameti("oficialni_plan", 6 h)` – jen jednorázové segmenty (`is_recurring=false`)
+  na 30 dní, max 3 na kanál. `apiAkce` je přidá jako akce typu „prenos“ (bez duplicit s pevným seznamem ±3 h).
+- Přehrávač: iframe `player.twitch.tv/?channel=…&parent=<host>` vytvořený JS až po klepnutí; CSP `frame-src https://player.twitch.tv`.

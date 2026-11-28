@@ -1,5 +1,6 @@
 // Herní puls – Worker: statický web + API + sběrač novinek + AI psaní + admin.
 import { apiCenyObchodu } from "./cheapshark.js";
+import { apiOficialni } from "./oficialni.js";
 import { ZDROJE } from "./zdroje.js";
 import { sber, zajistiSchema } from "./sber.js";
 import { napisClanek } from "./psani.js";
@@ -488,6 +489,7 @@ async function verejneApi(request, env, ctx, url) {
     else if (url.pathname === "/api/studia") odpoved = json(await apiStudia(env), 200, 600);
     else if (url.pathname.startsWith("/api/studio/")) { const s = await apiStudio(env, dekoduj(url.pathname.slice(12))); odpoved = s ? json(s, 200, 600) : json({ chyba: "Nenalezeno" }, 404); }
     else if (url.pathname === "/api/akce") odpoved = json(await apiAkce(env), 200, 600);
+    else if (url.pathname === "/api/oficialni") odpoved = json(await apiOficialni(env), 200, 120);
     else if (url.pathname === "/api/vydani") {
       let v = await apiVydani(env);
       // Prázdný kalendář (první spuštění): stáhnout z IGDB nejvýš jednou za 10 minut, ať návštěvy nezahltí IGDB.

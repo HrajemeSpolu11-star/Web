@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-11-28 – Obaly her v hitparádě, sloučené duplicity, oficiální kanály živě a jejich ohlášené přenosy
+- Hitparáda (Domů i stránka): u her obal kategorie z Twitche (doplňuje se při čtení, má ho i archiv). Na Domů nižší řádky.
+- Hitparáda: stejná hra pod dvěma názvy (Twitch „Grand Theft Auto VI“ a Kick „Grand Theft Auto VI (GTA)“) se sčítá do jednoho
+  řádku (stejné IGDB nebo stejný název bez závorky). Platí od rozběhnutého týdne; uzavřené týdny v archivu se nemění.
+- Nové `src/oficialni.js` + `/api/oficialni`: kdo z oficiálních kanálů (PlayStation, Xbox, Nintendo, The Game Awards, IGN,
+  GameSpot, Ubisoft, Bethesda, Riot, Blizzard, gamescom, Summer Game Fest) právě vysílá na Twitchi (1 požadavek / 3 min)
+  a jejich jednorázové ohlášené přenosy z oficiálního rozvrhu na Twitchi (≈ 14 požadavků / 6 h).
+- Akce: ohlášené přenosy z rozvrhů se přidávají do kalendáře s odpočtem (a tedy i do pruhu na Domů). Sekce „Oficiální kanály živě“
+  s přehrávačem Twitche, který se načte až po klepnutí. Domů: pruh „Živě“, když některý kanál vysílá.
+- CSP: povolen `frame-src https://player.twitch.tv` (jen pro přehrávač).
+
 ## 2026-11-28 – Ceny v dalších obchodech: IsThereAnyDeal (ceny pro Česko), CheapShark bez dolarů
 - CheapShark zná jen ceny pro USA – dolarové ceny už neukazujeme (jen obchod, procento slevy a ověření slevy).
 - Nový zdroj IsThereAnyDeal (`src/itad.js`): ceny pro Česko z desítek obchodů + historicky nejnižší cena. Zapne se sám,

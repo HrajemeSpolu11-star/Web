@@ -1642,8 +1642,7 @@
   async function strankaAkce() {
     nastavTitulek("Herní akce s odpočtem – výprodeje, přenosy, veletrhy");
     app.innerHTML = `${hubHry("akce", "Akce a odpočty", "Výprodeje, herní přenosy a veletrhy – s přesným odpočtem podle oficiálních termínů.")}${kostra(4)}`;
-    let d;
-    try { d = await nacti("akce"); } catch { d = { akce: [], prenosy: [], predplatne: [] }; }
+    const [d, ofi] = await Promise.all([nacti("akce").catch(() => ({ akce: [], prenosy: [], predplatne: [] })), nacti("oficialni").catch(() => null)]);
     if (!location.pathname.startsWith("/akce")) return;
     app.innerHTML = `${hubHry("akce", "Akce a odpočty", "Výprodeje, herní přenosy a veletrhy – s přesným odpočtem podle oficiálních termínů.")}
       <div class="akce">${d.akce.map((a) => `<div class="akce-k akce-${esc(a.typ)}${a.bezi ? " bezi" : ""}">
@@ -1658,11 +1657,29 @@
         ${d.epic ? `<div class="akce-k akce-epic">${https(d.epic.obrazek) ? `<a class="akce-obr" href="${esc(bezpecnaUrl(d.epic.url))}" target="_blank" rel="noopener noreferrer"><img src="${esc(d.epic.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer"></a>` : ""}<span class="akce-typ">Hra zdarma</span><h3>${esc(d.epic.nazev)}</h3>
           <p class="akce-cas">Zdarma na Epicu za <b data-odpocet="${esc(d.epic.od)}"></b></p><p class="dim">${esc(datumCasCz(d.epic.od))}</p>
           <div class="vyd-akce"><a class="btn-maly" href="${esc(bezpecnaUrl(d.epic.url))}" target="_blank" rel="noopener noreferrer">Obchod Epic</a></div></div>` : ""}</div>
+      ${ofi ? `<section id="zive" class="sekce"><div class="section-title">Oficiální kanály živě</div>
+        ${ofi.zive.length ? `<div class="ofi-mriz">${ofi.zive.map((z) => `<div class="ofi-k">
+            <div class="ofi-prehravac">${https(z.nahled) ? `<img src="${esc(z.nahled)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+              <button type="button" class="ofi-play" data-tw="${esc(z.login)}" aria-label="Pustit přenos ${esc(z.jmeno)} zde">▶ Pustit zde</button></div>
+            <b><span class="zivy-bod" aria-hidden="true"></span>${esc(z.jmeno)}</b><p>${esc(z.titulek)}</p>
+            <p class="dim">${z.hra ? `${esc(z.hra)} · ` : ""}${esc(num(z.divaci))} diváků · <a href="https://www.twitch.tv/${esc(z.login)}" target="_blank" rel="noopener noreferrer">na Twitchi</a></p></div>`).join("")}</div>`
+          : `<p class="dim">Teď nikdo z nich nevysílá. Hlídáme: ${esc(ofi.kanaly.map((k) => k.jmeno).join(", "))}. Jakmile začnou, objeví se tu přenos i na hlavní stránce.</p>`}
+        <p class="source-note">Živé vysílání oficiálních kanálů vydavatelů a herních pořadů podle Twitche (kontrola každé 3 minuty). Přenos se načte až po klepnutí na „Pustit zde“. ${tecka("oficialni", "Twitch")}</p></section>` : ""}
       <div class="section-title">Ohlášené přenosy</div>
       ${d.prenosy.length ? `<div class="rec-list">${d.prenosy.map((z) => radekZpravy(z)).join("")}</div>` : `<p class="dim">Až PlayStation, Xbox nebo Nintendo ohlásí přenos (State of Play, Nintendo Direct, Showcase), objeví se tady z jejich oficiálních kanálů.</p>`}
       <div class="section-title">Předplatné: PS Plus a Game Pass</div>
       ${d.predplatne.length ? `<div class="rec-list">${d.predplatne.map((z) => radekZpravy(z)).join("")}</div>` : `<p class="dim">Novinky o hrách v PlayStation Plus a Xbox Game Pass se načítají z oficiálních blogů PlayStation a Xbox.</p>`}
-      <p class="source-note">Termíny akcí jen podle oficiálních oznámení pořadatelů (u každé je odkaz na zdroj). Časy jsou v našem časovém pásmu. Přenosy a předplatné z oficiálních blogů a kanálů platforem.</p>`;
+      <p class="source-note">Termíny akcí jen podle oficiálních oznámení pořadatelů (u každé je odkaz na zdroj). Časy jsou v našem časovém pásmu. Přenosy a předplatné z oficiálních blogů a kanálů platforem; přenosy „živě na Twitchi“ z oficiálního rozvrhu kanálu na Twitchi.</p>`;
+    // Přehrávač Twitche se vloží až na klepnutí (bez automatického načítání cizího obsahu).
+    app.querySelectorAll(".ofi-play").forEach((b) => b.addEventListener("click", () => {
+      const box = b.closest(".ofi-prehravac"), login = b.dataset.tw;
+      if (!box || !/^[a-z0-9_]{2,25}$/.test(login)) return;
+      const f = document.createElement("iframe");
+      f.src = `https://player.twitch.tv/?channel=${encodeURIComponent(login)}&parent=${encodeURIComponent(location.hostname)}&autoplay=true`;
+      f.title = `Přenos ${login}`; f.allowFullscreen = true; f.setAttribute("allow", "autoplay; fullscreen");
+      box.replaceChildren(f);
+    }));
+    if (location.hash === "#zive") document.getElementById("zive")?.scrollIntoView();
     spustOdpocty();
   }
 
@@ -2547,6 +2564,9 @@
   let hpVelikost = "vsichni";
   const DRUH_HP = { streameri: "v české hitparádě streamerů", stredni: "mezi středními streamery (51–300 diváků)", mali: "mezi malými streamery (do 50 diváků)" };
   const tydenText = (t) => t.replace(/^(\d{4})-W0?(\d+)$/, "týden $2/$1");
+  // Obal hry v hitparádě (oficiální obrázek kategorie z Twitche); bez něj první písmeno názvu.
+  const obalHp = (h) => https(h.obrazek) ? `<img class="hp-obal" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span class="hp-obal hp-obal-bez" aria-hidden="true">${esc(String(h.hra || "?").trim()[0] || "?")}</span>`;
   async function strankaHitparada(id) {
     app.innerHTML = `${hubHlava("hitparada")}${kostra(6)}`;
     let r;
@@ -2558,7 +2578,7 @@
     const maxH = Math.max(1, ...r.hry.map((h) => h.hodin));
     const odkazTydne = (t) => `/hitparada/${t.probiha ? "aktualni" : t.id}`;
     const radekHry = (h) => `<a class="srow hp-r" href="${esc(h.igdb_slug ? `/databaze/${h.igdb_slug}` : `/hra/${h.slug}`)}">
-        <span class="rank hp-rank${h.poradi <= 3 ? ` hp-top${h.poradi}` : ""}">${h.poradi}</span>${posunHp(h)}
+        <span class="rank hp-rank${h.poradi <= 3 ? ` hp-top${h.poradi}` : ""}">${h.poradi}</span>${posunHp(h)}${obalHp(h)}
         <div class="info"><h3>${esc(h.hra)}</h3>
           <div class="sub">${esc(pl(h.tydnu, "týden", "týdny", "týdnů"))} v hitparádě · nejlépe #${esc(String(h.nejlepsi))}${h.kick_podil ? ` · Kick ${h.kick_podil} %` : ""}</div>
           <div class="bar"><i data-w="${Math.round((h.hodin / maxH) * 100)}"></i></div></div>
@@ -2963,14 +2983,15 @@
     nastavTitulek("");
     if (!state.domu) {
       app.innerHTML = `<section class="uvod"><h1>Hry mají tep.<br>My ho <em>měříme.</em></h1></section>${kostra(3)}`;
-      const [ra, vd, vy, ak, pa, , rd, hp] = await Promise.allSettled([nacti("ranni"), nacti("vydani?limit=10"), nacti("vyroci"), state.akce ? state.akce : nacti("akce"), nacti("aktualizace"), nactiKatalog(), nacti("radar"), nacti("hitparada")]);
+      const [ra, vd, vy, ak, pa, , rd, hp, of] = await Promise.allSettled([nacti("ranni"), nacti("vydani?limit=10"), nacti("vyroci"), state.akce ? state.akce : nacti("akce"), nacti("aktualizace"), nactiKatalog(), nacti("radar"), nacti("hitparada"), nacti("oficialni")]);
       const ok = (x) => (x.status === "fulfilled" ? x.value : null);
-      state.domu = { ranni: ok(ra), vydani: ok(vd), vyroci: ok(vy), aktualizace: ok(pa), hitparada: ok(hp) };
+      state.domu = { ranni: ok(ra), vydani: ok(vd), vyroci: ok(vy), aktualizace: ok(pa), hitparada: ok(hp), oficialni: ok(of) };
       if (ok(rd)) { state.radar = rd.value; state.radarCas = Date.now(); }
       if (ak.status === "fulfilled") state.akce = ak.value;
     }
     if (location.pathname !== "/" && location.pathname !== "") return;
-    const { ranni, vydani, vyroci, aktualizace, hitparada } = state.domu;
+    const { ranni, vydani, vyroci, aktualizace, hitparada, oficialni } = state.domu;
+    const ofiZive = (oficialni?.zive || [])[0];
     const k = state.katalog || {};
     const tydne = vyberHruTydne(k);
     const zdarmaVse = [...(k.epic_zdarma || []), ...(k.steam_zdarma || [])];
@@ -3005,6 +3026,8 @@
       </section>
       ${akce ? `<a class="pristi-akce" href="/akce"><span class="akce-typ">${esc(TYP_AKCE[akce.typ] || "")}</span>
         <b>${esc(akce.nazev)}</b><span>${akce.bezi ? "probíhá · končí za" : "za"} <b data-odpocet="${esc(akce.bezi ? akce.do : akce.od)}"></b></span></a>` : ""}
+      ${ofiZive ? `<a class="pristi-akce ofi-pruh" href="/akce#zive"><span class="akce-typ"><span class="zivy-bod" aria-hidden="true"></span>Živě</span>
+        <b>${esc(ofiZive.jmeno)}</b><span>${esc(ofiZive.titulek)}${oficialni.zive.length > 1 ? ` · a další ${esc(pl(oficialni.zive.length - 1, "kanál", "kanály", "kanálů"))}` : ""}</span></a>` : ""}
 
       <div class="mozaika">
         <section class="blok m12 domu-moje" id="moje-hry" hidden></section>
@@ -3026,7 +3049,7 @@
 
         ${hitparada?.hry?.length ? `<section class="blok m12 domu-hp">
           <div class="section-title">Česká hitparáda · ${esc(tydenText(hitparada.tyden))}${hitparada.probiha ? " (průběžně)" : ""} · <a href="/hitparada">celý žebříček</a></div>
-          <div class="slist">${hitparada.hry.slice(0, 5).map((h) => `<a class="srow hp-r" href="${esc(h.igdb_slug ? `/databaze/${h.igdb_slug}` : `/hra/${h.slug}`)}"><span class="rank hp-rank${h.poradi <= 3 ? ` hp-top${h.poradi}` : ""}">${h.poradi}</span>${posunHp(h)}
+          <div class="slist">${hitparada.hry.slice(0, 5).map((h) => `<a class="srow hp-r" href="${esc(h.igdb_slug ? `/databaze/${h.igdb_slug}` : `/hra/${h.slug}`)}"><span class="rank hp-rank${h.poradi <= 3 ? ` hp-top${h.poradi}` : ""}">${h.poradi}</span>${posunHp(h)}${obalHp(h)}
             <div class="info"><h3>${esc(h.hra)}</h3></div><div class="num"><b>${esc(num(h.hodin))}</b>hodin</div></a>`).join("")}</div>
           <p class="source-note">Hodiny sledování na českých streamech Twitche a Kicku za týden. ${puvod("mereno", "Twitch + Kick")}</p>
         </section>` : ""}
