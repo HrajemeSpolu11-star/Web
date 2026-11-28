@@ -1512,3 +1512,15 @@ html.bez-posunu{overflow:hidden}
 .dr-karta .hk-obr img{width:100%;height:100%;object-fit:cover}
 .dr-karta .hk-t{padding:10px;display:flex;flex-direction:column;gap:3px}
 .dr-plat{font-size:12px;color:var(--muted)}
+
+/* Ceny v dalších obchodech (CheapShark) */
+.cs-list{display:flex;flex-direction:column;gap:6px}
+.cs-r{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--card);border:1px solid var(--line);color:var(--text);font-size:14px}
+.cs-r em{font-style:normal;color:#4fd88f;font-weight:700}
+.cs-over{margin:8px 0 0;font-size:13px;font-weight:600;color:#4fd88f}
+.cs-jinak{margin:8px 0 0;font-size:13px}
+.cs-row{min-height:0;padding:8px 12px}
+.cs-row .info p{margin:2px 0 0;font-size:12.5px}
+.cs-row .num b{color:#4fd88f}
+.cs-obr{width:64px;height:30px;object-fit:cover;border-radius:6px;flex:none}
+.cs-ok{color:#4fd88f;font-weight:600}

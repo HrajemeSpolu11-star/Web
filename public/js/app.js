@@ -792,6 +792,40 @@
       <small class="dim">Doporučení z cen, které jsme naměřili na Steamu – ne předpověď. ${puvod("mereno", "Steam")}</small></div>`;
   }
 
+  // ---------- Ceny v dalších obchodech (CheapShark) ----------
+  // Druhý nezávislý zdroj cen: obchody mimo Steam (GOG, Humble, Fanatical…) a ověření slevy ze Steamu.
+  // Ceny jsou v dolarech (obchody pro USA). Odkazy musí vést přes CheapShark (podmínka jejich rozhraní).
+  const csMisto = (steamId, sleva) => steamId ? `<div class="cs-ceny" data-cs-steam="${esc(steamId)}" data-sleva="${Number(sleva) || 0}"></div>` : "";
+  async function doplnCenyObchodu(root) {
+    const el = root.querySelector("[data-cs-steam]");
+    if (!el) return;
+    let d;
+    try { d = await nacti(`ceny-obchodu/${enc(el.dataset.csSteam)}`); } catch { return el.remove(); }
+    if (!el.isConnected || !d?.obchody?.length) return el.remove();
+    const steam = d.obchody.find((o) => o.obchod_id === "1"), nase = Number(el.dataset.sleva) || 0;
+    const ostatni = d.obchody.filter((o) => o.obchod_id !== "1").slice(0, 6);
+    let overeni = "";
+    if (steam && nase > 0) overeni = Math.abs(steam.sleva - nase) <= 1
+      ? `<p class="cs-over">✓ Sleva −${nase} % na Steamu ověřena druhým zdrojem (CheapShark)</p>`
+      : `<p class="cs-jinak dim">CheapShark uvádí na americkém Steamu slevu −${Number(steam.sleva) || 0} %. Slevy se mezi zeměmi můžou lišit – platí cena u nás na Steamu.</p>`;
+    if (!ostatni.length && !overeni) return el.remove();
+    el.innerHTML = `${ostatni.length ? `<div class="section-title">Ceny v dalších obchodech</div>
+      <div class="cs-list">${ostatni.map((o) => `<a class="cs-r" href="${esc(bezpecnaUrl(o.url))}" target="_blank" rel="noopener noreferrer"><b>${esc(o.obchod)}</b>
+        <span>${o.sleva > 0 ? `<em>−${Number(o.sleva) || 0} %</em> ` : ""}<strong>${esc(cena(o.cena, "USD"))}</strong></span></a>`).join("")}</div>` : ""}
+      ${overeni}
+      <p class="source-note">Ceny pro USA v dolarech podle CheapShark${d.nejlevneji_kdy?.cena != null ? `, nejníž kdy: ${esc(cena(d.nejlevneji_kdy.cena, "USD"))}${d.nejlevneji_kdy.den ? ` (${esc(datumKr(d.nejlevneji_kdy.den))})` : ""}` : ""}. V Česku může být cena jiná – platí cena v obchodě. ${tecka("oficialni", "CheapShark")}</p>`;
+  }
+  // Řádek „slevy napříč obchody“ (Domů a Slevy). ✓ = stejná sleva na Steamu i u nás.
+  function radekCs(h, steamSlevy) {
+    const nase = h.obchod_id === "1" && h.steam_id ? steamSlevy.get(h.steam_id) : null;
+    const over = nase != null && Math.abs(nase - h.sleva) <= 1;
+    return `<a class="srow cs-row" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
+      ${https(h.obrazek) ? `<img class="cs-obr" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+      <div class="info"><h3>${esc(h.nazev)}</h3><p class="dim">${esc(h.obchod)}${over ? ` · <span class="cs-ok">✓ ověřeno ve 2 zdrojích</span>` : ""}</p></div>
+      <div class="num"><b>−${Number(h.sleva) || 0} %</b>${esc(cena(h.cena, "USD"))}</div></a>`;
+  }
+  const mapaSlevSteam = (k) => new Map((k.steam_slevy || []).map((h) => [String(h.id), Number(h.sleva) || 0]));
+
   // ---------- Lehká herní DNA ----------
   const hodinyHrani = (s) => { const h = s / 3600; return h < 2 ? (Math.round(h * 10) / 10).toLocaleString(LOC) : String(Math.round(h)); };
   function dnaBlok(dna) {
@@ -1098,6 +1132,7 @@
       <aside class="hra-bok" aria-label="Pulsometr, ceny a kde hrát">
         ${pulsBlok(pas.puls)}
         ${obchody.length ? `<div class="section-title">Kde hrát a koupit</div><div class="obchody">${obchody.join("")}</div>${cenovyText(pas.ceny?.rozbor, st)}${poradceBlok(pas.ceny?.rozbor, st)}` : ""}
+        ${csMisto(st?.id || d.steam?.id, st ? st.sleva : d.steam?.sleva)}
         ${steamId ? `<p class="db-steam-odkaz"><a href="/hra/steam/${esc(enc(steamId))}">Stránka hry ze Steamu – historie cen, srovnání</a></p>` : ""}
         <div class="hra-hlidat">${tlacitkoSledovat({ slug: slugHry, nazev: d.nazev, steam_id: steamId })}${steamId && !(st?.zdarma || d.steam?.zdarma) ? tlacitkoHlidat({ id: steamId, nazev: d.nazev }) : ""}</div>
         ${fakta.length ? `<dl class="fakta">${fakta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
@@ -1139,6 +1174,7 @@
         <p class="source-note">Údaje o hře jsou z databáze IGDB${d.cas ? ` (stav ${esc(kdy(new Date(d.cas)))})` : ""}${st ? ", ceny, hodnocení a počet hráčů ze Steamu" : ""}${gog ? " a GOGu" : ""}; streamy měříme sami z API Twitche a Kicku. ${d.url ? `<a href="${esc(bezpecnaUrl(d.url))}" target="_blank" rel="noopener noreferrer">Hra na IGDB</a>` : ""}</p>
       </div></div></div>`;
     pripojGalerii(app, galerieSteam ? st : { screenshoty: d.obrazky || [], videa: [] });
+    doplnCenyObchodu(app);
     const gc = document.getElementById("graf-cena");
     if (gc) graf(gc, hist.map((x) => ({ v: x.cena, d: new Date(x.den + "T12:00:00").toLocaleDateString(LOC, { day: "numeric", month: "numeric" }) })), "Vývoj ceny na Steamu");
     const poz = app.querySelector(".hra-pozadi img");
@@ -2670,6 +2706,7 @@
       <aside class="hra-bok" aria-label="Cena a pulsometr">
       ${pulsBlok(pas.puls)}
       ${obchody.length ? `<div class="section-title">Kde koupit</div><div class="obchody">${obchody.join("")}</div>${cenovyText(pas.ceny?.rozbor, st)}${poradceBlok(pas.ceny?.rozbor, st)}` : ""}
+      ${csMisto(st?.id, st?.sleva)}
       ${st && !st.zdarma ? `<div class="hra-hlidat">${tlacitkoHlidat({ id: st.id, nazev: st.nazev })}${tlacitkoObrazek("hra-obr")}<span class="dim">Pošleme upozornění, až bude ve slevě. <a href="/hlidac">Hlídač cen</a></span></div>` : ""}
       ${fakta.length ? `<dl class="fakta">${fakta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
       ${h.igdb_slug ? `<div class="hra-hlidat">${tlacitkoSledovat({ slug: h.igdb_slug, nazev: h.nazev, steam_id: st?.id || h.steam_id })}</div><p class="pas-srov"><a class="btn-sek btn-db" href="/databaze/${esc(h.igdb_slug)}">Celý profil hry v databázi</a></p>` : ""}
@@ -2710,6 +2747,7 @@
     const gc = document.getElementById("graf-cena");
     if (gc) graf(gc, hist.map((x) => ({ v: x.cena, d: new Date(x.den + "T12:00:00").toLocaleDateString(LOC, { day: "numeric", month: "numeric" }) })), "Vývoj ceny na Steamu");
     pripojGalerii(app, st);
+    doplnCenyObchodu(app);
     const poz = app.querySelector(".hra-pozadi img");
     if (poz) poz.addEventListener("error", () => poz.parentElement.remove(), { once: true });
     app.querySelectorAll("[data-barva]").forEach((el) => el.style.setProperty("--sk", barva(el.dataset.barva, "#ffc04d")));
@@ -2984,6 +3022,12 @@
           <p class="source-note">Hodiny sledování na českých streamech Twitche a Kicku za týden. ${puvod("mereno", "Twitch + Kick")}</p>
         </section>` : ""}
 
+        ${k.cs_slevy?.length ? `<section class="blok m12 domu-cs">
+          <div class="section-title">Slevy napříč obchody · <a href="/obchody#napric">další</a></div>
+          <div class="slist">${k.cs_slevy.slice(0, 4).map((h) => radekCs(h, mapaSlevSteam(k))).join("")}</div>
+          <p class="source-note">Nejlepší nabídky z desítek obchodů podle CheapShark, ceny pro USA v dolarech. ${tecka("oficialni", "CheapShark")}</p>
+        </section>` : ""}
+
         ${patche.length ? `<section class="blok m12 domu-patche">
           <div class="section-title">Co je nového ve hrách · <a href="/aktualizace">všechny aktualizace</a></div>
           <div class="patche-mrizka">${patche.map((p) => kartaPatche(p, true)).join("")}</div>
@@ -3119,6 +3163,14 @@
         <div class="section-title">Největší slevy ${aiCip(state.slevyObchod === "gog" ? "GOG" : "Steam", k.cas)} ${prepinac("so", [["steam", "Steam"], ["gog", "GOG"]], state.slevyObchod)}</div>
         ${mrizkaSlev(slevy, zive, "m-slevy", 12)}
       </section>
+
+      ${(k.cs_slevy || []).length ? `<section id="napric" class="sekce">
+        <div class="section-title">Slevy napříč obchody</div>
+        <div class="slist cs-slist">${k.cs_slevy.slice(0, 10).map((h) => radekCs(h, mapaSlevSteam(k))).join("")}</div>
+        <p class="source-note">Nejlépe hodnocené nabídky z desítek obchodů (Steam, GOG, Humble, Fanatical, GreenManGaming a další) podle
+          <a href="https://www.cheapshark.com" target="_blank" rel="noopener noreferrer">CheapShark</a>. Ceny pro USA v dolarech – v Česku se můžou lišit.
+          „Ověřeno ve 2 zdrojích“ = stejnou slevu na Steamu naměřil i Herní puls. ${tecka("oficialni", "CheapShark")}</p>
+      </section>` : ""}
 
       ${(state.czSlevy || []).length ? `<section class="sekce">
         <div class="section-title">Ve slevě a česky · <a href="/cestina">Má to češtinu?</a></div>

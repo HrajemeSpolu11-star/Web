@@ -8,6 +8,13 @@
 
 ---
 
+## 2026-11-28 – CheapShark: ceny z dalších obchodů a ověření slev druhým zdrojem
+- Nový zdroj CheapShark (zdarma, bez klíče): ceny her v desítkách obchodů (GOG, Humble, Fanatical, GreenManGaming…).
+- Stránka hry a karta v databázi: blok „Ceny v dalších obchodech“ + „✓ Sleva na Steamu ověřena druhým zdrojem“.
+- Domů: malý blok „Slevy napříč obchody“ (4 hry). Slevy: sekce „Slevy napříč obchody“ (10 her).
+- Ceny CheapShark jsou pro USA v dolarech – na webu je to vždy napsané. Odkazy vedou přes CheapShark (podmínka rozhraní).
+- Náklady: katalog +2 požadavky za hodinu (≈ 36 z 50), stránka hry 2 požadavky a 1 zápis na hru za 12 h (sdílená mezipaměť).
+
 ## 2026-11-28 – Zdroje údajů jako tečky místo štítků u každého řádku
 - Pulsometr, Herní DNA, statistiky hry a srovnání her: místo štítku „Oficiální data · Steam“ u každého řádku
   je malá barevná tečka (klepnutím ukáže zdroj). Pod blokem je jednou legenda zdrojů. Nic se neodstranilo –

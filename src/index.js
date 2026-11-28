@@ -1,4 +1,5 @@
 // Herní puls – Worker: statický web + API + sběrač novinek + AI psaní + admin.
+import { apiCenyObchodu } from "./cheapshark.js";
 import { ZDROJE } from "./zdroje.js";
 import { sber, zajistiSchema } from "./sber.js";
 import { napisClanek } from "./psani.js";
@@ -541,6 +542,7 @@ async function verejneApi(request, env, ctx, url) {
     }
     else if (url.pathname === "/api/analytika") odpoved = json(await apiAnalytika(env), 200, 900);
     else if (url.pathname === "/api/moje-hry") odpoved = json(await apiMojeHry(env, url.searchParams.get("s")), 200, 120);
+    else if (url.pathname.startsWith("/api/ceny-obchodu/")) { const c = await apiCenyObchodu(env, url.pathname.slice(18)); odpoved = json(c, c.chyba ? 400 : 200, c.chyba ? 0 : 3600); }
     else if (url.pathname.startsWith("/api/hra-steam/")) odpoved = await apiHraSteam(url.pathname.slice(15), env, ctx);
     else if (url.pathname.startsWith("/api/hra/")) odpoved = await apiHra(dekoduj(url.pathname.slice(9)), env, ctx);
     else if (url.pathname.startsWith("/api/streamer-extra/")) {

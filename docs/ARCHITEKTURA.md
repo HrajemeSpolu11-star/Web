@@ -193,3 +193,11 @@ Podrobně v `docs/ZATEZOVY-TEST.md`, skripty v `tools/zatez/` (spouštět jen ru
   Na `/obchody` se hry spojí s Epic/Steam zdarma (bez duplicit podle názvu), ostatní v sekci „Klíče, DLC a bety zdarma“.
   Konec nabídky se ukazuje jen jako datum (časové pásmo GamerPower neověřeno). 1 podrequest, 2 zápisy na běh katalogu.
 - Kolečka streamerů u her ve slevě: `ziveHry()` v `app.js` – shoda `normNazev` hry živého streamu s názvem hry v obchodě.
+
+## CheapShark – ceny v dalších obchodech (2026-11-28)
+- `src/cheapshark.js`. Rozhraní zdarma, bez klíče; ceny v USD (obchody pro USA). Odkazy na nabídky musí vést přes
+  `cheapshark.com/redirect?dealID=…`.
+- Katalog (hodinový cron): `/stores` + `/deals?onSale=1&sortBy=Deal Rating&steamRating=75` → klíče `cs_obchody`, `cs_slevy`
+  (+2 požadavky, 2 zápisy).
+- `/api/ceny-obchodu/<steamAppID>`: `/games?steamAppID` + `/games?id` → `zMezipameti("cs:<id>", 12 h)`.
+- Ověření: sleva Steamu v CheapShark (storeID 1) ±1 % = naše naměřená sleva → „ověřeno druhým zdrojem“. Jinak poctivá poznámka.

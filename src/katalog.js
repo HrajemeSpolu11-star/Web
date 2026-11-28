@@ -1,11 +1,13 @@
 // Herní katalog z veřejných dat obchodů: Steam, Epic Games Store, GOG.
 // Obnovuje se jednou za hodinu (cron "25 * * * *"), výsledek se ukládá do D1 (tabulka katalog).
-// Jeden běh ≈ 33 požadavků: Steam 1 + hodnocení 8 + žebříček 1 + detaily 10 + hodnocení 10 + Epic 1 + GOG 2.
+// Jeden běh ≈ 36 požadavků: Steam 1 + hodnocení 8 + žebříček 1 + detaily 10 + hodnocení 10 + Epic 1 + GOG 2
+// + GamerPower 1 + CheapShark 2 (obchody, slevy napříč obchody).
 // Endpointy jsou veřejné (stejné, které používají weby obchodů), ale neoficiální –
 // každý obchod se zpracovává zvlášť, takže výpadek jednoho nerozbije ostatní.
 
 import { SCHEMA_HRACI, prikazyHraciDen } from "./trendy.js";
 import { zajistiSchemaHlidac, prikazyUlozHry, doplnSteamUdaje } from "./hlidac.js";
+import { katalogCheapShark } from "./cheapshark.js";
 
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const SCHEMA = `CREATE TABLE IF NOT EXISTS katalog (klic TEXT PRIMARY KEY, data TEXT NOT NULL, cas INTEGER NOT NULL)`;
@@ -155,8 +157,8 @@ export async function sberKatalogu(env) {
   const db = env.DB;
   await db.prepare(SCHEMA).run();
   const ted = Date.now();
-  const nazvy = ["Steam", "Steam žebříček", "Epic", "GOG", "GamerPower"];
-  const casti = await Promise.allSettled([steam(), steamNejhranejsi(), epic(), gog(), darky()]);
+  const nazvy = ["Steam", "Steam žebříček", "Epic", "GOG", "GamerPower", "CheapShark"];
+  const casti = await Promise.allSettled([steam(), steamNejhranejsi(), epic(), gog(), darky(), katalogCheapShark()]);
   const prikazy = [];
   const chyby = [];
   for (const [i, c] of casti.entries()) {
@@ -184,7 +186,7 @@ export async function apiKatalog(env) {
   const db = env.DB;
   await db.prepare(SCHEMA).run();
   // Kalendář vydání a výročí mají vlastní API – sem nepatří (zbytečně by zvětšovaly odpověď).
-  const { results } = await db.prepare("SELECT klic, data, cas FROM katalog WHERE klic NOT IN ('vydani', 'vyroci', 'trendy', 'cenovy_radar', 'igdb_popularni', 'analytika', 'igdb_filtry')").all();
+  const { results } = await db.prepare("SELECT klic, data, cas FROM katalog WHERE klic NOT IN ('vydani', 'vyroci', 'trendy', 'cenovy_radar', 'igdb_popularni', 'analytika', 'igdb_filtry', 'cs_obchody')").all();
   const out = { cas: null };
   for (const r of results) {
     try { out[r.klic] = JSON.parse(r.data); } catch { out[r.klic] = []; }
