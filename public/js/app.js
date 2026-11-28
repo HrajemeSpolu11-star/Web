@@ -792,39 +792,48 @@
       <small class="dim">Doporučení z cen, které jsme naměřili na Steamu – ne předpověď. ${puvod("mereno", "Steam")}</small></div>`;
   }
 
-  // ---------- Ceny v dalších obchodech (CheapShark) ----------
+  // ---------- Ceny v dalších obchodech (IsThereAnyDeal / CheapShark) ----------
   // Druhý nezávislý zdroj cen: obchody mimo Steam (GOG, Humble, Fanatical…) a ověření slevy ze Steamu.
-  // Ceny jsou v dolarech (obchody pro USA). Odkazy musí vést přes CheapShark (podmínka jejich rozhraní).
+  // IsThereAnyDeal = ceny pro Česko. CheapShark (záloha bez klíče) zná jen ceny pro USA – proto u něj ceny neukazujeme, jen obchod a slevu.
   const csMisto = (steamId, sleva) => steamId ? `<div class="cs-ceny" data-cs-steam="${esc(steamId)}" data-sleva="${Number(sleva) || 0}"></div>` : "";
+  const csBezCen = (zeme) => zeme === "US";
+  const csZdrojOdkaz = (z) => z === "IsThereAnyDeal" ? `<a href="https://isthereanydeal.com" target="_blank" rel="noopener noreferrer">IsThereAnyDeal</a>`
+    : `<a href="https://www.cheapshark.com" target="_blank" rel="noopener noreferrer">CheapShark</a>`;
   async function doplnCenyObchodu(root) {
     const el = root.querySelector("[data-cs-steam]");
     if (!el) return;
     let d;
     try { d = await nacti(`ceny-obchodu/${enc(el.dataset.csSteam)}`); } catch { return el.remove(); }
     if (!el.isConnected || !d?.obchody?.length) return el.remove();
-    const steam = d.obchody.find((o) => o.obchod_id === "1"), nase = Number(el.dataset.sleva) || 0;
-    const ostatni = d.obchody.filter((o) => o.obchod_id !== "1").slice(0, 6);
+    const bezCen = csBezCen(d.zeme), sid = d.steam_shop || "1";
+    const steam = d.obchody.find((o) => o.obchod_id === sid), nase = Number(el.dataset.sleva) || 0;
+    // Bez cen má smysl ukázat jen obchody, kde je hra ve slevě.
+    const ostatni = d.obchody.filter((o) => o.obchod_id !== sid && (!bezCen || o.sleva > 0)).slice(0, 6);
     let overeni = "";
     if (steam && nase > 0) overeni = Math.abs(steam.sleva - nase) <= 1
-      ? `<p class="cs-over">✓ Sleva −${nase} % na Steamu ověřena druhým zdrojem (CheapShark)</p>`
-      : `<p class="cs-jinak dim">CheapShark uvádí na americkém Steamu slevu −${Number(steam.sleva) || 0} %. Slevy se mezi zeměmi můžou lišit – platí cena u nás na Steamu.</p>`;
+      ? `<p class="cs-over">✓ Sleva −${nase} % na Steamu ověřena druhým zdrojem (${esc(d.zdroj)})</p>`
+      : bezCen ? `<p class="cs-jinak dim">CheapShark uvádí na americkém Steamu slevu −${Number(steam.sleva) || 0} %. Slevy se mezi zeměmi můžou lišit – platí cena u nás na Steamu.</p>` : "";
     if (!ostatni.length && !overeni) return el.remove();
-    el.innerHTML = `${ostatni.length ? `<div class="section-title">Ceny v dalších obchodech</div>
+    el.innerHTML = `${ostatni.length ? `<div class="section-title">${bezCen ? "Ve slevě i v dalších obchodech" : "Ceny v dalších obchodech"}</div>
       <div class="cs-list">${ostatni.map((o) => `<a class="cs-r" href="${esc(bezpecnaUrl(o.url))}" target="_blank" rel="noopener noreferrer"><b>${esc(o.obchod)}</b>
-        <span>${o.sleva > 0 ? `<em>−${Number(o.sleva) || 0} %</em> ` : ""}<strong>${esc(cena(o.cena, "USD"))}</strong></span></a>`).join("")}</div>` : ""}
+        <span>${o.sleva > 0 ? `<em>−${Number(o.sleva) || 0} %</em> ` : ""}${bezCen ? "" : `<strong>${esc(cena(o.cena, o.mena || d.mena))}</strong>`}</span></a>`).join("")}</div>` : ""}
       ${overeni}
-      <p class="source-note">Ceny pro USA v dolarech podle CheapShark${d.nejlevneji_kdy?.cena != null ? `, nejníž kdy: ${esc(cena(d.nejlevneji_kdy.cena, "USD"))}${d.nejlevneji_kdy.den ? ` (${esc(datumKr(d.nejlevneji_kdy.den))})` : ""}` : ""}. V Česku může být cena jiná – platí cena v obchodě. ${tecka("oficialni", "CheapShark")}</p>`;
+      <p class="source-note">${bezCen
+        ? `Obchody a slevy podle ${csZdrojOdkaz(d.zdroj)}. Ceny neukazujeme – tento zdroj zná jen ceny pro USA. Platí cena v obchodě.`
+        : `Ceny pro Česko podle ${csZdrojOdkaz(d.zdroj)}${d.nejlevneji_kdy?.cena != null ? `, historicky nejníž: ${esc(cena(d.nejlevneji_kdy.cena, d.mena))}` : ""}. Platí cena v obchodě.`} ${tecka("oficialni", d.zdroj)}</p>`;
   }
-  // Řádek „slevy napříč obchody“ (Domů a Slevy). ✓ = stejná sleva na Steamu i u nás.
-  function radekCs(h, steamSlevy) {
-    const nase = h.obchod_id === "1" && h.steam_id ? steamSlevy.get(h.steam_id) : null;
+  // Řádek „slevy napříč obchody“ (Domů a Slevy). ✓ = stejnou slevu na Steamu naměřil i Herní puls.
+  function radekCs(h, steamSlevy, bezCen) {
+    const steamovy = h.obchod_id === "1" || h.obchod_id === "61";
+    const nase = steamovy ? (h.steam_id && steamSlevy.get(h.steam_id)) ?? steamSlevy.get("n:" + normNazev(h.nazev)) : null;
     const over = nase != null && Math.abs(nase - h.sleva) <= 1;
     return `<a class="srow cs-row" href="${esc(bezpecnaUrl(h.url))}" target="_blank" rel="noopener noreferrer">
       ${https(h.obrazek) ? `<img class="cs-obr" src="${esc(h.obrazek)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
-      <div class="info"><h3>${esc(h.nazev)}</h3><p class="dim">${esc(h.obchod)}${over ? ` · <span class="cs-ok">✓ ověřeno ve 2 zdrojích</span>` : ""}</p></div>
-      <div class="num"><b>−${Number(h.sleva) || 0} %</b>${esc(cena(h.cena, "USD"))}</div></a>`;
+      <div class="info"><h3>${esc(h.nazev)}</h3><p class="dim">${esc(h.obchod)}${h.nejniz ? ` · historicky nejníž` : ""}${over ? ` · <span class="cs-ok">✓ ověřeno ve 2 zdrojích</span>` : ""}</p></div>
+      <div class="num"><b>−${Number(h.sleva) || 0} %</b>${bezCen ? "" : esc(cena(h.cena, h.mena))}</div></a>`;
   }
-  const mapaSlevSteam = (k) => new Map((k.steam_slevy || []).map((h) => [String(h.id), Number(h.sleva) || 0]));
+  const mapaSlevSteam = (k) => new Map((k.steam_slevy || []).flatMap((h) => [[String(h.id), Number(h.sleva) || 0], ["n:" + normNazev(h.nazev), Number(h.sleva) || 0]]));
+  const csInfo = (k) => k.cs_zdroj?.[0] || { zdroj: "CheapShark", zeme: "US" };
 
   // ---------- Lehká herní DNA ----------
   const hodinyHrani = (s) => { const h = s / 3600; return h < 2 ? (Math.round(h * 10) / 10).toLocaleString(LOC) : String(Math.round(h)); };
@@ -3024,8 +3033,8 @@
 
         ${k.cs_slevy?.length ? `<section class="blok m12 domu-cs">
           <div class="section-title">Slevy napříč obchody · <a href="/obchody#napric">další</a></div>
-          <div class="slist">${k.cs_slevy.slice(0, 4).map((h) => radekCs(h, mapaSlevSteam(k))).join("")}</div>
-          <p class="source-note">Nejlepší nabídky z desítek obchodů podle CheapShark, ceny pro USA v dolarech. ${tecka("oficialni", "CheapShark")}</p>
+          <div class="slist">${k.cs_slevy.slice(0, 4).map((h) => radekCs(h, mapaSlevSteam(k), csBezCen(csInfo(k).zeme))).join("")}</div>
+          <p class="source-note">${csBezCen(csInfo(k).zeme) ? "Slevy z desítek obchodů podle CheapShark (bez cen – zná jen ceny pro USA)." : "Slevy z desítek obchodů s cenami pro Česko podle IsThereAnyDeal."} ${tecka("oficialni", csInfo(k).zdroj)}</p>
         </section>` : ""}
 
         ${patche.length ? `<section class="blok m12 domu-patche">
@@ -3166,10 +3175,11 @@
 
       ${(k.cs_slevy || []).length ? `<section id="napric" class="sekce">
         <div class="section-title">Slevy napříč obchody</div>
-        <div class="slist cs-slist">${k.cs_slevy.slice(0, 10).map((h) => radekCs(h, mapaSlevSteam(k))).join("")}</div>
-        <p class="source-note">Nejlépe hodnocené nabídky z desítek obchodů (Steam, GOG, Humble, Fanatical, GreenManGaming a další) podle
-          <a href="https://www.cheapshark.com" target="_blank" rel="noopener noreferrer">CheapShark</a>. Ceny pro USA v dolarech – v Česku se můžou lišit.
-          „Ověřeno ve 2 zdrojích“ = stejnou slevu na Steamu naměřil i Herní puls. ${tecka("oficialni", "CheapShark")}</p>
+        <div class="slist cs-slist">${k.cs_slevy.slice(0, 10).map((h) => radekCs(h, mapaSlevSteam(k), csBezCen(csInfo(k).zeme))).join("")}</div>
+        <p class="source-note">${csBezCen(csInfo(k).zeme)
+          ? `Slevy z desítek obchodů (Steam, GOG, Humble, Fanatical, GreenManGaming a další) podle ${csZdrojOdkaz("CheapShark")}. Ceny neukazujeme – tento zdroj zná jen ceny pro USA.`
+          : `Slevy z desítek obchodů (Steam, GOG, Humble, Fanatical, GreenManGaming a další) s cenami pro Česko podle ${csZdrojOdkaz("IsThereAnyDeal")}.`}
+          „Ověřeno ve 2 zdrojích“ = stejnou slevu na Steamu naměřil i Herní puls. ${tecka("oficialni", csInfo(k).zdroj)}</p>
       </section>` : ""}
 
       ${(state.czSlevy || []).length ? `<section class="sekce">

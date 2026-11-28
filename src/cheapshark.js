@@ -7,6 +7,7 @@
 //     (1 zápis na hru za 12 h). Slouží i k ověření slevy ze Steamu druhým zdrojem.
 
 import { zMezipameti } from "./mezipamet.js";
+import { cenyHryItad, katalogItad, STEAM_SHOP } from "./itad.js";
 
 const API = "https://www.cheapshark.com/api/1.0";
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
@@ -47,7 +48,7 @@ export async function katalogCheapShark() {
       hodnoceni: Number(d.steamRatingPercent) || null, obrazek: https(d.thumb), url });
     if (slevy.length >= 20) break;
   }
-  return { cs_obchody: obchody, cs_slevy: slevy };
+  return { cs_obchody: obchody, cs_slevy: slevy, cs_zdroj: [{ zdroj: "CheapShark", zeme: "US" }] };
 }
 
 // Ceny jedné hry ve všech obchodech podle Steam ID. Prázdný výsledek ({ obchody: [] }) = CheapShark hru nezná.
@@ -74,8 +75,14 @@ async function cenyHry(db, steamId) {
   };
 }
 
+// S klíčem ITAD_KEY ceny pro Česko z IsThereAnyDeal, bez něj CheapShark (jen obchody a procenta – ceny jsou tam pro USA).
 export async function apiCenyObchodu(env, steamId) {
   if (!/^\d{1,10}$/.test(String(steamId || ""))) return { chyba: "Neplatná hra" };
+  if (env.ITAD_KEY) {
+    const data = await zMezipameti(env.DB, `itad:${steamId}`, 12 * 3600e3, () => cenyHryItad(env, steamId));
+    return { ...data, zdroj: "IsThereAnyDeal", steam_shop: STEAM_SHOP };
+  }
   const data = await zMezipameti(env.DB, `cs:${steamId}`, 12 * 3600e3, () => cenyHry(env.DB, steamId));
-  return { ...data, zdroj: "CheapShark" };
+  return { ...data, zdroj: "CheapShark", zeme: "US", steam_shop: "1" };
 }
+export const katalogCen = (env) => env.ITAD_KEY ? katalogItad(env) : katalogCheapShark();

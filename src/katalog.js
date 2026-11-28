@@ -1,13 +1,13 @@
 // Herní katalog z veřejných dat obchodů: Steam, Epic Games Store, GOG.
 // Obnovuje se jednou za hodinu (cron "25 * * * *"), výsledek se ukládá do D1 (tabulka katalog).
 // Jeden běh ≈ 36 požadavků: Steam 1 + hodnocení 8 + žebříček 1 + detaily 10 + hodnocení 10 + Epic 1 + GOG 2
-// + GamerPower 1 + CheapShark 2 (obchody, slevy napříč obchody).
+// + GamerPower 1 + slevy napříč obchody: IsThereAnyDeal 1 (s klíčem ITAD_KEY), jinak CheapShark 2.
 // Endpointy jsou veřejné (stejné, které používají weby obchodů), ale neoficiální –
 // každý obchod se zpracovává zvlášť, takže výpadek jednoho nerozbije ostatní.
 
 import { SCHEMA_HRACI, prikazyHraciDen } from "./trendy.js";
 import { zajistiSchemaHlidac, prikazyUlozHry, doplnSteamUdaje } from "./hlidac.js";
-import { katalogCheapShark } from "./cheapshark.js";
+import { katalogCen } from "./cheapshark.js";
 
 const UA = "HerniPulsBot/0.1 (+https://github.com/HrajemeSpolu11-star/Web)";
 const SCHEMA = `CREATE TABLE IF NOT EXISTS katalog (klic TEXT PRIMARY KEY, data TEXT NOT NULL, cas INTEGER NOT NULL)`;
@@ -157,8 +157,8 @@ export async function sberKatalogu(env) {
   const db = env.DB;
   await db.prepare(SCHEMA).run();
   const ted = Date.now();
-  const nazvy = ["Steam", "Steam žebříček", "Epic", "GOG", "GamerPower", "CheapShark"];
-  const casti = await Promise.allSettled([steam(), steamNejhranejsi(), epic(), gog(), darky(), katalogCheapShark()]);
+  const nazvy = ["Steam", "Steam žebříček", "Epic", "GOG", "GamerPower", env.ITAD_KEY ? "IsThereAnyDeal" : "CheapShark"];
+  const casti = await Promise.allSettled([steam(), steamNejhranejsi(), epic(), gog(), darky(), katalogCen(env)]);
   const prikazy = [];
   const chyby = [];
   for (const [i, c] of casti.entries()) {

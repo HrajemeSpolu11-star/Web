@@ -201,3 +201,6 @@ Podrobně v `docs/ZATEZOVY-TEST.md`, skripty v `tools/zatez/` (spouštět jen ru
   (+2 požadavky, 2 zápisy).
 - `/api/ceny-obchodu/<steamAppID>`: `/games?steamAppID` + `/games?id` → `zMezipameti("cs:<id>", 12 h)`.
 - Ověření: sleva Steamu v CheapShark (storeID 1) ±1 % = naše naměřená sleva → „ověřeno druhým zdrojem“. Jinak poctivá poznámka.
+- **IsThereAnyDeal** (`src/itad.js`, od 2026-11-28): s Secretem `ITAD_KEY` nahradí CheapShark. `country=CZ`.
+  Katalog: `/deals/v2` (1 požadavek) → `cs_slevy` + `cs_zdroj`. Hra: `/games/lookup/v1?appid` + `POST /games/prices/v3`
+  → `zMezipameti("itad:<id>", 12 h)`. Steam = obchod 61. Bez klíče CheapShark a web ceny v USD neukazuje.

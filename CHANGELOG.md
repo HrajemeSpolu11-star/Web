@@ -8,6 +8,12 @@
 
 ---
 
+## 2026-11-28 – Ceny v dalších obchodech: IsThereAnyDeal (ceny pro Česko), CheapShark bez dolarů
+- CheapShark zná jen ceny pro USA – dolarové ceny už neukazujeme (jen obchod, procento slevy a ověření slevy).
+- Nový zdroj IsThereAnyDeal (`src/itad.js`): ceny pro Česko z desítek obchodů + historicky nejnižší cena. Zapne se sám,
+  jakmile je ve Workeru Secret `ITAD_KEY`; do té doby běží CheapShark bez cen.
+- Náklady s ITAD: katalog 1 požadavek za hodinu, stránka hry 2 požadavky a 1 zápis na hru za 12 h.
+
 ## 2026-11-28 – CheapShark: ceny z dalších obchodů a ověření slev druhým zdrojem
 - Nový zdroj CheapShark (zdarma, bez klíče): ceny her v desítkách obchodů (GOG, Humble, Fanatical, GreenManGaming…).
 - Stránka hry a karta v databázi: blok „Ceny v dalších obchodech“ + „✓ Sleva na Steamu ověřena druhým zdrojem“.
